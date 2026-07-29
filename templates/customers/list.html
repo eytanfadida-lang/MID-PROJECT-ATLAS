@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block page_title %}Customers - Appointment Manager{% endblock %}
+{% block page_heading %}Customers & Invoices{% endblock %}
+
+{% block content %}
+<div class="toolbar">
+    <a href="{{ url_for('customers.new_customer') }}" class="btn">Add new customer</a>
+</div>
+
+{% if customers %}
+<table>
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Name</th>
+            <th>Phone</th>
+            <th>Email</th>
+            <th>Address</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for c in customers %}
+        <tr>
+            <td>{{ c.id }}</td>
+            <td>{{ c.name }}</td>
+            <td>{{ c.phone }}</td>
+            <td>{{ c.email }}</td>
+            <td>{{ c.address }}</td>
+            <td class="actions-row">
+                <a href="{{ url_for('customers.detail', customer_id=c.id) }}" class="btn btn-secondary">View</a>
+                {% if current_user.role == ROLE_ADMIN %}
+                <form method="post" action="{{ url_for('customers.delete', customer_id=c.id) }}"
+                      onsubmit="return confirm('Delete this customer?');">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <button type="submit" class="btn btn-danger">Delete</button>
+                </form>
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p class="empty-state">No customers yet.</p>
+{% endif %}
+{% endblock %}

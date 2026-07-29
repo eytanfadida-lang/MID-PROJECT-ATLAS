@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block page_title %}Leads - Appointment Manager{% endblock %}
+{% block page_heading %}Leads (CRM){% endblock %}
+
+{% block content %}
+<div class="toolbar">
+    <a href="{{ url_for('leads.new_lead') }}" class="btn">Add new lead</a>
+    <form method="get">
+        <select name="status" onchange="this.form.submit()">
+            <option value="">All statuses</option>
+            {% for s in statuses %}
+            <option value="{{ s }}" {{ "selected" if s == status else "" }}>{{ s }}</option>
+            {% endfor %}
+        </select>
+        <input type="text" name="phone" placeholder="Search by phone" value="{{ phone }}">
+        <button type="submit" class="btn btn-secondary">Search</button>
+    </form>
+</div>
+
+{% if leads %}
+<table>
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Name</th>
+            <th>Phone</th>
+            <th>Status</th>
+            <th>Channel</th>
+            <th>Assigned user</th>
+            <th>Notes</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for lead in leads %}
+        <tr>
+            <td>{{ lead.id }}</td>
+            <td>{{ lead.full_name }}</td>
+            <td>{{ lead.phone }}</td>
+            <td>
+                <form method="post" action="{{ url_for('leads.update_status', lead_id=lead.id) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <select name="status" class="status-select {{ status_badge_class(lead.status) }}" onchange="this.form.submit()">
+                        {% for s in statuses %}
+                        <option value="{{ s }}" {{ "selected" if s == lead.status else "" }}>{{ s }}</option>
+                        {% endfor %}
+                    </select>
+                </form>
+            </td>
+            <td>{{ lead.channel }}</td>
+            <td>{{ lead.assigned_user }}</td>
+            <td>{{ lead.notes }}</td>
+            <td class="actions-row">
+                <a href="{{ url_for('leads.edit', lead_id=lead.id) }}" class="btn btn-secondary">Edit</a>
+                <a href="{{ url_for('leads.convert', lead_id=lead.id) }}" class="btn btn-secondary">Convert</a>
+                {% if current_user.role == ROLE_ADMIN %}
+                <form method="post" action="{{ url_for('leads.delete', lead_id=lead.id) }}"
+                      onsubmit="return confirm('Delete this lead?');">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <button type="submit" class="btn btn-danger">Delete</button>
+                </form>
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p class="empty-state">No leads found.</p>
+{% endif %}
+{% endblock %}

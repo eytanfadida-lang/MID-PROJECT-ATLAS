@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{% block page_title %}Appointment Manager{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="topbar">
+        <div class="brand">Appointment Manager</div>
+        <div class="topbar-user">
+            {% if current_user %}
+                <span>{{ current_user.username }}</span>
+                <span class="badge {{ role_badge_class(current_user.role) }}">{{ current_user.role }}</span>
+                <form method="post" action="{{ url_for('auth.logout') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <button type="submit" class="link-button">Logout</button>
+                </form>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="layout">
+        <div class="sidebar">
+            <a href="{{ url_for('appointments.list_appointments') }}"
+               class="{{ 'active' if request.path.startswith('/appointments') else '' }}">Appointments</a>
+            <a href="{{ url_for('leads.list_leads') }}"
+               class="{{ 'active' if request.path.startswith('/leads') else '' }}">Leads (CRM)</a>
+            <a href="{{ url_for('customers.list_customers') }}"
+               class="{{ 'active' if request.path.startswith('/customers') else '' }}">Customers & Invoices</a>
+            {% if current_user and current_user.role == ROLE_ADMIN %}
+            <a href="{{ url_for('users.list_users') }}"
+               class="{{ 'active' if request.path.startswith('/users') else '' }}">Users</a>
+            {% endif %}
+        </div>
+
+        <div class="content">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="flash flash-{{ category }}">{{ message }}</div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <div class="card">
+                <h1>{% block page_heading %}{% endblock %}</h1>
+                {% block content %}{% endblock %}
+            </div>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block page_title %}New Appointment - Details{% endblock %}
+{% block page_heading %}New appointment on {{ date }} at {{ time }}{% endblock %}
+
+{% block content %}
+<form method="post" class="form-card">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <div class="form-group">
+        <label>Name</label>
+        <input type="text" name="name_of_client" required autofocus>
+    </div>
+    <div class="form-group">
+        <label>Phone</label>
+        <input type="text" name="phone_client" required>
+    </div>
+    <div class="form-group">
+        <label>Branch</label>
+        <select name="name_of_store" required>
+            {% for branch in branches %}
+            <option value="{{ branch }}">{{ branch }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <button type="submit" class="btn">Create appointment</button>
+</form>
+{% endblock %}

@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block page_title %}Convert Lead to Client{% endblock %}
+{% block page_heading %}Convert lead "{{ lead.full_name }}" to client{% endblock %}
+
+{% block content %}
+<form method="post" class="form-card">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <div class="form-group">
+        <label>Branch</label>
+        <select name="name_of_store" required>
+            {% for branch in branches %}
+            <option value="{{ branch }}">{{ branch }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <button type="submit" class="btn">Convert to client</button>
+</form>
+{% endblock %}

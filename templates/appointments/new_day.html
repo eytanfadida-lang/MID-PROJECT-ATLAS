@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block page_title %}New Appointment - Choose Day{% endblock %}
+{% block page_heading %}New appointment - choose a day{% endblock %}
+
+{% block content %}
+{% if days %}
+<div class="day-list">
+    {% for day in days %}
+    <a href="{{ url_for('appointments.new_choose_hour', date=day) }}">{{ day }}</a>
+    {% endfor %}
+</div>
+{% else %}
+<p class="empty-state">No available days in the upcoming week.</p>
+{% endif %}
+{% endblock %}

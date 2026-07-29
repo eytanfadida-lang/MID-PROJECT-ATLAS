@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block page_title %}Users - Appointment Manager{% endblock %}
+{% block page_heading %}Users{% endblock %}
+
+{% block content %}
+<div class="toolbar">
+    <a href="{{ url_for('users.new_user') }}" class="btn">Add new user</a>
+</div>
+
+{% if users %}
+<table>
+    <thead>
+        <tr><th>ID</th><th>Username</th><th>Role</th></tr>
+    </thead>
+    <tbody>
+        {% for u in users %}
+        <tr>
+            <td>{{ u.id }}</td>
+            <td>{{ u.username }}</td>
+            <td><span class="badge {{ role_badge_class(u.role) }}">{{ u.role }}</span></td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p class="empty-state">No users yet.</p>
+{% endif %}
+{% endblock %}

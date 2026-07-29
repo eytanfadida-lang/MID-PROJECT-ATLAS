@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block page_title %}Edit Lead{% endblock %}
+{% block page_heading %}Edit lead {{ lead.id }}{% endblock %}
+
+{% block content %}
+<form method="post" class="form-card">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <div class="form-group">
+        <label>Full name</label>
+        <input type="text" name="full_name" value="{{ lead.full_name or '' }}" required>
+    </div>
+    <div class="form-group">
+        <label>Phone</label>
+        <input type="text" name="phone" value="{{ lead.phone or '' }}" required>
+    </div>
+    <div class="form-group">
+        <label>Status</label>
+        <select name="status">
+            {% for s in statuses %}
+            <option value="{{ s }}" {{ "selected" if s == lead.status else "" }}>{{ s }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="form-group">
+        <label>Channel</label>
+        <select name="channel">
+            {% for c in channels %}
+            <option value="{{ c }}" {{ "selected" if c == lead.channel else "" }}>{{ c }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="form-group">
+        <label>Assigned user</label>
+        <input type="text" name="assigned_user" value="{{ lead.assigned_user or '' }}">
+    </div>
+    <div class="form-group">
+        <label>Notes</label>
+        <textarea name="notes" rows="3">{{ lead.notes or '' }}</textarea>
+    </div>
+    <button type="submit" class="btn">Save changes</button>
+</form>
+{% endblock %}

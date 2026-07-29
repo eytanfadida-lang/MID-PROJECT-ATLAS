@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% block page_title %}Customer {{ customer.id }}{% endblock %}
+{% block page_heading %}Customer #{{ customer.id }} - {{ customer.name }}{% endblock %}
+
+{% block content %}
+<p>
+    <strong>Phone:</strong> {{ customer.phone }} &nbsp;|&nbsp;
+    <strong>Email:</strong> {{ customer.email }} &nbsp;|&nbsp;
+    <strong>Address:</strong> {{ customer.address }}
+</p>
+
+{% if current_user.role == ROLE_ADMIN %}
+<form method="post" action="{{ url_for('customers.delete', customer_id=customer.id) }}"
+      onsubmit="return confirm('Delete this customer?');">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <button type="submit" class="btn btn-danger">Delete customer</button>
+</form>
+{% endif %}
+
+<div class="section">
+    <h2>Appointments</h2>
+    {% if appointments %}
+    <table>
+        <thead>
+            <tr><th>ID</th><th>Branch</th><th>Date</th><th>Time</th></tr>
+        </thead>
+        <tbody>
+            {% for a in appointments %}
+            <tr>
+                <td>{{ a.id_client }}</td>
+                <td>{{ a.name_of_store }}</td>
+                <td>{{ a.appointment_date or "-" }}</td>
+                <td>{{ a.appointment_time or "-" }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p class="empty-state">No appointments for this customer.</p>
+    {% endif %}
+</div>
+
+<div class="section">
+    <h2>Invoices</h2>
+    {% if invoices %}
+    <table>
+        <thead>
+            <tr><th>Invoice #</th><th>Amount</th><th>Date</th><th>Membership</th></tr>
+        </thead>
+        <tbody>
+            {% for inv in invoices %}
+            <tr>
+                <td>{{ inv.invoice_number }}</td>
+                <td>{{ inv.amount }}</td>
+                <td>{{ inv.invoice_date }}</td>
+                <td>{{ inv.membership_type or "-" }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p class="empty-state">No invoices for this customer.</p>
+    {% endif %}
+</div>
+
+<div class="section">
+    <h2>Create invoice</h2>
+    <form method="post" action="{{ url_for('customers.create_invoice', customer_id=customer.id) }}" class="form-card">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <div class="form-group">
+            <label>Amount</label>
+            <input type="number" step="0.01" name="amount" required>
+        </div>
+        <button type="submit" class="btn">Create invoice</button>
+    </form>
+</div>
+
+<div class="section">
+    <h2>Purchase membership</h2>
+    <form method="post" action="{{ url_for('customers.purchase_membership', customer_id=customer.id) }}" class="form-card">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <div class="form-group">
+            <label>Plan</label>
+            <select name="plan_name" required>
+                {% for name, price in membership_plans %}
+                <option value="{{ name }}">{{ name }} - {{ price }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <button type="submit" class="btn">Purchase</button>
+    </form>
+</div>
+
+<div class="section">
+    <h2>Link an existing appointment</h2>
+    <form method="post" action="{{ url_for('customers.link_appointment', customer_id=customer.id) }}" class="form-card">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <div class="form-group">
+            <label>Appointment ID</label>
+            <input type="text" name="id_client" required>
+        </div>
+        <button type="submit" class="btn">Link appointment</button>
+    </form>
+</div>
+{% endblock %}
