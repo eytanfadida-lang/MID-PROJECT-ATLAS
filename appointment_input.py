@@ -1,6 +1,6 @@
 import datetime
 
-BRANCHES = ["Mozkin", "Tirat Carmel"]
+BRANCHES = ["מזכין", "טירת כרמל"]
 
 
 # אחראית על איסוף קלט מהמשתמש ועל ולידציה של הפורמט שלו

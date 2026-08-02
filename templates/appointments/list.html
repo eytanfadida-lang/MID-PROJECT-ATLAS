@@ -1,15 +1,15 @@
 {% extends "base.html" %}
-{% block page_title %}Appointments - Appointment Manager{% endblock %}
-{% block page_heading %}Appointments{% endblock %}
+{% block page_title %}תורים - מנהל תורים{% endblock %}
+{% block page_heading %}תורים{% endblock %}
 
 {% block content %}
 <div class="toolbar">
-    <a href="{{ url_for('appointments.new_choose_day') }}" class="btn">New appointment</a>
-    <a href="{{ url_for('appointments.list_appointments') }}" class="btn btn-secondary">Show all</a>
-    <a href="{{ url_for('appointments.list_appointments', today=1) }}" class="btn btn-secondary">Today only</a>
+    <a href="{{ url_for('appointments.new_choose_day') }}" class="btn">תור חדש</a>
+    <a href="{{ url_for('appointments.list_appointments') }}" class="btn btn-secondary">הצג הכל</a>
+    <a href="{{ url_for('appointments.list_appointments', today=1) }}" class="btn btn-secondary">היום בלבד</a>
     <form method="get">
-        <input type="text" name="phone" placeholder="Search by phone" value="{{ phone }}">
-        <button type="submit" class="btn btn-secondary">Search</button>
+        <input type="text" name="phone" placeholder="חיפוש לפי טלפון" value="{{ phone }}">
+        <button type="submit" class="btn btn-secondary">חיפוש</button>
     </form>
 </div>
 
@@ -17,14 +17,14 @@
 <table>
     <thead>
         <tr>
-            <th>ID</th>
-            <th>Name</th>
-            <th>Phone</th>
-            <th>Branch</th>
-            <th>Date</th>
-            <th>Time</th>
-            <th>Customer</th>
-            <th>Actions</th>
+            <th>מזהה</th>
+            <th>שם</th>
+            <th>טלפון</th>
+            <th>סניף</th>
+            <th>תאריך</th>
+            <th>שעה</th>
+            <th>לקוח</th>
+            <th>פעולות</th>
         </tr>
     </thead>
     <tbody>
@@ -38,12 +38,12 @@
             <td>{{ a.appointment_time or "-" }}</td>
             <td>{{ a.customer_id|int if a.customer_id is not none else "-" }}</td>
             <td class="actions-row">
-                <a href="{{ url_for('appointments.edit', id_client=a.id_client) }}" class="btn btn-secondary">Edit</a>
+                <a href="{{ url_for('appointments.edit', id_client=a.id_client) }}" class="btn btn-secondary">ערוך</a>
                 {% if current_user.role == ROLE_ADMIN %}
                 <form method="post" action="{{ url_for('appointments.delete', id_client=a.id_client) }}"
-                      onsubmit="return confirm('Delete this appointment?');">
+                      onsubmit="return confirm('האם אתה בטוח שברצונך למחוק את התור?');">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                    <button type="submit" class="btn btn-danger">Delete</button>
+                    <button type="submit" class="btn btn-danger">מחק</button>
                 </form>
                 {% endif %}
             </td>
@@ -52,6 +52,6 @@
     </tbody>
 </table>
 {% else %}
-<p class="empty-state">No appointments found.</p>
+<p class="empty-state">לא נמצאו תורים.</p>
 {% endif %}
 {% endblock %}

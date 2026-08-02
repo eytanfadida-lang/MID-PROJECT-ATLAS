@@ -1,6 +1,6 @@
 {% extends "base.html" %}
-{% block page_title %}New Appointment - Choose Time{% endblock %}
-{% block page_heading %}New appointment on {{ date }} - choose a time{% endblock %}
+{% block page_title %}תור חדש - בחירת שעה{% endblock %}
+{% block page_heading %}תור חדש ל-{{ date }} - בחירת שעה{% endblock %}
 
 {% block content %}
 {% if hours %}
@@ -10,7 +10,7 @@
     {% endfor %}
 </div>
 {% else %}
-<p class="empty-state">No available times for this day.</p>
+<p class="empty-state">אין שעות זמינות ביום זה.</p>
 {% endif %}
-<p class="section"><a href="{{ url_for('appointments.new_choose_day') }}">&laquo; Choose a different day</a></p>
+<p class="section"><a href="{{ url_for('appointments.new_choose_day') }}">&laquo; בחר יום אחר</a></p>
 {% endblock %}

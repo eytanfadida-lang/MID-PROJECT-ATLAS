@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block page_title %}לוח בקרה - מנהל תורים{% endblock %}
+{% block page_heading %}לוח בקרה{% endblock %}
+
+{% block content %}
+<div class="dashboard-hero">
+    <div>
+        <h2>ברוך הבא למרכז הניהול</h2>
+        <p>הנה סקירה מהירה של הפעילות האחרונות ושל המצב הנוכחי של העסק.</p>
+    </div>
+    <div class="dashboard-actions">
+        <a href="{{ url_for('appointments.list_appointments') }}" class="btn">🗓️ ניהול תורים</a>
+        <a href="{{ url_for('leads.list_leads') }}" class="btn btn-secondary">🤝 ניהול לידים</a>
+        <a href="{{ url_for('customers.list_customers') }}" class="btn btn-secondary">👥 ניהול לקוחות</a>
+    </div>
+</div>
+
+<div class="dashboard-grid">
+    <div class="stat-card">
+        <div class="stat-title">סה"כ תורים</div>
+        <div class="stat-value">{{ appointments_count }}</div>
+        <div class="stat-caption">רשומות פעילות נוכחיות</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-title">תורים להיום</div>
+        <div class="stat-value">{{ today_count }}</div>
+        <div class="stat-caption">תורים עם תאריך היום</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-title">לידים</div>
+        <div class="stat-value">{{ leads_count }}</div>
+        <div class="stat-caption">לידים שנרשמו במערכת</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-title">לקוחות</div>
+        <div class="stat-value">{{ customers_count }}</div>
+        <div class="stat-caption">לקוחות פעילים</div>
+    </div>
+</div>
+
+<div class="dashboard-panels">
+    <section class="panel-card">
+        <div class="panel-title">תורים אחרונים</div>
+        {% if recent_appointments %}
+        <ul class="recent-list">
+            {% for item in recent_appointments %}
+            <li>
+                <strong>{{ item.name_of_client or '-' }}</strong>
+                <span>{{ item.appointment_date or '-' }} · {{ item.appointment_time or '-' }}</span>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p class="empty-state">עדיין אין תורים להצגה.</p>
+        {% endif %}
+    </section>
+
+    <section class="panel-card">
+        <div class="panel-title">לידים אחרונים</div>
+        {% if recent_leads %}
+        <ul class="recent-list">
+            {% for item in recent_leads %}
+            <li>
+                <strong>{{ item.full_name or '-' }}</strong>
+                <span>{{ item.phone or '-' }} · {{ item.status or '-' }}</span>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p class="empty-state">עדיין אין לידים להצגה.</p>
+        {% endif %}
+    </section>
+
+    <section class="panel-card">
+        <div class="panel-title">לקוחות אחרונים</div>
+        {% if recent_customers %}
+        <ul class="recent-list">
+            {% for item in recent_customers %}
+            <li>
+                <strong>{{ item.name or '-' }}</strong>
+                <span>{{ item.phone or '-' }}</span>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p class="empty-state">עדיין אין לקוחות להצגה.</p>
+        {% endif %}
+    </section>
+</div>
+{% endblock %}

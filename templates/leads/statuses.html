@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block page_title %}ניהול סטטוסים{% endblock %}
+{% block page_heading %}ניהול סטטוסים{% endblock %}
+
+{% block content %}
+<div class="toolbar">
+    <a href="{{ url_for('leads.list_leads') }}" class="btn btn-secondary">חזרה לרשימת הלידים</a>
+</div>
+
+{% if statuses %}
+<table>
+    <thead>
+        <tr><th>סטטוס</th><th>צבע</th><th>פעולות</th></tr>
+    </thead>
+    <tbody>
+        {% for s in statuses %}
+        <tr>
+            <td><span class="badge" style="background: {{ s.color }};">{{ s.name }}</span></td>
+            <td>
+                <form method="post" action="{{ url_for('leads.update_status_color', status_id=s.id) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <input type="color" name="color" value="{{ s.color }}" onchange="this.form.submit()">
+                </form>
+            </td>
+            <td>
+                <form method="post" action="{{ url_for('leads.delete_status', status_id=s.id) }}" style="display:inline;"
+                      onsubmit="return confirm('למחוק את הסטטוס &quot;{{ s.name }}&quot;? לידים קיימים עם סטטוס זה לא ישתנו.');">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <button type="submit" class="btn btn-danger">מחק</button>
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p class="empty-state">אין עדיין סטטוסים מוגדרים.</p>
+{% endif %}
+
+<h2>הוספת סטטוס חדש</h2>
+<form method="post" class="form-card">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <div class="form-group">
+        <label>שם הסטטוס</label>
+        <input type="text" name="name" required autofocus>
+    </div>
+    <div class="form-group">
+        <label>צבע</label>
+        <input type="color" name="color" value="#2f80ed">
+    </div>
+    <button type="submit" class="btn">הוסף סטטוס</button>
+</form>
+{% endblock %}

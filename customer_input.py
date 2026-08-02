@@ -1,6 +1,6 @@
 MEMBERSHIP_PLANS = [
-    ("GOLD MEMBERSHIP", 350),
-    ("MASTER MEMBERSHIP", 450),
+    ("מנוי זהב", 350),
+    ("מנוי מאסטר", 450),
     ("VIP LIFESTYLE", 850),
 ]
 

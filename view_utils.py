@@ -1,13 +1,6 @@
-import pandas as pd
+import datetime
 
-STATUS_BADGE_CLASSES = {
-    "New": "badge-blue",
-    "In progress": "badge-orange",
-    "Received info about the trainings": "badge-teal",
-    "Received info about VIP": "badge-purple",
-    "Not relevant": "badge-gray",
-    "Became a client": "badge-green",
-}
+import pandas as pd
 
 ROLE_BADGE_CLASSES = {
     "admin": "badge-red",
@@ -21,9 +14,16 @@ def to_records(df):
     return df.where(pd.notnull(df), None).to_dict("records")
 
 
-def status_badge_class(status):
-    return STATUS_BADGE_CLASSES.get(status, "badge-gray")
-
-
 def role_badge_class(role):
     return ROLE_BADGE_CLASSES.get(role, "badge-gray")
+
+
+# מציגה חותמת זמן ISO (למשל "2026-07-31T15:03") כ-"HH:MM DD/MM/YYYY", לתצוגה בטבלאות
+def format_lead_datetime(value):
+    if not value:
+        return "-"
+    try:
+        parsed = datetime.datetime.fromisoformat(value)
+    except (ValueError, TypeError):
+        return value
+    return parsed.strftime("%H:%M %d/%m/%Y")

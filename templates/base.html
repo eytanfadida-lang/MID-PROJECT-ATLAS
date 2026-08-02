@@ -1,40 +1,45 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="he" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <title>{% block page_title %}Appointment Manager{% endblock %}</title>
+    <title>{% block page_title %}מנהל תורים{% endblock %}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-    <div class="topbar">
-        <div class="brand">Appointment Manager</div>
-        <div class="topbar-user">
-            {% if current_user %}
-                <span>{{ current_user.username }}</span>
-                <span class="badge {{ role_badge_class(current_user.role) }}">{{ current_user.role }}</span>
-                <form method="post" action="{{ url_for('auth.logout') }}">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                    <button type="submit" class="link-button">Logout</button>
-                </form>
-            {% endif %}
-        </div>
-    </div>
-
-    <div class="layout">
-        <div class="sidebar">
-            <a href="{{ url_for('appointments.list_appointments') }}"
-               class="{{ 'active' if request.path.startswith('/appointments') else '' }}">Appointments</a>
-            <a href="{{ url_for('leads.list_leads') }}"
-               class="{{ 'active' if request.path.startswith('/leads') else '' }}">Leads (CRM)</a>
-            <a href="{{ url_for('customers.list_customers') }}"
-               class="{{ 'active' if request.path.startswith('/customers') else '' }}">Customers & Invoices</a>
-            {% if current_user and current_user.role == ROLE_ADMIN %}
-            <a href="{{ url_for('users.list_users') }}"
-               class="{{ 'active' if request.path.startswith('/users') else '' }}">Users</a>
-            {% endif %}
+    <div class="app-shell">
+        <div class="topbar">
+            <div class="brand">מנהל תורים</div>
+            <div class="topbar-user">
+                {% if current_user %}
+                    <button type="button" class="theme-toggle" id="theme-toggle" aria-label="החלף מצב צבע">🌙</button>
+                    <span>{{ current_user.username }}</span>
+                    <span class="badge {{ role_badge_class(current_user.role) }}">{{ current_user.role }}</span>
+                    <form method="post" action="{{ url_for('auth.logout') }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                        <button type="submit" class="link-button">התנתקות</button>
+                    </form>
+                {% endif %}
+            </div>
         </div>
 
-        <div class="content">
+        <div class="layout">
+            <div class="sidebar">
+                <div class="sidebar-title">תפריט</div>
+                <a href="{{ url_for('index') }}"
+                   class="{{ 'active' if request.path == '/' else '' }}">📊 לוח בקרה</a>
+                <a href="{{ url_for('appointments.list_appointments') }}"
+                   class="{{ 'active' if request.path.startswith('/appointments') else '' }}">🗓️ תורים</a>
+                <a href="{{ url_for('leads.list_leads') }}"
+                   class="{{ 'active' if request.path.startswith('/leads') else '' }}">🤝 לידים (CRM)</a>
+                <a href="{{ url_for('customers.list_customers') }}"
+                   class="{{ 'active' if request.path.startswith('/customers') else '' }}">👥 לקוחות והזמנות</a>
+                {% if current_user and current_user.role == ROLE_ADMIN %}
+                <a href="{{ url_for('users.list_users') }}"
+                   class="{{ 'active' if request.path.startswith('/users') else '' }}">👤 משתמשים</a>
+                {% endif %}
+            </div>
+
+            <div class="content">
             {% with messages = get_flashed_messages(with_categories=true) %}
                 {% if messages %}
                     {% for category, message in messages %}
@@ -43,11 +48,39 @@
                 {% endif %}
             {% endwith %}
 
-            <div class="card">
-                <h1>{% block page_heading %}{% endblock %}</h1>
-                {% block content %}{% endblock %}
+                <div class="card">
+                    <div class="card-header">
+                        <h1>{% block page_heading %}{% endblock %}</h1>
+                        <div class="card-accent"></div>
+                    </div>
+                    {% block content %}{% endblock %}
+                </div>
             </div>
         </div>
     </div>
+    <script>
+    (function () {
+        const savedTheme = localStorage.getItem('theme');
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        const shouldUseDark = savedTheme ? savedTheme === 'dark' : prefersDark;
+        document.body.classList.toggle('dark', shouldUseDark);
+
+        document.addEventListener('DOMContentLoaded', function () {
+            const toggle = document.getElementById('theme-toggle');
+            if (!toggle) return;
+            const updateToggle = () => {
+                const dark = document.body.classList.contains('dark');
+                toggle.textContent = dark ? '☀️' : '🌙';
+                toggle.setAttribute('aria-pressed', dark ? 'true' : 'false');
+            };
+            updateToggle();
+            toggle.addEventListener('click', function () {
+                const dark = document.body.classList.toggle('dark');
+                localStorage.setItem('theme', dark ? 'dark' : 'light');
+                updateToggle();
+            });
+        });
+    })();
+    </script>
 </body>
 </html>

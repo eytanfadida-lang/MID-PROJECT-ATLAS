@@ -1,9 +1,9 @@
-from flask import Flask, redirect, url_for, session
+from flask import Flask, redirect, render_template, url_for, session
 
 import roles
 import db_context
 from auth import load_secret_key, generate_csrf_token, validate_csrf, current_user
-from view_utils import status_badge_class, role_badge_class
+from view_utils import role_badge_class, format_lead_datetime, to_records
 
 from blueprints.auth import bp as auth_bp
 from blueprints.appointments import bp as appointments_bp
@@ -27,8 +27,8 @@ app.register_blueprint(users_bp)
 
 app.before_request(validate_csrf)
 
-app.jinja_env.globals["status_badge_class"] = status_badge_class
 app.jinja_env.globals["role_badge_class"] = role_badge_class
+app.jinja_env.filters["format_lead_datetime"] = format_lead_datetime
 
 
 @app.context_processor
@@ -45,7 +45,27 @@ def inject_template_globals():
 def index():
     if current_user() is None:
         return redirect(url_for("auth.login"))
-    return redirect(url_for("appointments.list_appointments"))
+
+    repos = db_context.get_repos()
+    appointments = repos.appointments.get_all()
+    today_appointments = repos.appointments.get_today()
+    leads = repos.leads.get_all()
+    customers = repos.customers.get_all()
+
+    recent_appointments = to_records(appointments.head(5)) if not appointments.empty else []
+    recent_leads = to_records(leads.head(5)) if not leads.empty else []
+    recent_customers = to_records(customers.head(5)) if not customers.empty else []
+
+    return render_template(
+        "dashboard.html",
+        appointments_count=len(appointments),
+        today_count=len(today_appointments),
+        leads_count=len(leads),
+        customers_count=len(customers),
+        recent_appointments=recent_appointments,
+        recent_leads=recent_leads,
+        recent_customers=recent_customers,
+    )
 
 
 if __name__ == "__main__":

@@ -1,20 +1,20 @@
 {% extends "base.html" %}
-{% block page_title %}Edit Appointment{% endblock %}
-{% block page_heading %}Edit appointment {{ appointment.id_client }}{% endblock %}
+{% block page_title %}עריכת תור{% endblock %}
+{% block page_heading %}עריכת תור {{ appointment.id_client }}{% endblock %}
 
 {% block content %}
 <form method="post" class="form-card">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <div class="form-group">
-        <label>Name</label>
+        <label>שם</label>
         <input type="text" name="name_of_client" value="{{ appointment.name_of_client or '' }}" required>
     </div>
     <div class="form-group">
-        <label>Phone</label>
+        <label>טלפון</label>
         <input type="text" name="phone_client" value="{{ appointment.phone_client or '' }}" required>
     </div>
     <div class="form-group">
-        <label>Branch</label>
+        <label>סניף</label>
         <select name="name_of_store" required>
             {% for branch in branches %}
             <option value="{{ branch }}" {{ "selected" if branch == appointment.name_of_store else "" }}>{{ branch }}</option>
@@ -22,13 +22,13 @@
         </select>
     </div>
     <div class="form-group">
-        <label>Date</label>
+        <label>תאריך</label>
         <input type="date" name="appointment_date" value="{{ appointment.appointment_date or '' }}">
     </div>
     <div class="form-group">
-        <label>Time</label>
+        <label>שעה</label>
         <input type="time" name="appointment_time" value="{{ appointment.appointment_time or '' }}">
     </div>
-    <button type="submit" class="btn">Save changes</button>
+    <button type="submit" class="btn">שמור שינויים</button>
 </form>
 {% endblock %}

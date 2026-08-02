@@ -6,6 +6,11 @@ from flask import abort, request, session, redirect, url_for
 
 import roles
 
+PERMISSION_MANAGE_USERS = "manage_users"
+PERMISSION_MANAGE_APPOINTMENTS = "manage_appointments"
+PERMISSION_MANAGE_LEADS = "manage_leads"
+PERMISSION_MANAGE_CUSTOMERS = "manage_customers"
+
 SECRET_KEY_FILE = Path(".flask_secret")
 
 
@@ -62,3 +67,21 @@ def admin_required(view):
         return view(*args, **kwargs)
 
     return wrapped
+
+
+def permission_required(permission):
+    def decorator(view):
+        @wraps(view)
+        def wrapped(*args, **kwargs):
+            user = current_user()
+            if user is None:
+                return redirect(url_for("auth.login"))
+            if user["role"] == roles.ADMIN:
+                return view(*args, **kwargs)
+            if permission not in user.get("permissions", []):
+                abort(403)
+            return view(*args, **kwargs)
+
+        return wrapped
+
+    return decorator

@@ -16,7 +16,13 @@ def login():
             flash("Invalid username or password.", "error")
             return render_template("login.html", username=username)
 
-        session["user"] = {"username": username, "role": role}
+        user = get_repos().users.get_by_username(username)
+        session["user"] = {
+            "id": user["id"],
+            "username": username,
+            "role": role,
+            "permissions": user.get("permissions", []),
+        }
         return redirect(url_for("appointments.list_appointments"))
 
     return render_template("login.html", username="")

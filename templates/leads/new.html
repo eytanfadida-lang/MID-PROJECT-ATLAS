@@ -1,20 +1,20 @@
 {% extends "base.html" %}
-{% block page_title %}Add New Lead{% endblock %}
-{% block page_heading %}Add new lead{% endblock %}
+{% block page_title %}ליד חדש{% endblock %}
+{% block page_heading %}הוספת ליד חדש{% endblock %}
 
 {% block content %}
 <form method="post" class="form-card">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <div class="form-group">
-        <label>Full name</label>
+        <label>שם מלא</label>
         <input type="text" name="full_name" required autofocus>
     </div>
     <div class="form-group">
-        <label>Phone</label>
+        <label>טלפון</label>
         <input type="text" name="phone" required>
     </div>
     <div class="form-group">
-        <label>Channel</label>
+        <label>ערוץ</label>
         <select name="channel" required>
             {% for c in channels %}
             <option value="{{ c }}">{{ c }}</option>
@@ -22,13 +22,13 @@
         </select>
     </div>
     <div class="form-group">
-        <label>Assigned user</label>
+        <label>משתמש משויך</label>
         <input type="text" name="assigned_user">
     </div>
     <div class="form-group">
-        <label>Notes</label>
+        <label>הערות</label>
         <textarea name="notes" rows="3"></textarea>
     </div>
-    <button type="submit" class="btn">Create lead</button>
+    <button type="submit" class="btn">צור ליד</button>
 </form>
 {% endblock %}

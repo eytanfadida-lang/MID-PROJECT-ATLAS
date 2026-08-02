@@ -1,71 +1,102 @@
 {% extends "base.html" %}
-{% block page_title %}Leads - Appointment Manager{% endblock %}
-{% block page_heading %}Leads (CRM){% endblock %}
+{% block page_title %}לידים - מנהל תורים{% endblock %}
+{% block page_heading %}לידים (CRM){% endblock %}
 
 {% block content %}
 <div class="toolbar">
-    <a href="{{ url_for('leads.new_lead') }}" class="btn">Add new lead</a>
-    <form method="get">
+    <a href="{{ url_for('leads.new_lead') }}" class="btn">ליד חדש</a>
+    {% if current_user.role == ROLE_ADMIN %}
+    <a href="{{ url_for('leads.manage_statuses') }}" class="btn btn-secondary">ניהול סטטוסים</a>
+    {% endif %}
+    <form method="get" class="toolbar-actions">
+        {% if current_user.role != ROLE_ADMIN %}
+        <a href="{{ url_for('leads.list_leads', mine=1 if not show_my_only else 0, status=status, phone=phone) }}" class="btn btn-secondary">
+            {{ 'הצג הכול' if show_my_only else 'הלידים שלי' }}
+        </a>
+        {% endif %}
         <select name="status" onchange="this.form.submit()">
-            <option value="">All statuses</option>
+            <option value="">כל הסטטוסים</option>
             {% for s in statuses %}
             <option value="{{ s }}" {{ "selected" if s == status else "" }}>{{ s }}</option>
             {% endfor %}
         </select>
-        <input type="text" name="phone" placeholder="Search by phone" value="{{ phone }}">
-        <button type="submit" class="btn btn-secondary">Search</button>
+        <input type="text" name="phone" placeholder="חיפוש לפי טלפון" value="{{ phone }}">
+        <button type="submit" class="btn btn-secondary">חיפוש</button>
     </form>
 </div>
 
 {% if leads %}
-<table>
-    <thead>
-        <tr>
-            <th>ID</th>
-            <th>Name</th>
-            <th>Phone</th>
-            <th>Status</th>
-            <th>Channel</th>
-            <th>Assigned user</th>
-            <th>Notes</th>
-            <th>Actions</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for lead in leads %}
-        <tr>
-            <td>{{ lead.id }}</td>
-            <td>{{ lead.full_name }}</td>
-            <td>{{ lead.phone }}</td>
-            <td>
-                <form method="post" action="{{ url_for('leads.update_status', lead_id=lead.id) }}">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                    <select name="status" class="status-select {{ status_badge_class(lead.status) }}" onchange="this.form.submit()">
-                        {% for s in statuses %}
-                        <option value="{{ s }}" {{ "selected" if s == lead.status else "" }}>{{ s }}</option>
-                        {% endfor %}
-                    </select>
-                </form>
-            </td>
-            <td>{{ lead.channel }}</td>
-            <td>{{ lead.assigned_user }}</td>
-            <td>{{ lead.notes }}</td>
-            <td class="actions-row">
-                <a href="{{ url_for('leads.edit', lead_id=lead.id) }}" class="btn btn-secondary">Edit</a>
-                <a href="{{ url_for('leads.convert', lead_id=lead.id) }}" class="btn btn-secondary">Convert</a>
-                {% if current_user.role == ROLE_ADMIN %}
-                <form method="post" action="{{ url_for('leads.delete', lead_id=lead.id) }}"
-                      onsubmit="return confirm('Delete this lead?');">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                    <button type="submit" class="btn btn-danger">Delete</button>
-                </form>
-                {% endif %}
-            </td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
+<div class="table-scroll">
+    <table class="leads-table">
+        <thead>
+            <tr>
+                <th class="col-created">תאריך</th>
+                <th class="col-id">מזהה</th>
+                <th class="col-name">שם</th>
+                <th class="col-phone">טלפון</th>
+                <th class="col-status">סטטוס</th>
+                <th class="col-channel">ערוץ</th>
+                <th class="col-routings">כמות ניתובים</th>
+                <th class="col-assigned">מנהל לקוח</th>
+                <th class="col-notes">הערות</th>
+                <th class="col-actions">פעולות</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for lead in leads %}
+            <tr>
+                <td class="col-created">{{ lead.created_datetime_stamp | format_lead_datetime }}</td>
+                <td class="col-id">{{ lead.id }}</td>
+                <td class="col-name">{{ lead.full_name }}</td>
+                <td class="col-phone">
+                    <span class="phone-cell">
+                        <span>{{ lead.phone }}</span>
+                        {% if lead.is_duplicate_phone %}
+                        <span class="duplicate-phone" title="מספר טלפון כפול">⚠</span>
+                        {% endif %}
+                    </span>
+                </td>
+                <td class="col-status">
+                    <form method="post" action="{{ url_for('leads.update_status', lead_id=lead.id) }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                        <select name="status" class="status-select" style="background: {{ status_colors.get(lead.status, default_status_color) }};" onchange="this.form.submit()">
+                            {% for s in statuses %}
+                            <option value="{{ s }}" style="background: {{ status_colors.get(s, default_status_color) }}; color: #fff;" {{ "selected" if s == lead.status else "" }}>{{ s }}</option>
+                            {% endfor %}
+                        </select>
+                    </form>
+                </td>
+                <td class="col-channel">{{ lead.channel }}</td>
+                <td class="col-routings">{{ lead.routings_count or 0 }}</td>
+                <td class="col-assigned">
+                    <form method="post" action="{{ url_for('leads.assign_lead', lead_id=lead.id) }}" class="inline-form">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                        <select name="assigned_user" onchange="this.form.submit()">
+                            <option value="">— ללא משויך —</option>
+                            {% for user in users %}
+                            <option value="{{ user.username }}" {{ "selected" if user.username == lead.assigned_user else "" }}>{{ user.username }}</option>
+                            {% endfor %}
+                        </select>
+                    </form>
+                </td>
+                <td class="col-notes">{{ lead.notes }}</td>
+                <td class="col-actions actions-row">
+                    <a href="{{ url_for('leads.edit', lead_id=lead.id) }}" class="btn btn-secondary icon-btn" title="ערוך" aria-label="ערוך">✎</a>
+                    <a href="{{ url_for('leads.convert', lead_id=lead.id) }}" class="btn btn-secondary icon-btn" title="המר" aria-label="המר">↺</a>
+                    {% if current_user.role == ROLE_ADMIN %}
+                    <form method="post" action="{{ url_for('leads.delete', lead_id=lead.id) }}"
+                          onsubmit="return confirm('האם אתה בטוח שברצונך למחוק את הליד?');">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                        <button type="submit" class="btn btn-danger icon-btn" title="מחק" aria-label="מחק">✕</button>
+                    </form>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
 {% else %}
-<p class="empty-state">No leads found.</p>
+<p class="empty-state">לא נמצאו לידים.</p>
 {% endif %}
 {% endblock %}

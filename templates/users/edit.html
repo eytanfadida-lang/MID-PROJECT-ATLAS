@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block page_title %}עריכת משתמש{% endblock %}
+{% block page_heading %}עריכת משתמש{% endblock %}
+
+{% block content %}
+<form method="post" class="form-card">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <div class="form-group">
+        <label>שם משתמש</label>
+        <input type="text" value="{{ user.username }}" disabled>
+    </div>
+    <div class="form-group">
+        <label>תפקיד</label>
+        <select name="role">
+            {% for r in roles %}
+            <option value="{{ r }}" {% if user.role == r %}selected{% endif %}>{{ r }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="form-group">
+        <label>הרשאות</label>
+        <div>
+            <label><input type="checkbox" name="permissions" value="manage_users" {% if 'manage_users' in user.permissions %}checked{% endif %}> ניהול משתמשים</label>
+            <label><input type="checkbox" name="permissions" value="manage_appointments" {% if 'manage_appointments' in user.permissions %}checked{% endif %}> ניהול תורים</label>
+            <label><input type="checkbox" name="permissions" value="manage_leads" {% if 'manage_leads' in user.permissions %}checked{% endif %}> ניהול לידים</label>
+            <label><input type="checkbox" name="permissions" value="manage_customers" {% if 'manage_customers' in user.permissions %}checked{% endif %}> ניהול לקוחות</label>
+        </div>
+    </div>
+    <div class="form-group">
+        <label>סיסמה חדשה (לא חובה)</label>
+        <input type="password" name="password">
+    </div>
+    <button type="submit" class="btn">שמור שינויים</button>
+</form>
+{% endblock %}

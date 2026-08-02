@@ -3,7 +3,7 @@ import datetime
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 
 from db_context import get_repos
-from auth import login_required, admin_required
+from auth import login_required, admin_required, permission_required, PERMISSION_MANAGE_APPOINTMENTS
 from appointment_input import BRANCHES
 from view_utils import to_records
 
@@ -104,7 +104,7 @@ def edit(id_client):
 
 
 @bp.route("/<id_client>/delete", methods=["POST"])
-@admin_required
+@permission_required(PERMISSION_MANAGE_APPOINTMENTS)
 def delete(id_client):
     repos = get_repos()
     if repos.appointments.delete(id_client):

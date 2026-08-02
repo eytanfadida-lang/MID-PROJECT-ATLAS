@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 
 from db_context import get_repos
-from auth import login_required, admin_required
+from auth import login_required, admin_required, permission_required, PERMISSION_MANAGE_CUSTOMERS
 from customer_input import MEMBERSHIP_PLANS
 from view_utils import to_records
 
@@ -112,7 +112,7 @@ def link_appointment(customer_id):
 
 
 @bp.route("/<int:customer_id>/delete", methods=["POST"])
-@admin_required
+@permission_required(PERMISSION_MANAGE_CUSTOMERS)
 def delete(customer_id):
     repos = get_repos()
     if repos.customers.get_by_id(customer_id) is None:

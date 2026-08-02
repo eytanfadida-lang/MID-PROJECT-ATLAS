@@ -1,6 +1,6 @@
 {% extends "base.html" %}
-{% block page_title %}New Appointment - Choose Day{% endblock %}
-{% block page_heading %}New appointment - choose a day{% endblock %}
+{% block page_title %}תור חדש - בחירת יום{% endblock %}
+{% block page_heading %}תור חדש - בחירת יום{% endblock %}
 
 {% block content %}
 {% if days %}
@@ -10,6 +10,6 @@
     {% endfor %}
 </div>
 {% else %}
-<p class="empty-state">No available days in the upcoming week.</p>
+<p class="empty-state">אין ימים זמינים בשבוע הקרוב.</p>
 {% endif %}
 {% endblock %}

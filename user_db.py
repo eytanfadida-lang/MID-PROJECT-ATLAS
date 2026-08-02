@@ -17,9 +17,14 @@ class UserDB:
                 username TEXT UNIQUE NOT NULL,
                 password_hash TEXT NOT NULL,
                 salt TEXT NOT NULL,
-                role TEXT NOT NULL
+                role TEXT NOT NULL,
+                permissions TEXT DEFAULT '[]'
             )
         """)
+        cursor = conn.execute("SELECT COUNT(*) FROM pragma_table_info('users') WHERE name='permissions'")
+        has_permissions = cursor.fetchone()[0]
+        if not has_permissions:
+            conn.execute("ALTER TABLE users ADD COLUMN permissions TEXT DEFAULT '[]'")
         return conn
 
     def close(self):

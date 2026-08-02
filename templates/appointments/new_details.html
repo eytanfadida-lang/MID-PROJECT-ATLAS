@@ -1,26 +1,26 @@
 {% extends "base.html" %}
-{% block page_title %}New Appointment - Details{% endblock %}
-{% block page_heading %}New appointment on {{ date }} at {{ time }}{% endblock %}
+{% block page_title %}תור חדש - פרטים{% endblock %}
+{% block page_heading %}תור חדש ל-{{ date }} בשעה {{ time }}{% endblock %}
 
 {% block content %}
 <form method="post" class="form-card">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <div class="form-group">
-        <label>Name</label>
+        <label>שם</label>
         <input type="text" name="name_of_client" required autofocus>
     </div>
     <div class="form-group">
-        <label>Phone</label>
+        <label>טלפון</label>
         <input type="text" name="phone_client" required>
     </div>
     <div class="form-group">
-        <label>Branch</label>
+        <label>סניף</label>
         <select name="name_of_store" required>
             {% for branch in branches %}
             <option value="{{ branch }}">{{ branch }}</option>
             {% endfor %}
         </select>
     </div>
-    <button type="submit" class="btn">Create appointment</button>
+    <button type="submit" class="btn">צור תור</button>
 </form>
 {% endblock %}

@@ -1,16 +1,16 @@
 {% extends "base.html" %}
-{% block page_title %}Users - Appointment Manager{% endblock %}
-{% block page_heading %}Users{% endblock %}
+{% block page_title %}משתמשים - מנהל תורים{% endblock %}
+{% block page_heading %}משתמשים{% endblock %}
 
 {% block content %}
 <div class="toolbar">
-    <a href="{{ url_for('users.new_user') }}" class="btn">Add new user</a>
+    <a href="{{ url_for('users.new_user') }}" class="btn">משתמש חדש</a>
 </div>
 
 {% if users %}
 <table>
     <thead>
-        <tr><th>ID</th><th>Username</th><th>Role</th></tr>
+        <tr><th>מזהה</th><th>שם משתמש</th><th>תפקיד</th><th>פעולות</th></tr>
     </thead>
     <tbody>
         {% for u in users %}
@@ -18,11 +18,18 @@
             <td>{{ u.id }}</td>
             <td>{{ u.username }}</td>
             <td><span class="badge {{ role_badge_class(u.role) }}">{{ u.role }}</span></td>
+            <td>
+                <a href="{{ url_for('users.edit_user', user_id=u.id) }}" class="btn">ערוך</a>
+                <form method="post" action="{{ url_for('users.delete_user', user_id=u.id) }}" style="display:inline;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <button type="submit" class="btn" onclick="return confirm('למחוק משתמש זה?');">מחק</button>
+                </form>
+            </td>
         </tr>
         {% endfor %}
     </tbody>
 </table>
 {% else %}
-<p class="empty-state">No users yet.</p>
+<p class="empty-state">עדיין אין משתמשים.</p>
 {% endif %}
 {% endblock %}

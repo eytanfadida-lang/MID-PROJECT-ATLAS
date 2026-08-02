@@ -8,6 +8,7 @@ from appointment_repository import AppointmentRepository
 from availability import AvailabilityService
 from lead_db import LeadDB
 from lead_repository import LeadRepository
+from lead_status_repository import LeadStatusRepository
 from customer_db import CustomerDB
 from customer_repository import CustomerRepository
 from invoice_repository import InvoiceRepository
@@ -46,6 +47,7 @@ def get_repos():
             appointments=appointments,
             availability=AvailabilityService(appointments),
             leads=LeadRepository(conn),
+            lead_statuses=LeadStatusRepository(conn),
             customers=CustomerRepository(conn),
             invoices=InvoiceRepository(conn),
             users=UserRepository(conn),

@@ -1,22 +1,22 @@
 {% extends "base.html" %}
-{% block page_title %}Customers - Appointment Manager{% endblock %}
-{% block page_heading %}Customers & Invoices{% endblock %}
+{% block page_title %}לקוחות - מנהל תורים{% endblock %}
+{% block page_heading %}לקוחות והזמנות{% endblock %}
 
 {% block content %}
 <div class="toolbar">
-    <a href="{{ url_for('customers.new_customer') }}" class="btn">Add new customer</a>
+    <a href="{{ url_for('customers.new_customer') }}" class="btn">לקוח חדש</a>
 </div>
 
 {% if customers %}
 <table>
     <thead>
         <tr>
-            <th>ID</th>
-            <th>Name</th>
-            <th>Phone</th>
-            <th>Email</th>
-            <th>Address</th>
-            <th>Actions</th>
+            <th>מזהה</th>
+            <th>שם</th>
+            <th>טלפון</th>
+            <th>אימייל</th>
+            <th>כתובת</th>
+            <th>פעולות</th>
         </tr>
     </thead>
     <tbody>
@@ -28,12 +28,12 @@
             <td>{{ c.email }}</td>
             <td>{{ c.address }}</td>
             <td class="actions-row">
-                <a href="{{ url_for('customers.detail', customer_id=c.id) }}" class="btn btn-secondary">View</a>
+                <a href="{{ url_for('customers.detail', customer_id=c.id) }}" class="btn btn-secondary">הצג</a>
                 {% if current_user.role == ROLE_ADMIN %}
                 <form method="post" action="{{ url_for('customers.delete', customer_id=c.id) }}"
-                      onsubmit="return confirm('Delete this customer?');">
+                      onsubmit="return confirm('האם אתה בטוח שברצונך למחוק את הלקוח?');">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                    <button type="submit" class="btn btn-danger">Delete</button>
+                    <button type="submit" class="btn btn-danger">מחק</button>
                 </form>
                 {% endif %}
             </td>
@@ -42,6 +42,6 @@
     </tbody>
 </table>
 {% else %}
-<p class="empty-state">No customers yet.</p>
+<p class="empty-state">עדיין אין לקוחות.</p>
 {% endif %}
 {% endblock %}

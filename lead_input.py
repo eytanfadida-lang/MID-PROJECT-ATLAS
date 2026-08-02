@@ -1,19 +1,20 @@
 # Available status values for a lead, as they appear in the original CRM system
 STATUSES = [
-    "New",
-    "In progress",
-    "Received info about the trainings",
-    "Received info about VIP",
-    "Not relevant",
-    "Became a client",
+    "חדש",
+    "בטיפול",
+    "קיבל מידע על ההדרכות",
+    "קיבל מידע על VIP",
+    "לא רלוונטי",
+    "הפך ללקוח",
+    "ליד כפול",
 ]
 
 # Available channel (referral source) values for a lead
 CHANNELS = [
-    "Manual channel",
-    "General VIP",
+    "ערוץ ידני",
+    "VIP כללי",
     "VIP 1.3.26",
-    "Facebook",
+    "פייסבוק",
 ]
 
 
