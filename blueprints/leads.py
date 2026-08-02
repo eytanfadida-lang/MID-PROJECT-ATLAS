@@ -84,7 +84,9 @@ def new_lead():
             flash(f"Lead created successfully (id: {lead_id}).", "success")
         return redirect(url_for("leads.list_leads"))
 
-    return render_template("leads/new.html", channels=CHANNELS)
+    repos = get_repos()
+    users = to_records(repos.users.get_all()) if hasattr(repos, "users") else []
+    return render_template("leads/new.html", channels=CHANNELS, users=users)
 
 
 @bp.route("/<int:lead_id>/edit", methods=["GET", "POST"])

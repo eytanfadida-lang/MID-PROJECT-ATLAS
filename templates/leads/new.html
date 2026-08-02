@@ -22,8 +22,13 @@
         </select>
     </div>
     <div class="form-group">
-        <label>משתמש משויך</label>
-        <input type="text" name="assigned_user">
+        <label>מנהל לקוח</label>
+        <select name="assigned_user">
+            <option value="">— ללא משויך —</option>
+            {% for user in users %}
+            <option value="{{ user.username }}">{{ user.username }}</option>
+            {% endfor %}
+        </select>
     </div>
     <div class="form-group">
         <label>הערות</label>
