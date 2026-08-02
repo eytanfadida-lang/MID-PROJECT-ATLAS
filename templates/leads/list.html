@@ -66,6 +66,7 @@
                 <th class="col-phone">טלפון</th>
                 <th class="col-status">סטטוס</th>
                 <th class="col-channel">ערוץ</th>
+                <th class="col-branch">סניף</th>
                 <th class="col-routings">כמות ניתובים</th>
                 <th class="col-assigned">מנהל לקוח</th>
                 <th class="col-notes">הערות</th>
@@ -106,6 +107,7 @@
                     </form>
                 </td>
                 <td class="col-channel">{{ lead.channel }}</td>
+                <td class="col-branch">{{ lead.branch or '-' }}</td>
                 <td class="col-routings">{{ lead.routings_count or 0 }}</td>
                 <td class="col-assigned">
                     <form method="post" action="{{ url_for('leads.assign_lead', lead_id=lead.id) }}" class="inline-form">

@@ -72,6 +72,7 @@ def new_lead():
             "phone": request.form.get("phone", ""),
             "status": statuses[0] if statuses else "",
             "channel": request.form.get("channel", CHANNELS[0]),
+            "branch": request.form.get("branch", BRANCHES[0]),
             "assigned_user": request.form.get("assigned_user", ""),
             "notes": request.form.get("notes", ""),
         }
@@ -86,7 +87,7 @@ def new_lead():
 
     repos = get_repos()
     users = to_records(repos.users.get_all()) if hasattr(repos, "users") else []
-    return render_template("leads/new.html", channels=CHANNELS, users=users)
+    return render_template("leads/new.html", channels=CHANNELS, branches=BRANCHES, users=users)
 
 
 @bp.route("/<int:lead_id>/edit", methods=["GET", "POST"])
@@ -113,7 +114,9 @@ def edit(lead_id):
 
     users = to_records(repos.users.get_all()) if hasattr(repos, "users") else []
     statuses = repos.lead_statuses.get_names()
-    return render_template("leads/edit.html", lead=current, statuses=statuses, channels=CHANNELS, users=users)
+    return render_template(
+        "leads/edit.html", lead=current, statuses=statuses, channels=CHANNELS, branches=BRANCHES, users=users
+    )
 
 
 @bp.route("/<int:lead_id>/status", methods=["POST"])

@@ -266,6 +266,7 @@ th {
 .leads-table .col-phone { width: 100px; }
 .leads-table .col-status { width: 110px; }
 .leads-table .col-channel { width: 80px; }
+.leads-table .col-branch { width: 80px; }
 .leads-table .col-routings { width: 70px; text-align: center; }
 .leads-table .col-created { width: 120px; }
 .leads-table .col-assigned { width: 120px; }

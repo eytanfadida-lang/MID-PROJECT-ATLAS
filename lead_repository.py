@@ -39,8 +39,8 @@ class LeadRepository:
         cursor = self.conn.execute(
             f"INSERT INTO {TABLE_NAME} "
             "(full_name, phone, status, channel, assigned_user, routings_count, sms_count, notes, "
-            "created_datetime_stamp, last_updated_datetime_stamp) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "branch, created_datetime_stamp, last_updated_datetime_stamp) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 lead["full_name"],
                 phone,
@@ -50,6 +50,7 @@ class LeadRepository:
                 1,
                 0,
                 lead.get("notes", ""),
+                lead.get("branch", ""),
                 now,
                 now,
             ),

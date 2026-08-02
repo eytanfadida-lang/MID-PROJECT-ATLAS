@@ -37,6 +37,12 @@ class LeadDB:
                 last_updated_datetime_stamp TEXT
             )
         """)
+        has_branch_column = conn.execute(
+            "SELECT COUNT(*) FROM pragma_table_info('leads') WHERE name='branch'"
+        ).fetchone()[0]
+        if not has_branch_column:
+            conn.execute("ALTER TABLE leads ADD COLUMN branch TEXT")
+
         conn.execute("""
             CREATE TABLE IF NOT EXISTS lead_statuses (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,

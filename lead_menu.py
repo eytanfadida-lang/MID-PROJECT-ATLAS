@@ -8,6 +8,7 @@ LEAD_UPDATABLE_FIELDS = [
     ("phone", "Phone"),
     ("status", "Status"),
     ("channel", "Channel"),
+    ("branch", "Branch"),
     ("assigned_user", "Assigned user"),
     ("notes", "Notes"),
 ]

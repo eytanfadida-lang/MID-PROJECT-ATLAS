@@ -22,6 +22,14 @@
         </select>
     </div>
     <div class="form-group">
+        <label>סניף</label>
+        <select name="branch" required>
+            {% for branch in branches %}
+            <option value="{{ branch }}">{{ branch }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="form-group">
         <label>מנהל לקוח</label>
         <select name="assigned_user">
             <option value="">— ללא משויך —</option>
