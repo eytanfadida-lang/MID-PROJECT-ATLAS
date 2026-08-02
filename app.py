@@ -3,7 +3,7 @@ from flask import Flask, redirect, render_template, url_for, session
 import roles
 import db_context
 from auth import load_secret_key, generate_csrf_token, validate_csrf, current_user
-from view_utils import role_badge_class, format_lead_datetime, to_records
+from view_utils import role_badge_class, format_lead_datetime, whatsapp_link, to_records
 
 from blueprints.auth import bp as auth_bp
 from blueprints.appointments import bp as appointments_bp
@@ -29,6 +29,7 @@ app.before_request(validate_csrf)
 
 app.jinja_env.globals["role_badge_class"] = role_badge_class
 app.jinja_env.filters["format_lead_datetime"] = format_lead_datetime
+app.jinja_env.filters["whatsapp_link"] = whatsapp_link
 
 
 @app.context_processor

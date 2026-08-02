@@ -338,6 +338,18 @@ tr:hover td {
     line-height: 1;
 }
 
+.whatsapp-icon {
+    display: inline-flex;
+    align-items: center;
+    color: #25d366;
+    line-height: 0;
+    flex-shrink: 0;
+}
+
+.whatsapp-icon:hover {
+    color: #1ebe5b;
+}
+
 /* --- Badges --- */
 .badge {
     display: inline-block;
