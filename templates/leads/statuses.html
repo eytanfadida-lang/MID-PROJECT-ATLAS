@@ -15,7 +15,7 @@
     <tbody>
         {% for s in statuses %}
         <tr>
-            <td><span class="badge" style="background: {{ s.color }};">{{ s.name }}</span></td>
+            <td><span class="status-chip" style="--status-color: {{ s.color }};">{{ s.name }}</span></td>
             <td>
                 <form method="post" action="{{ url_for('leads.update_status_color', status_id=s.id) }}">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">

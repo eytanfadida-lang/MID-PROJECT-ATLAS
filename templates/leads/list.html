@@ -26,10 +26,40 @@
 </div>
 
 {% if leads %}
+<div class="toolbar bulk-actions-bar">
+    <span id="bulk-selected-count" class="bulk-count">0 לידים נבחרו</span>
+    <form method="post" action="{{ url_for('leads.bulk_update_status') }}" id="bulk-status-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <select name="status" required>
+            {% for s in statuses %}
+            <option value="{{ s }}">{{ s }}</option>
+            {% endfor %}
+        </select>
+        <button type="submit" class="btn btn-secondary">עדכן סטטוס לנבחרים</button>
+    </form>
+    <form method="post" action="{{ url_for('leads.bulk_assign') }}" id="bulk-assign-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <select name="assigned_user">
+            <option value="">— ללא משויך —</option>
+            {% for user in users %}
+            <option value="{{ user.username }}">{{ user.username }}</option>
+            {% endfor %}
+        </select>
+        <button type="submit" class="btn btn-secondary">נתב לנבחרים</button>
+    </form>
+    {% if current_user.role == ROLE_ADMIN %}
+    <form method="post" action="{{ url_for('leads.bulk_delete') }}" id="bulk-delete-form"
+          onsubmit="return confirm('האם אתה בטוח שברצונך למחוק את הלידים שנבחרו?');">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button type="submit" class="btn btn-danger">מחק נבחרים</button>
+    </form>
+    {% endif %}
+</div>
 <div class="table-scroll">
     <table class="leads-table">
         <thead>
             <tr>
+                <th class="col-select"><input type="checkbox" id="select-all-checkbox"></th>
                 <th class="col-created">תאריך</th>
                 <th class="col-id">מזהה</th>
                 <th class="col-name">שם</th>
@@ -45,6 +75,7 @@
         <tbody>
             {% for lead in leads %}
             <tr>
+                <td class="col-select"><input type="checkbox" class="lead-select-checkbox" value="{{ lead.id }}"></td>
                 <td class="col-created">{{ lead.created_datetime_stamp | format_lead_datetime }}</td>
                 <td class="col-id">{{ lead.id }}</td>
                 <td class="col-name">{{ lead.full_name }}</td>
@@ -59,7 +90,7 @@
                 <td class="col-status">
                     <form method="post" action="{{ url_for('leads.update_status', lead_id=lead.id) }}">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                        <select name="status" class="status-select" style="background: {{ status_colors.get(lead.status, default_status_color) }};" onchange="this.form.submit()">
+                        <select name="status" class="status-select" style="--status-color: {{ status_colors.get(lead.status, default_status_color) }};" onchange="this.form.submit()">
                             {% for s in statuses %}
                             <option value="{{ s }}" style="background: {{ status_colors.get(s, default_status_color) }}; color: #fff;" {{ "selected" if s == lead.status else "" }}>{{ s }}</option>
                             {% endfor %}
@@ -71,7 +102,7 @@
                 <td class="col-assigned">
                     <form method="post" action="{{ url_for('leads.assign_lead', lead_id=lead.id) }}" class="inline-form">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                        <select name="assigned_user" onchange="this.form.submit()">
+                        <select name="assigned_user" class="assigned-select" onchange="this.form.submit()">
                             <option value="">— ללא משויך —</option>
                             {% for user in users %}
                             <option value="{{ user.username }}" {{ "selected" if user.username == lead.assigned_user else "" }}>{{ user.username }}</option>
@@ -96,6 +127,57 @@
         </tbody>
     </table>
 </div>
+
+<script>
+(function () {
+    const selectAllCheckbox = document.getElementById('select-all-checkbox');
+    const leadCheckboxes = Array.from(document.querySelectorAll('.lead-select-checkbox'));
+    const countLabel = document.getElementById('bulk-selected-count');
+    const bulkForms = [
+        document.getElementById('bulk-status-form'),
+        document.getElementById('bulk-assign-form'),
+        document.getElementById('bulk-delete-form'),
+    ].filter(Boolean);
+
+    function updateCount() {
+        const checkedCount = leadCheckboxes.filter((checkbox) => checkbox.checked).length;
+        countLabel.textContent = checkedCount + ' לידים נבחרו';
+    }
+
+    function injectSelectedIds(form) {
+        form.querySelectorAll('input[name="lead_ids"]').forEach((input) => input.remove());
+        leadCheckboxes.filter((checkbox) => checkbox.checked).forEach((checkbox) => {
+            const hiddenInput = document.createElement('input');
+            hiddenInput.type = 'hidden';
+            hiddenInput.name = 'lead_ids';
+            hiddenInput.value = checkbox.value;
+            form.appendChild(hiddenInput);
+        });
+    }
+
+    if (selectAllCheckbox) {
+        selectAllCheckbox.addEventListener('change', function () {
+            leadCheckboxes.forEach((checkbox) => { checkbox.checked = selectAllCheckbox.checked; });
+            updateCount();
+        });
+    }
+
+    leadCheckboxes.forEach((checkbox) => checkbox.addEventListener('change', updateCount));
+
+    bulkForms.forEach((form) => {
+        form.addEventListener('submit', function (event) {
+            if (!leadCheckboxes.some((checkbox) => checkbox.checked)) {
+                event.preventDefault();
+                alert('יש לבחור לפחות ליד אחד.');
+                return;
+            }
+            injectSelectedIds(form);
+        });
+    });
+
+    updateCount();
+})();
+</script>
 {% else %}
 <p class="empty-state">לא נמצאו לידים.</p>
 {% endif %}

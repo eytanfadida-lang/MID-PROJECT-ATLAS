@@ -92,6 +92,39 @@ class LeadRepository:
         self.conn.commit()
         return cursor.rowcount > 0
 
+    # מעדכנת את הסטטוס של כמה לידים בבת אחת (בחירה מרובה), ומרעננת את חותמת העדכון האחרון של כולם
+    def bulk_update_status(self, lead_ids, status):
+        if not lead_ids:
+            return
+        now = datetime.datetime.now().isoformat(timespec="minutes")
+        placeholders = ",".join("?" for _ in lead_ids)
+        self.conn.execute(
+            f"UPDATE {TABLE_NAME} SET status = ?, last_updated_datetime_stamp = ? WHERE id IN ({placeholders})",
+            (status, now, *lead_ids),
+        )
+        self.conn.commit()
+
+    # מנתבת (משייכת) כמה לידים בבת אחת למשתמש נתון, ומרעננת את חותמת העדכון האחרון של כולם
+    def bulk_assign(self, lead_ids, assigned_user):
+        if not lead_ids:
+            return
+        now = datetime.datetime.now().isoformat(timespec="minutes")
+        placeholders = ",".join("?" for _ in lead_ids)
+        self.conn.execute(
+            f"UPDATE {TABLE_NAME} SET assigned_user = ?, last_updated_datetime_stamp = ? WHERE id IN ({placeholders})",
+            (assigned_user, now, *lead_ids),
+        )
+        self.conn.commit()
+
+    # מוחקת כמה לידים בבת אחת (בחירה מרובה), ומחזירה כמה רשומות נמחקו בפועל
+    def bulk_delete(self, lead_ids):
+        if not lead_ids:
+            return 0
+        placeholders = ",".join("?" for _ in lead_ids)
+        cursor = self.conn.execute(f"DELETE FROM {TABLE_NAME} WHERE id IN ({placeholders})", tuple(lead_ids))
+        self.conn.commit()
+        return cursor.rowcount
+
     # מחזירה את כל הלידים, החדש ביותר קודם
     def get_all(self):
         return pd.read_sql_query(f"SELECT * FROM {TABLE_NAME} ORDER BY id DESC", self.conn)

@@ -215,6 +215,12 @@ body {
     align-items: center;
 }
 
+.bulk-count {
+    font-weight: 600;
+    color: #475569;
+    font-size: 13px;
+}
+
 /* --- Table --- */
 table {
     width: 100%;
@@ -254,6 +260,7 @@ th {
     letter-spacing: 0.04em;
 }
 
+.leads-table .col-select { width: 32px; text-align: center; }
 .leads-table .col-id { width: 48px; }
 .leads-table .col-name { width: 110px; }
 .leads-table .col-phone { width: 100px; }
@@ -264,6 +271,11 @@ th {
 .leads-table .col-assigned { width: 120px; }
 .leads-table .col-notes { width: 220px; white-space: normal; word-break: break-word; }
 .leads-table .col-actions { width: 190px; }
+
+.leads-table select.assigned-select {
+    padding: 4px 8px;
+    border-radius: 8px;
+}
 
 tr:hover td {
     background: #fbfdff;
@@ -345,12 +357,38 @@ tr:hover td {
 .badge-red { background: #e74c3c; }
 
 select.status-select {
-    border: none;
+    background-color: #fff;
+    color: #1f2937;
+    border: 1px solid #cbd5e1;
     border-radius: 999px;
-    padding: 4px 8px;
+    padding: 4px 32px 4px 10px;
     font-size: 12px;
     font-weight: 600;
-    color: #fff;
+    background-image: radial-gradient(circle 5px at calc(100% - 15px) center, var(--status-color, #95a5a6) 100%, transparent 100%);
+    background-repeat: no-repeat;
+}
+
+/* צ'יפ סטטוס (נקודת צבע + טקסט) - לתצוגה בעמוד ניהול הסטטוסים */
+.status-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 14px;
+    border-radius: 999px;
+    background: #fff;
+    border: 1px solid #cbd5e1;
+    font-size: 12px;
+    font-weight: 600;
+    color: #1f2937;
+}
+
+.status-chip::before {
+    content: "";
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    background: var(--status-color, #95a5a6);
 }
 
 /* --- Buttons & forms --- */

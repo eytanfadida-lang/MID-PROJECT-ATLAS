@@ -70,6 +70,11 @@ class UserRepository:
         df["permissions"] = df["permissions"].apply(self._permissions_from_text)
         return df
 
+    # מעדכנת את שם המשתמש; זורקת sqlite3.IntegrityError אם השם החדש כבר תפוס (UNIQUE constraint)
+    def update_username(self, user_id, username):
+        self.conn.execute(f"UPDATE {TABLE_NAME} SET username = ? WHERE id = ?", (username, user_id))
+        self.conn.commit()
+
     def update_role(self, user_id, role):
         self.conn.execute(f"UPDATE {TABLE_NAME} SET role = ? WHERE id = ?", (role, user_id))
         self.conn.commit()

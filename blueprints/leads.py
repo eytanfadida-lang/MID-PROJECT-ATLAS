@@ -168,6 +168,57 @@ def delete_status(status_id):
     return redirect(url_for("leads.manage_statuses"))
 
 
+def _parse_lead_ids(form):
+    return [int(value) for value in form.getlist("lead_ids") if value.strip().isdigit()]
+
+
+@bp.route("/bulk/status", methods=["POST"])
+@login_required
+def bulk_update_status():
+    lead_ids = _parse_lead_ids(request.form)
+    new_status = request.form.get("status", "")
+    repos = get_repos()
+
+    if not lead_ids:
+        flash("לא נבחרו לידים.", "error")
+    elif new_status not in repos.lead_statuses.get_names():
+        flash("Invalid status.", "error")
+    else:
+        repos.leads.bulk_update_status(lead_ids, new_status)
+        flash(f"סטטוס עודכן עבור {len(lead_ids)} לידים.", "success")
+
+    return redirect(url_for("leads.list_leads"))
+
+
+@bp.route("/bulk/assign", methods=["POST"])
+@login_required
+def bulk_assign():
+    lead_ids = _parse_lead_ids(request.form)
+    assigned_user = request.form.get("assigned_user", "")
+
+    if not lead_ids:
+        flash("לא נבחרו לידים.", "error")
+    else:
+        get_repos().leads.bulk_assign(lead_ids, assigned_user)
+        flash(f"{len(lead_ids)} לידים נותבו בהצלחה.", "success")
+
+    return redirect(url_for("leads.list_leads"))
+
+
+@bp.route("/bulk/delete", methods=["POST"])
+@permission_required(PERMISSION_MANAGE_LEADS)
+def bulk_delete():
+    lead_ids = _parse_lead_ids(request.form)
+
+    if not lead_ids:
+        flash("לא נבחרו לידים.", "error")
+    else:
+        get_repos().leads.bulk_delete(lead_ids)
+        flash(f"נמחקו {len(lead_ids)} לידים.", "success")
+
+    return redirect(url_for("leads.list_leads"))
+
+
 @bp.route("/<int:lead_id>/assign", methods=["POST"])
 @login_required
 def assign_lead(lead_id):

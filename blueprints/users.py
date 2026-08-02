@@ -50,6 +50,7 @@ def edit_user(user_id):
         return redirect(url_for("users.list_users"))
 
     if request.method == "POST":
+        username = request.form.get("username", "").strip()
         role = request.form.get("role", user["role"]).strip()
         password = request.form.get("password", "").strip()
         permissions = [
@@ -58,13 +59,20 @@ def edit_user(user_id):
             if permission
         ]
 
+        if username and username != user["username"]:
+            try:
+                get_repos().users.update_username(user_id, username)
+            except sqlite3.IntegrityError:
+                flash(f"Username '{username}' already exists.", "error")
+                return render_template("users/edit.html", user=user, roles=[roles.ADMIN, roles.USER])
+
         if role:
             get_repos().users.update_role(user_id, role)
         if password:
             get_repos().users.update_password(user_id, password)
         get_repos().users.update_permissions(user_id, permissions)
 
-        flash(f"User '{user['username']}' updated successfully.", "success")
+        flash(f"User '{username or user['username']}' updated successfully.", "success")
         return redirect(url_for("users.list_users"))
 
     return render_template("users/edit.html", user=user, roles=[roles.ADMIN, roles.USER])
