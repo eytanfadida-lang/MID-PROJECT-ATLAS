@@ -216,3 +216,7 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Arbox integration secrets/local config
+.arbox_api_key
+arbox_location_map.json

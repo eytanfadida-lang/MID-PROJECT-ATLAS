@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block page_title %}ייבוא לידים{% endblock %}
+{% block page_heading %}ייבוא לידים מקובץ{% endblock %}
+
+{% block content %}
+<div class="toolbar">
+    <a href="{{ url_for('leads.list_leads') }}" class="btn btn-secondary">חזרה לרשימת הלידים</a>
+</div>
+
+<form method="post" enctype="multipart/form-data" class="form-card">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <div class="form-group">
+        <label>קובץ CSV או Excel</label>
+        <input type="file" name="file" accept=".csv,.xlsx,.xls" required>
+    </div>
+    <button type="submit" class="btn">ייבא לידים</button>
+</form>
+
+<div class="form-card">
+    <h3>עמודות נתמכות בקובץ</h3>
+    <p>שמות העמודות בשורה הראשונה של הקובץ (עברית או אנגלית):</p>
+    <ul>
+        <li><strong>שם מלא</strong> (full_name) - חובה</li>
+        <li><strong>טלפון</strong> (phone) - חובה</li>
+        <li>סטטוס (status) - אופציונלי, אם לא מוכר יוגדר הסטטוס הראשון ברשימה</li>
+        <li>ערוץ (channel) - אופציונלי</li>
+        <li>סניף (branch) - אופציונלי</li>
+        <li>מנהל לקוח (assigned_user) - אופציונלי</li>
+        <li>הערות (notes) - אופציונלי</li>
+    </ul>
+</div>
+{% endblock %}

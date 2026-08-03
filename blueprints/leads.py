@@ -7,6 +7,7 @@ from auth import login_required, admin_required, permission_required, PERMISSION
 from lead_input import CHANNELS
 from lead_menu import LEAD_UPDATABLE_FIELDS, CONVERTED_STATUS
 from appointment_input import BRANCHES
+from lead_bulk_import import import_leads_from_file
 from view_utils import to_records
 
 DEFAULT_STATUS_COLOR = "#95a5a6"
@@ -88,6 +89,41 @@ def new_lead():
     repos = get_repos()
     users = to_records(repos.users.get_all()) if hasattr(repos, "users") else []
     return render_template("leads/new.html", channels=CHANNELS, branches=BRANCHES, users=users)
+
+
+@bp.route("/import", methods=["GET", "POST"])
+@login_required
+def import_leads():
+    if request.method == "POST":
+        uploaded_file = request.files.get("file")
+        if not uploaded_file or not uploaded_file.filename:
+            flash("יש לבחור קובץ.", "error")
+            return redirect(url_for("leads.import_leads"))
+
+        if not uploaded_file.filename.lower().endswith((".csv", ".xlsx", ".xls")):
+            flash("סוג קובץ לא נתמך. יש להעלות CSV או Excel (.xlsx).", "error")
+            return redirect(url_for("leads.import_leads"))
+
+        repos = get_repos()
+        statuses = repos.lead_statuses.get_names()
+
+        try:
+            result = import_leads_from_file(uploaded_file, repos, statuses[0] if statuses else "", CHANNELS[0])
+        except Exception as exc:
+            flash(f"שגיאה בקריאת הקובץ: {exc}", "error")
+            return redirect(url_for("leads.import_leads"))
+
+        if "error" in result:
+            flash(result["error"], "error")
+            return redirect(url_for("leads.import_leads"))
+
+        flash(f"יובאו {result['created']} לידים מתוך {result['total_rows']} שורות בקובץ.", "success")
+        for message in result["skipped"][:10]:
+            flash(message, "error")
+
+        return redirect(url_for("leads.list_leads"))
+
+    return render_template("leads/import.html")
 
 
 @bp.route("/<int:lead_id>/edit", methods=["GET", "POST"])
