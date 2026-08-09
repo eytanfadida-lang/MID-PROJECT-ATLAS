@@ -50,6 +50,10 @@ def list_leads():
         phone_value = (record.get("phone") or "").strip()
         record["is_duplicate_phone"] = bool(phone_value and phone_value in duplicate_phones)
 
+    total_leads = len(df)
+    total_routings = int(df["routings_count"].fillna(0).sum()) if not df.empty else 0
+    total_sms = int(df["sms_count"].fillna(0).sum()) if not df.empty else 0
+
     return render_template(
         "leads/list.html",
         leads=lead_records,
@@ -60,6 +64,9 @@ def list_leads():
         phone=phone,
         users=users,
         show_my_only=show_my_only,
+        total_leads=total_leads,
+        total_routings=total_routings,
+        total_sms=total_sms,
     )
 
 

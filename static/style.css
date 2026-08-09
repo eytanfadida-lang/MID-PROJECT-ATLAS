@@ -39,6 +39,16 @@ body {
     text-align: right;
 }
 
+/* מסתירים את פס הגלילה של העמוד עצמו (הדפדפן) - הגלילה עצמה נשארת פעילה */
+html, body {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+html::-webkit-scrollbar, body::-webkit-scrollbar {
+    display: none;
+}
+
 .app-shell {
     min-height: 100vh;
 }
@@ -53,6 +63,9 @@ body {
     padding: 0 24px;
     height: 64px;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.14);
+    position: sticky;
+    top: 0;
+    z-index: 30;
 }
 
 .topbar .brand {
@@ -97,36 +110,39 @@ body {
     display: flex;
     min-height: calc(100vh - 64px);
     padding: 24px;
-    gap: 20px;
+    gap: 14px;
 }
 
 .sidebar {
-    width: 240px;
+    width: 168px;
     background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: 16px;
-    padding: 14px 10px;
+    border-radius: 14px;
+    padding: 10px 6px;
     box-shadow: var(--shadow);
     align-self: flex-start;
+    position: sticky;
+    top: 64px;
+    z-index: 20;
 }
 
 .sidebar-title {
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 700;
     color: var(--muted);
     text-transform: uppercase;
     letter-spacing: 0.08em;
-    padding: 8px 12px 12px;
+    padding: 4px 8px 6px;
 }
 
 .sidebar a {
     display: block;
-    padding: 10px 12px;
-    margin-bottom: 6px;
+    padding: 7px 8px;
+    margin-bottom: 3px;
     color: #334155;
     text-decoration: none;
-    font-size: 15px;
-    border-radius: 10px;
+    font-size: 13px;
+    border-radius: 8px;
     transition: all 0.2s ease;
 }
 
@@ -166,6 +182,66 @@ body {
     color: #111827;
 }
 
+/* בעמוד רשימת הלידים אין כותרת - מפנים את המקום לטובת גובה הטבלה */
+body.page-leads-list .card-header {
+    display: none;
+}
+
+/* בעמוד הלידים: כל העמוד קבוע (בלי גלילה כלל), ורק סקשן הטבלה עצמו גולל.
+   בונים שרשרת flex בגובה מסך מלא (100vh) כך שהגובה ה"נשאר" אחרי הטופבר/תפריט/סרגלים
+   מוקצה כולו לתיבת הטבלה, וזו היחידה עם overflow-y: auto בפועל.
+   הריווח העליון/תחתון מצומצם למינימום כדי למקסם כמה שיותר שורות לידים על המסך */
+body.page-leads-list {
+    height: 100vh;
+    overflow: hidden;
+}
+
+body.page-leads-list .app-shell {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+body.page-leads-list .layout {
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+    padding-top: 4px;
+    padding-bottom: 4px;
+}
+
+body.page-leads-list .content {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+}
+
+body.page-leads-list .card {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+    padding-top: 4px;
+    padding-bottom: 4px;
+}
+
+body.page-leads-list .table-scroll {
+    flex: 1;
+    height: auto;
+    min-height: 0;
+    margin-bottom: 26px;
+}
+
+/* ה-overflow: hidden שהוגדר למעלה על .layout/.card משנה את הקשר הגלילה של position: sticky
+   (בדיוק כמו הבאג שתיקנו בכותרות הטבלה) - .sidebar/.toolbar נדבקים ביחס לקופסה שלהם
+   ולא לחלון הדפדפן, ומקבלים ריווח ענק. בעמוד הזה אין בכלל גלילה, אז sticky מיותר - מבטלים */
+body.page-leads-list .sidebar,
+body.page-leads-list .toolbar {
+    position: static;
+}
+
 .card-accent {
     width: 54px;
     height: 8px;
@@ -200,25 +276,46 @@ body {
 .toolbar {
     display: flex;
     flex-wrap: wrap;
-    gap: 10px;
+    gap: 6px;
     align-items: center;
-    margin-bottom: 16px;
-    padding: 12px;
+    margin-bottom: 10px;
+    padding: 6px 8px;
     background: var(--surface-2);
     border: 1px solid var(--border);
-    border-radius: 12px;
+    border-radius: 10px;
+    position: sticky;
+    top: 64px;
+    z-index: 15;
+}
+
+/* סרגל הפעולות המרובות מוערם מתחת לסרגל הכלים הראשי, ולכן דביק קצת יותר נמוך */
+.toolbar.bulk-actions-bar {
+    top: 112px;
+    z-index: 14;
 }
 
 .toolbar form {
     display: flex;
-    gap: 8px;
+    gap: 5px;
     align-items: center;
+}
+
+.toolbar .btn {
+    padding: 5px 10px;
+    font-size: 12px;
+    box-shadow: none;
+}
+
+.toolbar select,
+.toolbar input[type=text] {
+    padding: 5px 8px;
+    font-size: 12px;
 }
 
 .bulk-count {
     font-weight: 600;
     color: #475569;
-    font-size: 13px;
+    font-size: 12px;
 }
 
 /* --- Table --- */
@@ -232,15 +329,32 @@ table {
 
 .table-scroll {
     overflow-x: auto;
+    /* גובה מוגבל + גלילה אנכית פנימית - כך שתיבת הטבלה (ופס הגלילה האופקי המקורי שלה,
+       שיושב בתחתית התיבה) לעולם לא גדלה מעבר לגובה המסך ולא "נעלמת" בגלילת העמוד */
+    height: 79vh;
+    overflow-y: auto;
     -webkit-overflow-scrolling: touch;
     border: 1px solid var(--border);
     border-radius: 12px;
+    margin-bottom: 30px;
+}
+
+/* מסתירים רק את פס הגלילה האנכי (בצד ימין) - הגלילה עצמה עדיין עובדת, רק בלי הפס הנראה */
+.table-scroll::-webkit-scrollbar:vertical {
+    display: none;
 }
 
 .leads-table {
     table-layout: fixed;
     min-width: 1040px;
     width: max-content;
+    /* border-collapse: collapse (הגדרת ברירת המחדל של table) שובר position: sticky בכותרות -
+       עוברים ל-separate עם border-spacing: 0 כדי שכותרות העמודות יישארו דביקות בגלילה */
+    border-collapse: separate;
+    border-spacing: 0;
+    /* overflow: hidden (הגדרת ברירת המחדל של table) הופך את הטבלה עצמה להקשר הגלילה של ה-sticky
+       במקום .table-scroll - צריך visible כדי שהדביקות תתייחס לתיבת הגלילה החיצונית */
+    overflow: visible;
 }
 
 th, td {
@@ -260,6 +374,13 @@ th {
     letter-spacing: 0.04em;
 }
 
+/* כותרות טבלת הלידים דביקות בתוך .table-scroll (שיש לה גלילה אנכית פנימית משלה) */
+.leads-table th {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+}
+
 .leads-table .col-select { width: 32px; text-align: center; }
 .leads-table .col-id { width: 48px; }
 .leads-table .col-name { width: 110px; }
@@ -267,10 +388,86 @@ th {
 .leads-table .col-status { width: 110px; }
 .leads-table .col-channel { width: 80px; }
 .leads-table .col-branch { width: 80px; }
-.leads-table .col-routings { width: 70px; text-align: center; }
+.leads-table .col-routings { width: 40px; text-align: center; }
 .leads-table .col-created { width: 120px; }
+.leads-table .col-updated { width: 120px; }
 .leads-table .col-assigned { width: 120px; }
-.leads-table .col-notes { width: 220px; white-space: normal; word-break: break-word; }
+.leads-table .col-notes {
+    width: 220px;
+    max-width: 220px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.leads-table .col-notes.has-notes {
+    cursor: pointer;
+}
+
+.leads-table .col-notes.has-notes:hover {
+    text-decoration: underline;
+    color: var(--primary-dark);
+}
+
+/* --- Leads stats bar (sticky footer with aggregate totals) --- */
+.leads-stats-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    display: flex;
+    justify-content: flex-end;
+    gap: 18px;
+    padding: 4px 16px;
+    background: #1f2937;
+    color: #f1f5f9;
+    font-size: 11px;
+    box-shadow: 0 -4px 16px rgba(15, 23, 42, 0.2);
+    z-index: 40;
+}
+
+.leads-stats-bar strong {
+    color: #93c5fd;
+    font-weight: 700;
+}
+
+/* --- Notes panel (side drawer for full note text, opens from the left) --- */
+.notes-panel-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.35);
+    z-index: 49;
+}
+
+.notes-panel {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 320px;
+    max-width: 85vw;
+    background: var(--surface);
+    border-left: none;
+    border-right: 1px solid var(--border);
+    box-shadow: 6px 0 24px rgba(15, 23, 42, 0.18);
+    padding: 18px 20px;
+    z-index: 50;
+    overflow-y: auto;
+}
+
+.notes-panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.notes-panel-body {
+    white-space: pre-wrap;
+    color: #334155;
+    font-size: 14px;
+    line-height: 1.5;
+}
 .leads-table .col-actions { width: 190px; }
 
 .leads-table select.assigned-select {

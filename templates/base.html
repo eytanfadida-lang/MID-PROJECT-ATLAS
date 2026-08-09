@@ -5,7 +5,7 @@
     <title>{% block page_title %}מנהל תורים{% endblock %}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
-<body>
+<body class="{{ 'page-leads-list' if request.endpoint == 'leads.list_leads' else '' }}">
     <div class="app-shell">
         <div class="topbar">
             <div class="brand">מנהל תורים</div>

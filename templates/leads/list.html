@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block page_title %}לידים - מנהל תורים{% endblock %}
-{% block page_heading %}לידים (CRM){% endblock %}
+{% block page_heading %}{% endblock %}
 
 {% block content %}
 <div class="toolbar">
@@ -62,13 +62,14 @@
             <tr>
                 <th class="col-select"><input type="checkbox" id="select-all-checkbox"></th>
                 <th class="col-created">תאריך</th>
+                <th class="col-updated">עדכון אחרון</th>
                 <th class="col-id">מזהה</th>
                 <th class="col-name">שם</th>
                 <th class="col-phone">טלפון</th>
                 <th class="col-status">סטטוס</th>
                 <th class="col-channel">ערוץ</th>
                 <th class="col-branch">סניף</th>
-                <th class="col-routings">כמות ניתובים</th>
+                <th class="col-routings">ניתוב</th>
                 <th class="col-assigned">מנהל לקוח</th>
                 <th class="col-notes">הערות</th>
                 <th class="col-actions">פעולות</th>
@@ -79,6 +80,7 @@
             <tr>
                 <td class="col-select"><input type="checkbox" class="lead-select-checkbox" value="{{ lead.id }}"></td>
                 <td class="col-created">{{ lead.created_datetime_stamp | format_lead_datetime }}</td>
+                <td class="col-updated">{{ lead.last_updated_datetime_stamp | format_lead_datetime }}</td>
                 <td class="col-id">{{ lead.id }}</td>
                 <td class="col-name">{{ lead.full_name }}</td>
                 <td class="col-phone">
@@ -121,7 +123,8 @@
                         </select>
                     </form>
                 </td>
-                <td class="col-notes">{{ lead.notes }}</td>
+                <td class="col-notes {{ 'has-notes' if lead.notes else '' }}"
+                    {% if lead.notes %}data-full-notes="{{ lead.notes }}" data-lead-name="{{ lead.full_name }}" title="לחץ להצגת ההערה המלאה"{% endif %}>{{ lead.notes }}</td>
                 <td class="col-actions actions-row">
                     <a href="{{ url_for('leads.edit', lead_id=lead.id) }}" class="btn btn-secondary icon-btn" title="ערוך" aria-label="ערוך">✎</a>
                     <a href="{{ url_for('leads.convert', lead_id=lead.id) }}" class="btn btn-secondary icon-btn" title="המר" aria-label="המר">↺</a>
@@ -139,7 +142,43 @@
     </table>
 </div>
 
+<div id="notes-panel-backdrop" class="notes-panel-backdrop" hidden></div>
+<div id="notes-panel" class="notes-panel" hidden>
+    <div class="notes-panel-header">
+        <strong id="notes-panel-title"></strong>
+        <button type="button" id="notes-panel-close" class="link-button">✕ סגור</button>
+    </div>
+    <div id="notes-panel-body" class="notes-panel-body"></div>
+</div>
+
 <script>
+(function () {
+    const notesPanel = document.getElementById('notes-panel');
+    const notesPanelBackdrop = document.getElementById('notes-panel-backdrop');
+    const notesPanelTitle = document.getElementById('notes-panel-title');
+    const notesPanelBody = document.getElementById('notes-panel-body');
+    const notesPanelClose = document.getElementById('notes-panel-close');
+
+    function closeNotesPanel() {
+        notesPanel.hidden = true;
+        notesPanelBackdrop.hidden = true;
+    }
+
+    document.querySelectorAll('.col-notes.has-notes').forEach((cell) => {
+        cell.addEventListener('click', function () {
+            notesPanelTitle.textContent = cell.dataset.leadName || '';
+            notesPanelBody.textContent = cell.dataset.fullNotes || '';
+            notesPanel.hidden = false;
+            notesPanelBackdrop.hidden = false;
+        });
+    });
+
+    if (notesPanelClose) {
+        notesPanelClose.addEventListener('click', closeNotesPanel);
+    }
+    notesPanelBackdrop.addEventListener('click', closeNotesPanel);
+})();
+
 (function () {
     const selectAllCheckbox = document.getElementById('select-all-checkbox');
     const leadCheckboxes = Array.from(document.querySelectorAll('.lead-select-checkbox'));
@@ -192,4 +231,10 @@
 {% else %}
 <p class="empty-state">לא נמצאו לידים.</p>
 {% endif %}
+
+<div class="leads-stats-bar">
+    <span><strong>לידים:</strong> {{ total_leads }}</span>
+    <span><strong>ניתובים:</strong> {{ total_routings }}</span>
+    <span><strong>סמס:</strong> {{ total_sms }}</span>
+</div>
 {% endblock %}

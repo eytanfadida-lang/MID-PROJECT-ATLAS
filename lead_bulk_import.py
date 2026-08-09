@@ -12,16 +12,32 @@ COLUMN_ALIASES = {
 }
 
 
-# קוראת את הקובץ שהועלה ל-DataFrame; dtype=str חיוני כדי שמספרי טלפון לא יאבדו את האפס המוביל
-def _read_dataframe(file_storage):
+# קוראת רק את שורת הכותרות, כדי לזהות את שם עמודת הטלפון לפני הקריאה המלאה
+def _read_header(file_storage):
     filename = (file_storage.filename or "").lower()
+    file_storage.seek(0)
     if filename.endswith(".csv"):
         try:
-            return pd.read_csv(file_storage, dtype=str, encoding="utf-8-sig")
+            return pd.read_csv(file_storage, nrows=0, encoding="utf-8-sig").columns
         except UnicodeDecodeError:
             file_storage.seek(0)
-            return pd.read_csv(file_storage, dtype=str, encoding="cp1255")
-    return pd.read_excel(file_storage, dtype=str)
+            return pd.read_csv(file_storage, nrows=0, encoding="cp1255").columns
+    return pd.read_excel(file_storage, nrows=0).columns
+
+
+# קוראת את הקובץ המלא ל-DataFrame. עמודת הטלפון נכפית ל-str כדי שלא יאבד האפס המוביל;
+# שאר העמודות נשארות עם הסקה רגילה כדי שתאים ריקים יהפכו ל-NaN אמיתי (ולא למחרוזת "nan")
+def _read_dataframe(file_storage, phone_column):
+    filename = (file_storage.filename or "").lower()
+    dtype = {phone_column: str} if phone_column else None
+    file_storage.seek(0)
+    if filename.endswith(".csv"):
+        try:
+            return pd.read_csv(file_storage, dtype=dtype, encoding="utf-8-sig")
+        except UnicodeDecodeError:
+            file_storage.seek(0)
+            return pd.read_csv(file_storage, dtype=dtype, encoding="cp1255")
+    return pd.read_excel(file_storage, dtype=dtype)
 
 
 def _build_column_map(columns):
@@ -39,18 +55,22 @@ def _cell(row, column_map, field):
     if field not in column_map:
         return ""
     value = row[column_map[field]]
-    return str(value).strip() if value is not None else ""
+    # pd.isna (לא רק "value is None") כי iterrows() מחזירה תאים ריקים כ-NaN צף,
+    # גם כשה-DataFrame עצמו כבר עבר טיוב ל-None
+    return "" if pd.isna(value) else str(value).strip()
 
 
 # מייבאת לידים מקובץ CSV/Excel שהועלה, לפי מיפוי עמודות גמיש, ומחזירה סיכום:
 # כמה שורות נוצרו בהצלחה וכמה דולגו (עם הסיבה)
 def import_leads_from_file(file_storage, repos, default_status, default_channel):
-    df = _read_dataframe(file_storage)
-    df = df.where(pd.notnull(df), None)
-    column_map = _build_column_map(df.columns)
+    header_columns = _read_header(file_storage)
+    column_map = _build_column_map(header_columns)
 
     if "full_name" not in column_map or "phone" not in column_map:
         return {"error": "לא נמצאו עמודות 'שם מלא' ו'טלפון' בקובץ. יש לוודא ששמות העמודות תואמים."}
+
+    df = _read_dataframe(file_storage, column_map["phone"])
+    df = df.where(pd.notnull(df), None)
 
     existing_statuses = set(repos.lead_statuses.get_names())
 

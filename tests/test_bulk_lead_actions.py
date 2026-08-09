@@ -20,7 +20,8 @@ class LeadRepositoryBulkActionsTests(unittest.TestCase):
                 sms_count INTEGER,
                 notes TEXT,
                 created_datetime_stamp TEXT,
-                last_updated_datetime_stamp TEXT
+                last_updated_datetime_stamp TEXT,
+                branch TEXT
             )
             '''
         )

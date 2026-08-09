@@ -19,7 +19,8 @@ def test_duplicate_phone_marks_new_lead_as_duplicate(tmp_path):
             sms_count INTEGER,
             notes TEXT,
             created_datetime_stamp TEXT,
-            last_updated_datetime_stamp TEXT
+            last_updated_datetime_stamp TEXT,
+            branch TEXT
         )
         """
     )
