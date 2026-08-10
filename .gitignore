@@ -220,3 +220,8 @@ __marimo__/
 # Arbox integration secrets/local config
 .arbox_api_key
 arbox_location_map.json
+
+# Local runtime data/secrets - never track these
+appointments.db
+appointments_backup_*.db
+.flask_secret

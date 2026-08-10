@@ -1,6 +1,7 @@
+import os
 import sqlite3
 
-DB_FILE = "appointments.db"
+DB_FILE = os.environ.get("DB_FILE", "appointments.db")
 
 
 # אחראית על החיבור למסד הנתונים ועל יצירת טבלת users - נפרדת משאר הטבלאות

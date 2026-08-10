@@ -1,6 +1,7 @@
+import os
 import sqlite3
 
-DB_FILE = "appointments.db"
+DB_FILE = os.environ.get("DB_FILE", "appointments.db")
 
 # סטטוסים וצבעים שנטענים כברירת מחדל בפעם הראשונה שטבלת lead_statuses נוצרת
 DEFAULT_STATUSES = [
