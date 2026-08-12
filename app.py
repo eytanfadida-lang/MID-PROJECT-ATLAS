@@ -1,8 +1,10 @@
 import os
+import secrets
 import threading
 import time
+from pathlib import Path
 
-from flask import Flask, redirect, render_template, url_for, session
+from flask import Flask, abort, jsonify, redirect, render_template, request, url_for, session
 
 import roles
 import db_context
@@ -19,6 +21,9 @@ from blueprints.users import bp as users_bp
 # אין אישור על תמיכת Arbox ב-webhook, לכן זו קירוב בפולינג תדיר (לא טריגר אמיתי בזמן אמת)
 ARBOX_SYNC_INTERVAL_SECONDS = 300
 ARBOX_AUTO_SYNC_ENABLED = True
+
+# טוקן להפעלת סנכרון Arbox דרך HTTP (למשל משירות cron חיצוני, בסביבות אירוח בלי background thread/Scheduled Tasks)
+ARBOX_SYNC_TOKEN_FILE = Path(".arbox_sync_token")
 
 # יוצר/ממגר את כל הטבלאות פעם אחת בזמן import (רץ גם תחת flask run וגם תחת python app.py)
 db_context.bootstrap_databases()
@@ -101,6 +106,26 @@ def _run_arbox_sync_loop():
 
 def start_arbox_sync_scheduler():
     threading.Thread(target=_run_arbox_sync_loop, daemon=True).start()
+
+
+def load_arbox_sync_token():
+    if not ARBOX_SYNC_TOKEN_FILE.exists():
+        return None
+    token = ARBOX_SYNC_TOKEN_FILE.read_text().strip()
+    return token or None
+
+
+# מפעילה סנכרון Arbox דרך HTTP, מאובטחת בטוקן סודי (לא session/login) - מיועדת לשירות
+# cron חיצוני שקורא לכתובת הזו על בסיס קבוע, בסביבות אירוח בלי background thread משלנו
+@app.route("/tasks/arbox-sync")
+def trigger_arbox_sync():
+    expected_token = load_arbox_sync_token()
+    provided_token = request.args.get("token", "")
+    if not expected_token or not secrets.compare_digest(provided_token, expected_token):
+        abort(403)
+
+    result = sync_arbox_clients(db_context.get_repos())
+    return jsonify(result)
 
 
 if __name__ == "__main__":

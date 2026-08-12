@@ -220,6 +220,7 @@ __marimo__/
 # Arbox integration secrets/local config
 .arbox_api_key
 arbox_location_map.json
+.arbox_sync_token
 
 # Local runtime data/secrets - never track these
 appointments.db
