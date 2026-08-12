@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block page_title %}סנכרון JSON{% endblock %}
+{% block page_heading %}סנכרון לידים - JSON{% endblock %}
+
+{% block content %}
+<div class="toolbar">
+    <a href="{{ url_for('leads.list_leads') }}" class="btn btn-secondary">חזרה לרשימת הלידים</a>
+    <a href="{{ url_for('leads.sync_export') }}" class="btn btn-secondary">ייצוא כל הלידים ל-JSON</a>
+</div>
+
+<div class="form-card">
+    <h3>ייבוא JSON ידני</h3>
+    <p>מעדכן סטטוס ל"הפך ללקוח" עבור לידים קיימים אצלנו (התאמה לפי טלפון) - לא יוצר לידים חדשים.</p>
+    <form method="post">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <div class="form-group">
+            <label>JSON</label>
+            <textarea name="json_data" rows="14" style="font-family: monospace; direction: ltr; text-align: left;" placeholder='{"users": [{"phone": "0501234567"}]}' required></textarea>
+        </div>
+        <button type="submit" class="btn">ייבא</button>
+    </form>
+</div>
+{% endblock %}

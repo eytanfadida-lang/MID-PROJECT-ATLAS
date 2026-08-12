@@ -8,6 +8,7 @@
     <a href="{{ url_for('leads.import_leads') }}" class="btn btn-secondary">ייבוא מקובץ</a>
     {% if current_user.role == ROLE_ADMIN %}
     <a href="{{ url_for('leads.manage_statuses') }}" class="btn btn-secondary">ניהול סטטוסים</a>
+    <a href="{{ url_for('leads.sync_json') }}" class="btn btn-secondary">סנכרון JSON</a>
     {% endif %}
     <form method="get" class="toolbar-actions">
         {% if current_user.role != ROLE_ADMIN %}

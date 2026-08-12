@@ -1,6 +1,7 @@
+import json
 import sqlite3
 
-from flask import Blueprint, render_template, request, redirect, url_for, flash, session
+from flask import Blueprint, render_template, request, redirect, url_for, flash, session, jsonify
 
 from db_context import get_repos
 from auth import login_required, admin_required, permission_required, PERMISSION_MANAGE_LEADS
@@ -8,6 +9,7 @@ from lead_input import CHANNELS
 from lead_menu import LEAD_UPDATABLE_FIELDS, CONVERTED_STATUS
 from appointment_input import BRANCHES
 from lead_bulk_import import import_leads_from_file
+from arbox_sync import apply_arbox_users_to_leads
 from view_utils import to_records
 
 DEFAULT_STATUS_COLOR = "#95a5a6"
@@ -131,6 +133,44 @@ def import_leads():
         return redirect(url_for("leads.list_leads"))
 
     return render_template("leads/import.html")
+
+
+@bp.route("/sync", methods=["GET", "POST"])
+@permission_required(PERMISSION_MANAGE_LEADS)
+def sync_json():
+    if request.method == "POST":
+        raw_json = request.form.get("json_data", "")
+        try:
+            payload = json.loads(raw_json)
+        except ValueError as exc:
+            flash(f"JSON לא תקין: {exc}", "error")
+            return redirect(url_for("leads.sync_json"))
+
+        arbox_users = payload.get("users") if isinstance(payload, dict) else None
+        if not isinstance(arbox_users, list):
+            flash('הפורמט הנדרש הוא אובייקט עם מפתח "users" שהוא רשימה, למשל: {"users": [{"phone": "0501234567"}]}', "error")
+            return redirect(url_for("leads.sync_json"))
+
+        result = apply_arbox_users_to_leads(get_repos(), arbox_users)
+        flash(
+            f"עודכנו {result['updated_to_converted']} לידים, "
+            f"{result['already_converted']} כבר היו מעודכנים, "
+            f"{result['not_found']} לא נמצאו אצלנו, "
+            f"{result['no_phone']} ללא טלפון.",
+            "success",
+        )
+        return redirect(url_for("leads.sync_json"))
+
+    return render_template("leads/sync.html")
+
+
+@bp.route("/sync/export")
+@permission_required(PERMISSION_MANAGE_LEADS)
+def sync_export():
+    leads = to_records(get_repos().leads.get_all())
+    response = jsonify({"leads": leads})
+    response.headers["Content-Disposition"] = "attachment; filename=leads_export.json"
+    return response
 
 
 @bp.route("/<int:lead_id>/edit", methods=["GET", "POST"])
