@@ -32,9 +32,13 @@ def generate_csrf_token():
     return session["csrf_token"]
 
 
-# מריצה בכל בקשה (before_request): מוודאת שכל POST נושא טוקן CSRF תואם ל-session
+# מריצה בכל בקשה (before_request): מוודאת שכל POST נושא טוקן CSRF תואם ל-session.
+# /tasks/* מוחרג - אלה endpoints המיועדים לשירותים חיצוניים (בלי session דפדפן),
+# ומאובטחים בטוקן סודי משלהם במקום
 def validate_csrf():
     if request.method != "POST":
+        return
+    if request.path.startswith("/tasks/"):
         return
     token = session.get("csrf_token")
     submitted = request.form.get("csrf_token", "")

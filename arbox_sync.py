@@ -3,16 +3,11 @@ from arbox_client import fetch_arbox_users, load_arbox_api_key
 ARBOX_CONVERTED_STATUS = "הפך ללקוח"
 
 
-# מושכת מ-Arbox את כל מי שהפך ללקוח (only_clients=1, active=1).
-# לא מייבאת/יוצרת אף ליד חדש - רק בודקת מי מהם כבר קיים אצלנו כליד (לפי טלפון),
-# ומעדכנת את הסטטוס שלו ל"הפך ללקוח"
-def sync_arbox_clients(repos):
-    api_key = load_arbox_api_key()
-    if not api_key:
-        return {"skipped": True, "reason": "missing_api_key"}
-
-    arbox_users = fetch_arbox_users(api_key, only_clients="1", active="1")
-
+# בודקת מי מרשימת משתמשי Arbox שהועברה כבר קיים אצלנו כליד (לפי טלפון), ומעדכנת את הסטטוס
+# שלו ל"הפך ללקוח". לא מייבאת/יוצרת אף ליד חדש. לא עושה שום קריאת רשת - קלט הוא רשימה מוכנה,
+# כדי שאפשר יהיה להריץ את החלק הזה (עדכון ה-DB) בנפרד מהחלק שמושך מ-Arbox (למשל דרך
+# GitHub Actions, בסביבות אירוח שחוסמות גישה יוצאת לדומיין של Arbox)
+def apply_arbox_users_to_leads(repos, arbox_users):
     updated_to_converted = 0
     already_converted = 0
     not_found = 0
@@ -43,3 +38,15 @@ def sync_arbox_clients(repos):
         "no_phone": no_phone,
         "total_fetched": len(arbox_users),
     }
+
+
+# מושכת מ-Arbox את כל מי שהפך ללקוח (only_clients=1, active=1) ומעדכנת לידים קיימים בהתאם.
+# משתמשת ב-API key מקומי, ולכן דורשת גישת רשת יוצאת ל-Arbox (מתאים להרצה מקומית/מהמחשב שלך,
+# לא בהכרח מכל סביבת אירוח)
+def sync_arbox_clients(repos):
+    api_key = load_arbox_api_key()
+    if not api_key:
+        return {"skipped": True, "reason": "missing_api_key"}
+
+    arbox_users = fetch_arbox_users(api_key, only_clients="1", active="1")
+    return apply_arbox_users_to_leads(repos, arbox_users)

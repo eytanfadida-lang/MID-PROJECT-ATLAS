@@ -1,0 +1,24 @@
+name: Arbox sync
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch: {}
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - run: pip install requests
+
+      - run: python arbox_push_sync.py
+        env:
+          ARBOX_API_KEY: ${{ secrets.ARBOX_API_KEY }}
+          ARBOX_SYNC_TARGET_URL: ${{ secrets.ARBOX_SYNC_TARGET_URL }}
+          ARBOX_SYNC_TOKEN: ${{ secrets.ARBOX_SYNC_TOKEN }}

@@ -8,7 +8,7 @@ from flask import Flask, abort, jsonify, redirect, render_template, request, url
 
 import roles
 import db_context
-from arbox_sync import sync_arbox_clients
+from arbox_sync import sync_arbox_clients, apply_arbox_users_to_leads
 from auth import load_secret_key, generate_csrf_token, validate_csrf, current_user
 from view_utils import role_badge_class, format_lead_datetime, whatsapp_link, to_records
 
@@ -125,6 +125,25 @@ def trigger_arbox_sync():
         abort(403)
 
     result = sync_arbox_clients(db_context.get_repos())
+    return jsonify(result)
+
+
+# כמו trigger_arbox_sync, אבל מקבלת את רשימת משתמשי Arbox כבר-מוכנה ב-body (POST),
+# בלי לגשת בעצמה ל-Arbox. מיועדת לסביבות אירוח שחוסמות גישה יוצאת לדומיין של Arbox -
+# GitHub Actions (או כל מקום עם גישה פתוחה) מושך מ-Arbox ודוחף לכאן
+@app.route("/tasks/arbox-sync-data", methods=["POST"])
+def receive_arbox_sync_data():
+    expected_token = load_arbox_sync_token()
+    provided_token = request.args.get("token", "")
+    if not expected_token or not secrets.compare_digest(provided_token, expected_token):
+        abort(403)
+
+    payload = request.get_json(silent=True) or {}
+    arbox_users = payload.get("users")
+    if not isinstance(arbox_users, list):
+        abort(400)
+
+    result = apply_arbox_users_to_leads(db_context.get_repos(), arbox_users)
     return jsonify(result)
 
 
