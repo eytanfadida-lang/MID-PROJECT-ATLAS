@@ -1,3 +1,4 @@
+import json
 import os
 import secrets
 import threading
@@ -196,11 +197,16 @@ def landing_page_lead():
         abort(403)
 
     data = request.get_json(silent=True) or request.form.to_dict() or {}
-    print(f"[Landing page lead] raw payload: {data}")
+    print(f"[Landing page lead] raw payload: {data}", flush=True)
+    # שומרים גם לקובץ debug מקומי - print() לא תמיד נראה מיד בלוג של WSGI (buffering),
+    # קל יותר פשוט לקרוא את הקובץ הזה ישירות אחרי בדיקה
+    Path(".last_landing_page_payload.json").write_text(
+        json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
 
     full_name, phone, email, notes = landing_page_leads.extract_lead_fields(data)
     if not phone:
-        print("[Landing page lead] no phone found in payload, skipping lead creation")
+        print("[Landing page lead] no phone found in payload, skipping lead creation", flush=True)
         return jsonify({"status": "ignored", "reason": "no_phone"})
 
     repos = db_context.get_repos()
