@@ -221,6 +221,7 @@ __marimo__/
 .arbox_api_key
 arbox_location_map.json
 .arbox_sync_token
+.google_leads_webhook_key
 
 # Local runtime data/secrets - never track these
 appointments.db

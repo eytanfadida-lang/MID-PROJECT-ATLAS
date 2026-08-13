@@ -9,6 +9,8 @@ from flask import Flask, abort, jsonify, redirect, render_template, request, url
 import roles
 import db_context
 from arbox_sync import sync_arbox_clients, apply_arbox_users_to_leads
+import google_leads
+from lead_input import CHANNELS
 from auth import load_secret_key, generate_csrf_token, validate_csrf, current_user
 from view_utils import role_badge_class, format_lead_datetime, whatsapp_link, to_records
 
@@ -145,6 +147,41 @@ def receive_arbox_sync_data():
 
     result = apply_arbox_users_to_leads(db_context.get_repos(), arbox_users)
     return jsonify(result)
+
+
+# מקבלת ליד חדש מ-Google Ads (Lead Form extension, webhook delivery). האימות הוא לפי
+# google_key בתוך ה-JSON עצמו (ככה Google מגדירה את זה, לא header). מדפיסה את ה-payload
+# הגולמי ללוג כדי שנוכל לוודא שהשדות באמת נשלפים נכון מול ליד-בדיקה אמיתי מגוגל
+@app.route("/tasks/google-leads-webhook", methods=["POST"])
+def google_leads_webhook():
+    payload = request.get_json(silent=True) or {}
+    print(f"[Google leads webhook] raw payload: {payload}")
+
+    expected_key = google_leads.load_webhook_key()
+    provided_key = payload.get("google_key", "")
+    if not expected_key or not secrets.compare_digest(provided_key, expected_key):
+        abort(403)
+
+    if payload.get("is_test"):
+        return jsonify({"status": "test_received"})
+
+    full_name, phone = google_leads.extract_lead_fields(payload)
+    if not phone:
+        print("[Google leads webhook] no phone found in payload, skipping lead creation")
+        return jsonify({"status": "ignored", "reason": "no_phone"})
+
+    repos = db_context.get_repos()
+    statuses = repos.lead_statuses.get_names()
+    lead = {
+        "full_name": full_name or "ליד מגוגל",
+        "phone": phone,
+        "status": statuses[0] if statuses else "",
+        "channel": "Google Ads" if "Google Ads" in CHANNELS else CHANNELS[0],
+        "assigned_user": "",
+        "notes": f"campaign: {payload.get('campaign_name', '')}".strip(),
+    }
+    lead_id = repos.leads.create(lead)
+    return jsonify({"status": "created", "lead_id": lead_id})
 
 
 if __name__ == "__main__":

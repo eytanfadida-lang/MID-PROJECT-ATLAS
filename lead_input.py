@@ -16,6 +16,7 @@ CHANNELS = [
     "VIP 1.3.26",
     "פייסבוק",
     "Arbox",
+    "Google Ads",
 ]
 
 
