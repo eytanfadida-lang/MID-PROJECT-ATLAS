@@ -10,6 +10,7 @@ import roles
 import db_context
 from arbox_sync import sync_arbox_clients, apply_arbox_users_to_leads
 import google_leads
+import landing_page_leads
 from lead_input import CHANNELS
 from auth import load_secret_key, generate_csrf_token, validate_csrf, current_user
 from view_utils import role_badge_class, format_lead_datetime, whatsapp_link, to_records
@@ -179,6 +180,39 @@ def google_leads_webhook():
         "channel": "Google Ads" if "Google Ads" in CHANNELS else CHANNELS[0],
         "assigned_user": "",
         "notes": f"campaign: {payload.get('campaign_name', '')}".strip(),
+    }
+    lead_id = repos.leads.create(lead)
+    return jsonify({"status": "created", "lead_id": lead_id})
+
+
+# מקבלת ליד מטופס Elementor Pro (Actions After Submit > Webhook) בדף הנחיתה של האתר שלך.
+# אימות בטוקן ב-query string (מוגדר בתוך כתובת ה-webhook עצמה בהגדרות הטופס).
+# מדפיסה payload גולמי ללוג כדי שנוכל להתאים את שמות השדות לטופס האמיתי
+@app.route("/tasks/landing-page-lead", methods=["POST"])
+def landing_page_lead():
+    expected_token = landing_page_leads.load_token()
+    provided_token = request.args.get("token", "")
+    if not expected_token or not secrets.compare_digest(provided_token, expected_token):
+        abort(403)
+
+    data = request.get_json(silent=True) or request.form.to_dict() or {}
+    print(f"[Landing page lead] raw payload: {data}")
+
+    full_name, phone, email, notes = landing_page_leads.extract_lead_fields(data)
+    if not phone:
+        print("[Landing page lead] no phone found in payload, skipping lead creation")
+        return jsonify({"status": "ignored", "reason": "no_phone"})
+
+    repos = db_context.get_repos()
+    statuses = repos.lead_statuses.get_names()
+    combined_notes = f"{notes}\nאימייל: {email}".strip() if email else notes
+    lead = {
+        "full_name": full_name or "ליד מדף נחיתה",
+        "phone": phone,
+        "status": statuses[0] if statuses else "",
+        "channel": "דף נחיתה" if "דף נחיתה" in CHANNELS else CHANNELS[0],
+        "assigned_user": "",
+        "notes": combined_notes,
     }
     lead_id = repos.leads.create(lead)
     return jsonify({"status": "created", "lead_id": lead_id})

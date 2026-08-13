@@ -17,6 +17,7 @@ CHANNELS = [
     "פייסבוק",
     "Arbox",
     "Google Ads",
+    "דף נחיתה",
 ]
 
 
