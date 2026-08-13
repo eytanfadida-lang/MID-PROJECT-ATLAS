@@ -12,6 +12,7 @@ import db_context
 from arbox_sync import sync_arbox_clients, apply_arbox_users_to_leads
 import google_leads
 import landing_page_leads
+import meta_leads
 from lead_input import CHANNELS
 from auth import load_secret_key, generate_csrf_token, validate_csrf, current_user
 from view_utils import role_badge_class, format_lead_datetime, whatsapp_link, to_records
@@ -222,6 +223,66 @@ def landing_page_lead():
     }
     lead_id = repos.leads.create(lead)
     return jsonify({"status": "created", "lead_id": lead_id})
+
+
+# מקבלת לידים מ-Meta (Facebook/Instagram Lead Ads). GET הוא ה-handshake לאימות ה-webhook
+# מול Meta (חד-פעמי, כשמגדירים את הכתובת בפאנל שלהם). POST הוא ההתראה עצמה בכל ליד חדש -
+# מכילה רק leadgen_id, אז צריך קריאה נוספת ל-Graph API כדי לקבל את הנתונים בפועל
+@app.route("/tasks/meta-leads-webhook", methods=["GET", "POST"])
+def meta_leads_webhook():
+    if request.method == "GET":
+        mode = request.args.get("hub.mode")
+        token = request.args.get("hub.verify_token", "")
+        challenge = request.args.get("hub.challenge", "")
+        expected_token = meta_leads.load_verify_token()
+        if mode == "subscribe" and expected_token and secrets.compare_digest(token, expected_token):
+            return challenge, 200
+        abort(403)
+
+    signature = request.headers.get("X-Hub-Signature-256", "")
+    if not meta_leads.verify_signature(request.get_data(), signature):
+        abort(403)
+
+    payload = request.get_json(silent=True) or {}
+    print(f"[Meta leads webhook] raw payload: {payload}", flush=True)
+    Path(".last_meta_payload.json").write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+
+    repos = db_context.get_repos()
+    statuses = repos.lead_statuses.get_names()
+    created_count = 0
+    for entry in payload.get("entry") or []:
+        for change in entry.get("changes") or []:
+            if change.get("field") != "leadgen":
+                continue
+            leadgen_id = (change.get("value") or {}).get("leadgen_id")
+            if not leadgen_id:
+                continue
+            try:
+                lead_data = meta_leads.fetch_lead_data(leadgen_id)
+            except Exception as exc:
+                print(f"[Meta leads webhook] failed to fetch lead {leadgen_id}: {exc}", flush=True)
+                continue
+            if not lead_data:
+                continue
+
+            full_name, phone, email = meta_leads.extract_lead_fields(lead_data)
+            if not phone:
+                continue
+
+            lead = {
+                "full_name": full_name or "ליד ממטא",
+                "phone": phone,
+                "status": statuses[0] if statuses else "",
+                "channel": "פייסבוק" if "פייסבוק" in CHANNELS else CHANNELS[0],
+                "assigned_user": "",
+                "notes": f"אימייל: {email}" if email else "",
+            }
+            repos.leads.create(lead)
+            created_count += 1
+
+    return jsonify({"status": "ok", "created": created_count})
 
 
 if __name__ == "__main__":

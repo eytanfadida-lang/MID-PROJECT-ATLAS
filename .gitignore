@@ -224,6 +224,10 @@ arbox_location_map.json
 .google_leads_webhook_key
 .landing_page_token
 .last_landing_page_payload.json
+.meta_verify_token
+.meta_app_secret
+.meta_page_access_token
+.last_meta_payload.json
 
 # Local runtime data/secrets - never track these
 appointments.db
