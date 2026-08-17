@@ -13,8 +13,22 @@ from arbox_sync import apply_arbox_users_to_leads
 from view_utils import to_records
 
 DEFAULT_STATUS_COLOR = "#95a5a6"
+LEADS_PAGE_SIZE = 50
 
 bp = Blueprint("leads", __name__, url_prefix="/leads")
+
+
+# בונה רשימת מספרי עמודים להצגה סביב העמוד הנוכחי, עם None בתור "..." לדילוגים
+def _pagination_window(current_page, total_pages, window=2):
+    pages = []
+    last_shown = None
+    for page_number in range(1, total_pages + 1):
+        if page_number == 1 or page_number == total_pages or abs(page_number - current_page) <= window:
+            if last_shown is not None and page_number - last_shown > 1:
+                pages.append(None)
+            pages.append(page_number)
+            last_shown = page_number
+    return pages
 
 
 @bp.route("/")
@@ -56,6 +70,15 @@ def list_leads():
     total_routings = int(df["routings_count"].fillna(0).sum()) if not df.empty else 0
     total_sms = int(df["sms_count"].fillna(0).sum()) if not df.empty else 0
 
+    total_pages = max(1, -(-total_leads // LEADS_PAGE_SIZE))
+    try:
+        page = int(request.args.get("page", "1"))
+    except ValueError:
+        page = 1
+    page = min(max(page, 1), total_pages)
+    page_start = (page - 1) * LEADS_PAGE_SIZE
+    lead_records = lead_records[page_start:page_start + LEADS_PAGE_SIZE]
+
     return render_template(
         "leads/list.html",
         leads=lead_records,
@@ -69,6 +92,9 @@ def list_leads():
         total_leads=total_leads,
         total_routings=total_routings,
         total_sms=total_sms,
+        page=page,
+        total_pages=total_pages,
+        page_numbers=_pagination_window(page, total_pages),
     )
 
 

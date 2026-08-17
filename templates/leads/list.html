@@ -234,8 +234,37 @@
 {% endif %}
 
 <div class="leads-stats-bar">
-    <span><strong>לידים:</strong> {{ total_leads }}</span>
-    <span><strong>ניתובים:</strong> {{ total_routings }}</span>
-    <span><strong>סמס:</strong> {{ total_sms }}</span>
+    {% if total_pages > 1 %}
+    <div class="pagination">
+        {% if page > 1 %}
+        <a href="{{ url_for('leads.list_leads', status=status, phone=phone, mine=1 if show_my_only else 0, page=page-1) }}" class="btn btn-secondary">« הקודם</a>
+        {% else %}
+        <span class="btn btn-secondary pagination-disabled">« הקודם</span>
+        {% endif %}
+
+        {% for p in page_numbers %}
+            {% if p is none %}
+            <span class="pagination-ellipsis">…</span>
+            {% elif p == page %}
+            <span class="btn pagination-current">{{ p }}</span>
+            {% else %}
+            <a href="{{ url_for('leads.list_leads', status=status, phone=phone, mine=1 if show_my_only else 0, page=p) }}" class="btn btn-secondary">{{ p }}</a>
+            {% endif %}
+        {% endfor %}
+
+        {% if page < total_pages %}
+        <a href="{{ url_for('leads.list_leads', status=status, phone=phone, mine=1 if show_my_only else 0, page=page+1) }}" class="btn btn-secondary">הבא »</a>
+        {% else %}
+        <span class="btn btn-secondary pagination-disabled">הבא »</span>
+        {% endif %}
+
+        <span class="pagination-info">עמוד {{ page }} מתוך {{ total_pages }}</span>
+    </div>
+    {% endif %}
+    <div class="leads-stats-group">
+        <span><strong>לידים:</strong> {{ total_leads }}</span>
+        <span><strong>ניתובים:</strong> {{ total_routings }}</span>
+        <span><strong>סמס:</strong> {{ total_sms }}</span>
+    </div>
 </div>
 {% endblock %}

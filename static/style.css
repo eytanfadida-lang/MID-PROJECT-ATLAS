@@ -409,15 +409,21 @@ th {
     color: var(--primary-dark);
 }
 
-/* --- Leads stats bar (sticky footer with aggregate totals) --- */
+/* --- Leads stats bar (sticky footer with pagination + aggregate totals). Pagination lives
+   inside this fixed footer, not in the normal page flow: on the leads page .card has
+   overflow:hidden with .table-scroll taking all the flex space, so anything placed after the
+   table in the document would be clipped and never actually visible (same class of bug as the
+   earlier sticky-header fix) */
 .leads-stats-bar {
     position: fixed;
     bottom: 0;
     left: 0;
     right: 0;
     display: flex;
-    justify-content: flex-end;
-    gap: 18px;
+    align-items: center;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 12px;
     padding: 4px 16px;
     background: #1f2937;
     color: #f1f5f9;
@@ -429,6 +435,47 @@ th {
 .leads-stats-bar strong {
     color: #93c5fd;
     font-weight: 700;
+}
+
+.leads-stats-group {
+    display: flex;
+    gap: 18px;
+}
+
+/* --- Leads pagination --- */
+.pagination {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.pagination .btn {
+    padding: 3px 10px;
+    font-size: 12px;
+}
+
+.pagination-current {
+    background: linear-gradient(90deg, var(--primary) 0%, #3b82f6 100%);
+    color: #fff;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.pagination-disabled {
+    opacity: 0.35;
+    pointer-events: none;
+}
+
+.pagination-ellipsis {
+    padding: 0 2px;
+    color: #94a3b8;
+}
+
+.pagination-info {
+    color: #cbd5e1;
 }
 
 /* --- Notes panel (side drawer for full note text, opens from the left) --- */
