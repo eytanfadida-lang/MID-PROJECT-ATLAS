@@ -227,6 +227,9 @@ arbox_location_map.json
 .meta_verify_token
 .meta_app_secret
 .meta_page_access_token
+.meta_poll_token
+.meta_last_poll_time
+.meta_processed_leads.json
 .last_meta_payload.json
 
 # Local runtime data/secrets - never track these

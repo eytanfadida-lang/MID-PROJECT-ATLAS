@@ -1,0 +1,12 @@
+name: Meta leads poll
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch: {}
+
+jobs:
+  poll:
+    runs-on: ubuntu-latest
+    steps:
+      - run: curl -sf "https://eytan1985.pythonanywhere.com/tasks/meta-leads-poll?token=${{ secrets.META_POLL_TOKEN }}"

@@ -285,6 +285,20 @@ def meta_leads_webhook():
     return jsonify({"status": "ok", "created": created_count})
 
 
+# מפעילה משיכה יזומה של לידים חדשים ממטא (חלופה ל-webhook בזמן אמת, שלא סיפק לנו נתונים
+# בפועל למרות שההגדרות תקינות) - מוגנת בטוקן, מיועדת להפעלה תקופתית (למשל כל 15 דקות
+# דרך GitHub Actions, בדיוק כמו trigger_arbox_sync)
+@app.route("/tasks/meta-leads-poll")
+def meta_leads_poll():
+    expected_token = meta_leads.load_poll_token()
+    provided_token = request.args.get("token", "")
+    if not expected_token or not secrets.compare_digest(provided_token, expected_token):
+        abort(403)
+
+    result = meta_leads.poll_new_leads(db_context.get_repos(), CHANNELS)
+    return jsonify(result)
+
+
 if __name__ == "__main__":
     DEBUG_MODE = True
     # ב-debug=True ה-reloader מריץ גם תהליך "צג" נוסף; מפעילים את הלולאה רק בתהליך העבודה בפועל
