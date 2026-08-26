@@ -67,17 +67,39 @@ def fetch_lead_data(leadgen_id):
     return response.json()
 
 
+KNOWN_FIELD_NAMES = {"full_name", "first_name", "last_name", "phone_number", "phone", "email"}
+
+
+# מטא שולחת גם שדות "שאלה מותאמת אישית" שהוגדרו בטופס עצמו (מעבר לשם/טלפון/אימייל) -
+# אין לנו דרך לדעת מראש את שמות השדות האלה, אז כל שדה שלא מזוהה כאחד השדות הידועים
+# נחשב "שאלה נוספת" ומוחזר בנפרד כדי שנוכל לשים אותו בהערות של הליד
 def extract_lead_fields(lead_data):
     values = {}
+    order = []
     for field in lead_data.get("field_data") or []:
         name = (field.get("name") or "").strip().lower()
         field_values = field.get("values") or []
         values[name] = field_values[0] if field_values else ""
+        order.append(name)
 
     full_name = values.get("full_name") or f"{values.get('first_name', '')} {values.get('last_name', '')}".strip()
     phone = values.get("phone_number") or values.get("phone") or ""
     email = values.get("email") or ""
-    return full_name.strip(), phone.strip(), email.strip()
+
+    extra_answers = "\n".join(
+        f"{name}: {values[name]}" for name in order if name not in KNOWN_FIELD_NAMES and values.get(name)
+    )
+
+    return full_name.strip(), phone.strip(), email.strip(), extra_answers.strip()
+
+
+def build_notes(email, extra_answers):
+    parts = []
+    if email:
+        parts.append(f"אימייל: {email}")
+    if extra_answers:
+        parts.append(extra_answers)
+    return "\n".join(parts)
 
 
 def load_last_poll_time():
