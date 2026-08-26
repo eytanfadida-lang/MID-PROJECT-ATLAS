@@ -524,37 +524,37 @@ th {
 .leads-table .col-actions { width: 190px; }
 
 .leads-table select.assigned-select {
-    padding: 1px 6px;
+    padding: 2px 6px;
     border-radius: 8px;
-    font-size: 11px;
-}
-
-/* שורות קומפקטיות ככל האפשר בטבלת הלידים, כדי להציג כמה שיותר לידים על המסך בו-זמנית -
-   רק בטבלת הלידים, בלי להשפיע על טבלאות אחרות (תורים/לקוחות) שחולקות את אותם מחלקות CSS */
-.leads-table th,
-.leads-table td {
-    padding: 3px 6px;
-}
-
-.leads-table td {
     font-size: 12px;
 }
 
+/* שורות קומפקטיות בטבלת הלידים, כדי להציג יותר לידים על המסך בו-זמנית - רק בטבלת הלידים,
+   בלי להשפיע על טבלאות אחרות (תורים/לקוחות) שחולקות את אותם מחלקות CSS */
+.leads-table th,
+.leads-table td {
+    padding: 6px 6px;
+}
+
+.leads-table td {
+    font-size: 13px;
+}
+
 .leads-table select.status-select {
-    padding: 1px 26px 1px 8px;
-    font-size: 11px;
+    padding: 2px 28px 2px 8px;
+    font-size: 12px;
 }
 
 .leads-table .actions-row .icon-btn {
-    width: 22px;
-    height: 22px;
+    width: 26px;
+    height: 26px;
     font-size: 12px;
 }
 
 .leads-table .actions-row .btn,
 .leads-table .actions-row button {
-    padding: 3px 6px;
-    font-size: 11px;
+    padding: 4px 7px;
+    font-size: 12px;
 }
 
 tr:hover td {
