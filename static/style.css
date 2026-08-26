@@ -365,6 +365,12 @@ th, td {
     vertical-align: top;
 }
 
+/* קו הפרדה עדין מאוד בין כל טור, בכל טבלה באתר - לא אחרי הטור האחרון (הקצה השמאלי ב-RTL).
+   צבע עם שקיפות (ולא הקס אטום) כדי שהקו יתמזג עם הרקע ויישאר עדין באמת, לא רק "אפור בהיר" */
+th:not(:last-child), td:not(:last-child) {
+    border-inline-end: 1px solid rgba(15, 23, 42, 0.05);
+}
+
 th {
     background: linear-gradient(90deg, #f8fafc 0%, #f1f5f9 100%);
     color: #64748b;
