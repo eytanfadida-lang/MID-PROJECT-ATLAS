@@ -39,7 +39,7 @@
                 {% endif %}
             </div>
 
-            <div class="content">
+            <div class="flash-container">
             {% with messages = get_flashed_messages(with_categories=true) %}
                 {% if messages %}
                     {% for category, message in messages %}
@@ -47,7 +47,9 @@
                     {% endfor %}
                 {% endif %}
             {% endwith %}
+            </div>
 
+            <div class="content">
                 <div class="card">
                     <div class="card-header">
                         <h1>{% block page_heading %}{% endblock %}</h1>

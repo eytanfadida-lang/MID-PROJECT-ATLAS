@@ -251,11 +251,28 @@ body.page-leads-list .toolbar {
 }
 
 /* --- Flash messages --- */
+/* מרחף מעל העמוד (position: fixed) ולא תופס מקום בזרימת התוכן - כדי שהופעה/היעלמות
+   של הודעה לא תזיז את שאר העמוד (חשוב במיוחד בעמוד הלידים, שיש בו overflow: hidden
+   סביב הטבלה ואי אפשר "לדחוף" תוכן בלי לשבור את הפריסה הקבועה שלו) */
+.flash-container {
+    position: fixed;
+    top: 14px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 200;
+    width: min(560px, 92vw);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    pointer-events: none;
+}
+
 .flash {
+    pointer-events: auto;
     padding: 10px 14px;
     border-radius: 10px;
-    margin-bottom: 16px;
     font-size: 14px;
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
     transition: opacity 0.4s ease, transform 0.4s ease;
 }
 
