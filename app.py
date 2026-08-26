@@ -267,7 +267,7 @@ def meta_leads_webhook():
             if not lead_data:
                 continue
 
-            full_name, phone, email = meta_leads.extract_lead_fields(lead_data)
+            full_name, phone, email, extra_answers = meta_leads.extract_lead_fields(lead_data)
             if not phone:
                 continue
 
@@ -277,7 +277,7 @@ def meta_leads_webhook():
                 "status": statuses[0] if statuses else "",
                 "channel": "פייסבוק" if "פייסבוק" in CHANNELS else CHANNELS[0],
                 "assigned_user": "",
-                "notes": f"אימייל: {email}" if email else "",
+                "notes": meta_leads.build_notes(email, extra_answers),
             }
             repos.leads.create(lead)
             created_count += 1

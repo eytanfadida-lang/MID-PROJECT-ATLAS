@@ -189,7 +189,7 @@ def poll_new_leads(repos, channels):
             if created_ts:
                 newest_created_time = max(newest_created_time, created_ts)
 
-            full_name, phone, email = extract_lead_fields(lead_data)
+            full_name, phone, email, extra_answers = extract_lead_fields(lead_data)
             if not phone:
                 continue
 
@@ -199,7 +199,7 @@ def poll_new_leads(repos, channels):
                 "status": statuses[0] if statuses else "",
                 "channel": "פייסבוק" if "פייסבוק" in channels else channels[0],
                 "assigned_user": "",
-                "notes": f"אימייל: {email}" if email else "",
+                "notes": build_notes(email, extra_answers),
             }
             repos.leads.create(lead)
             created_count += 1
