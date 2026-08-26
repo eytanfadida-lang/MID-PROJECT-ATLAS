@@ -13,7 +13,7 @@ def login():
 
         role = get_repos().users.authenticate(username, password)
         if role is None:
-            flash("Invalid username or password.", "error")
+            flash("שם משתמש או סיסמה שגויים.", "error")
             return render_template("login.html", username=username)
 
         user = get_repos().users.get_by_username(username)

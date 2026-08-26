@@ -256,6 +256,13 @@ body.page-leads-list .toolbar {
     border-radius: 10px;
     margin-bottom: 16px;
     font-size: 14px;
+    transition: opacity 0.4s ease, transform 0.4s ease;
+}
+
+.flash-hide {
+    opacity: 0;
+    transform: translateY(-6px);
+    pointer-events: none;
 }
 
 .flash-success {

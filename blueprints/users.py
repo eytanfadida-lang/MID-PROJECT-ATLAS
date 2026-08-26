@@ -28,10 +28,10 @@ def new_user():
 
         try:
             get_repos().users.create(username, password, role, permissions)
-            flash(f"User '{username}' created successfully (role: {role}).", "success")
+            flash(f"המשתמש '{username}' נוצר בהצלחה (תפקיד: {role}).", "success")
             return redirect(url_for("users.list_users"))
         except sqlite3.IntegrityError:
-            flash(f"Username '{username}' already exists.", "error")
+            flash(f"שם המשתמש '{username}' כבר קיים.", "error")
 
     return render_template("users/new.html", roles=[roles.ADMIN, roles.USER])
 
@@ -41,12 +41,12 @@ def new_user():
 def edit_user(user_id):
     user = get_repos().users.get_by_id(user_id)
     if user is None:
-        flash("User not found.", "error")
+        flash("המשתמש לא נמצא.", "error")
         return redirect(url_for("users.list_users"))
 
     current_session_user = current_user()
     if current_session_user and current_session_user.get("id") == user_id:
-        flash("You cannot modify your own account from here.", "error")
+        flash("לא ניתן לערוך את החשבון שלך מכאן.", "error")
         return redirect(url_for("users.list_users"))
 
     if request.method == "POST":
@@ -63,7 +63,7 @@ def edit_user(user_id):
             try:
                 get_repos().users.update_username(user_id, username)
             except sqlite3.IntegrityError:
-                flash(f"Username '{username}' already exists.", "error")
+                flash(f"שם המשתמש '{username}' כבר קיים.", "error")
                 return render_template("users/edit.html", user=user, roles=[roles.ADMIN, roles.USER])
 
         if role:
@@ -72,7 +72,7 @@ def edit_user(user_id):
             get_repos().users.update_password(user_id, password)
         get_repos().users.update_permissions(user_id, permissions)
 
-        flash(f"User '{username or user['username']}' updated successfully.", "success")
+        flash(f"המשתמש '{username or user['username']}' עודכן בהצלחה.", "success")
         return redirect(url_for("users.list_users"))
 
     return render_template("users/edit.html", user=user, roles=[roles.ADMIN, roles.USER])
@@ -83,20 +83,20 @@ def edit_user(user_id):
 def delete_user(user_id):
     user = get_repos().users.get_by_id(user_id)
     if user is None:
-        flash("User not found.", "error")
+        flash("המשתמש לא נמצא.", "error")
         return redirect(url_for("users.list_users"))
 
     current_session_user = current_user()
     if current_session_user and current_session_user.get("id") == user_id:
-        flash("You cannot delete your own account.", "error")
+        flash("לא ניתן למחוק את החשבון שלך.", "error")
         return redirect(url_for("users.list_users"))
 
     admins = get_repos().users.get_all()
     admin_count = sum(1 for _, row in admins.iterrows() if row["role"] == roles.ADMIN)
     if user["role"] == roles.ADMIN and admin_count <= 1:
-        flash("At least one admin account must remain.", "error")
+        flash("חייב להישאר לפחות חשבון מנהל אחד.", "error")
         return redirect(url_for("users.list_users"))
 
     get_repos().users.delete(user_id)
-    flash(f"User '{user['username']}' deleted successfully.", "success")
+    flash(f"המשתמש '{user['username']}' נמחק בהצלחה.", "success")
     return redirect(url_for("users.list_users"))

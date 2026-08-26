@@ -67,7 +67,7 @@ def new_details():
             "appointment_time": datetime.datetime.strptime(time, "%H:%M"),
         }
         repos.appointments.create(appointment)
-        flash(f"Appointment created successfully (id: {appointment['id_client']}).", "success")
+        flash(f"התור נוצר בהצלחה (מזהה: {appointment['id_client']}).", "success")
         return redirect(url_for("appointments.list_appointments"))
 
     return render_template("appointments/new_details.html", date=date, time=time, branches=BRANCHES)
@@ -79,7 +79,7 @@ def edit(id_client):
     repos = get_repos()
     current = repos.appointments.get_by_id(id_client)
     if current is None:
-        flash("Appointment not found.", "error")
+        flash("התור לא נמצא.", "error")
         return redirect(url_for("appointments.list_appointments"))
 
     if request.method == "POST":
@@ -97,7 +97,7 @@ def edit(id_client):
             ),
         }
         repos.appointments.update(id_client, fields)
-        flash("Appointment updated successfully.", "success")
+        flash("התור עודכן בהצלחה.", "success")
         return redirect(url_for("appointments.list_appointments"))
 
     return render_template("appointments/edit.html", appointment=current, branches=BRANCHES)
@@ -108,7 +108,7 @@ def edit(id_client):
 def delete(id_client):
     repos = get_repos()
     if repos.appointments.delete(id_client):
-        flash("Appointment deleted successfully.", "success")
+        flash("התור נמחק בהצלחה.", "success")
     else:
-        flash("Appointment not found.", "error")
+        flash("התור לא נמצא.", "error")
     return redirect(url_for("appointments.list_appointments"))

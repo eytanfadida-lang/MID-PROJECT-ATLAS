@@ -81,6 +81,20 @@
             });
         });
     })();
+
+    // הודעות הצלחה/שגיאה (flash) נעלמות אוטומטית אחרי 3 שניות
+    (function () {
+        document.addEventListener('DOMContentLoaded', function () {
+            document.querySelectorAll('.flash').forEach(function (flashEl) {
+                setTimeout(function () {
+                    flashEl.classList.add('flash-hide');
+                    flashEl.addEventListener('transitionend', function () {
+                        flashEl.remove();
+                    }, { once: true });
+                }, 3000);
+            });
+        });
+    })();
     </script>
 </body>
 </html>

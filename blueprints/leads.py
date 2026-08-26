@@ -118,7 +118,7 @@ def new_lead():
         if duplicate_exists:
             flash("נמצא מספר טלפון כפול – הליד נוצר עם סטטוס 'ליד כפול'.", "error")
         else:
-            flash(f"Lead created successfully (id: {lead_id}).", "success")
+            flash(f"הליד נוצר בהצלחה (מזהה: {lead_id}).", "success")
         return redirect(url_for("leads.list_leads"))
 
     repos = get_repos()
@@ -205,7 +205,7 @@ def edit(lead_id):
     repos = get_repos()
     current = repos.leads.get_by_id(lead_id)
     if current is None:
-        flash("Lead not found.", "error")
+        flash("הליד לא נמצא.", "error")
         return redirect(url_for("leads.list_leads"))
 
     if request.method == "POST":
@@ -218,7 +218,7 @@ def edit(lead_id):
         if assigned_user != (current.get("assigned_user") or ""):
             repos.leads.update_field(lead_id, "assigned_user", assigned_user)
 
-        flash("Lead updated successfully.", "success")
+        flash("הליד עודכן בהצלחה.", "success")
         return redirect(url_for("leads.list_leads"))
 
     users = to_records(repos.users.get_all()) if hasattr(repos, "users") else []
@@ -233,11 +233,11 @@ def edit(lead_id):
 def update_status(lead_id):
     new_status = request.form.get("status", "")
     if new_status not in get_repos().lead_statuses.get_names():
-        flash("Invalid status.", "error")
+        flash("סטטוס לא תקין.", "error")
         return redirect(url_for("leads.list_leads"))
 
     get_repos().leads.update_field(lead_id, "status", new_status)
-    flash("Lead status updated.", "success")
+    flash("סטטוס הליד עודכן.", "success")
     return redirect(url_for("leads.list_leads"))
 
 
@@ -296,7 +296,7 @@ def bulk_update_status():
     if not lead_ids:
         flash("לא נבחרו לידים.", "error")
     elif new_status not in repos.lead_statuses.get_names():
-        flash("Invalid status.", "error")
+        flash("סטטוס לא תקין.", "error")
     else:
         repos.leads.bulk_update_status(lead_ids, new_status)
         flash(f"סטטוס עודכן עבור {len(lead_ids)} לידים.", "success")
@@ -340,7 +340,7 @@ def assign_lead(lead_id):
     assigned_user = request.form.get("assigned_user", "")
     lead = repos.leads.get_by_id(lead_id)
     if lead is None:
-        flash("Lead not found.", "error")
+        flash("הליד לא נמצא.", "error")
         return redirect(url_for("leads.list_leads"))
 
     repos.leads.update_field(lead_id, "assigned_user", assigned_user)
@@ -355,9 +355,9 @@ def assign_lead(lead_id):
 @permission_required(PERMISSION_MANAGE_LEADS)
 def delete(lead_id):
     if get_repos().leads.delete(lead_id):
-        flash("Lead deleted successfully.", "success")
+        flash("הליד נמחק בהצלחה.", "success")
     else:
-        flash("Lead not found.", "error")
+        flash("הליד לא נמצא.", "error")
     return redirect(url_for("leads.list_leads"))
 
 
@@ -367,7 +367,7 @@ def convert(lead_id):
     repos = get_repos()
     lead = repos.leads.get_by_id(lead_id)
     if lead is None:
-        flash("Lead not found.", "error")
+        flash("הליד לא נמצא.", "error")
         return redirect(url_for("leads.list_leads"))
 
     if request.method == "POST":
@@ -380,7 +380,7 @@ def convert(lead_id):
             name_of_store=name_of_store,
         )
         repos.leads.update_field(lead_id, "status", CONVERTED_STATUS)
-        flash(f"Lead converted to client successfully (client id: {id_client}).", "success")
+        flash(f"הליד הומר ללקוח בהצלחה (מזהה לקוח: {id_client}).", "success")
         return redirect(url_for("leads.list_leads"))
 
     return render_template("leads/convert.html", lead=lead, branches=BRANCHES)

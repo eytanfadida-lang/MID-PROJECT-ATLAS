@@ -28,7 +28,7 @@ def new_customer():
         }
         customer_id = repos.id_sequence.next_id()
         repos.customers.create(customer, customer_id)
-        flash(f"Customer created successfully (id: {customer_id}).", "success")
+        flash(f"הלקוח נוצר בהצלחה (מזהה: {customer_id}).", "success")
         return redirect(url_for("customers.list_customers"))
 
     return render_template("customers/new.html")
@@ -40,7 +40,7 @@ def detail(customer_id):
     repos = get_repos()
     customer = repos.customers.get_by_id(customer_id)
     if customer is None:
-        flash("Customer not found.", "error")
+        flash("הלקוח לא נמצא.", "error")
         return redirect(url_for("customers.list_customers"))
 
     appointments = to_records(repos.appointments.get_by_customer_id(customer_id))
@@ -59,17 +59,17 @@ def detail(customer_id):
 def create_invoice(customer_id):
     repos = get_repos()
     if repos.customers.get_by_id(customer_id) is None:
-        flash("Customer not found.", "error")
+        flash("הלקוח לא נמצא.", "error")
         return redirect(url_for("customers.list_customers"))
 
     try:
         amount = float(request.form.get("amount", ""))
     except ValueError:
-        flash("Invalid amount.", "error")
+        flash("סכום לא תקין.", "error")
         return redirect(url_for("customers.detail", customer_id=customer_id))
 
     invoice_number = repos.invoices.create(customer_id, amount)
-    flash(f"Invoice created successfully (invoice number: {invoice_number}).", "success")
+    flash(f"החשבונית נוצרה בהצלחה (מספר חשבונית: {invoice_number}).", "success")
     return redirect(url_for("customers.detail", customer_id=customer_id))
 
 
@@ -78,18 +78,18 @@ def create_invoice(customer_id):
 def purchase_membership(customer_id):
     repos = get_repos()
     if repos.customers.get_by_id(customer_id) is None:
-        flash("Customer not found.", "error")
+        flash("הלקוח לא נמצא.", "error")
         return redirect(url_for("customers.list_customers"))
 
     plan_name = request.form.get("plan_name", "")
     plan = next((p for p in MEMBERSHIP_PLANS if p[0] == plan_name), None)
     if plan is None:
-        flash("Invalid membership plan.", "error")
+        flash("מסלול מנוי לא תקין.", "error")
         return redirect(url_for("customers.detail", customer_id=customer_id))
 
     name, price = plan
     invoice_number = repos.invoices.create(customer_id, price, name)
-    flash(f"{name} purchased successfully (invoice number: {invoice_number}, amount: {price}).", "success")
+    flash(f"המנוי '{name}' נרכש בהצלחה (מספר חשבונית: {invoice_number}, סכום: {price}).", "success")
     return redirect(url_for("customers.detail", customer_id=customer_id))
 
 
@@ -98,16 +98,16 @@ def purchase_membership(customer_id):
 def link_appointment(customer_id):
     repos = get_repos()
     if repos.customers.get_by_id(customer_id) is None:
-        flash("Customer not found.", "error")
+        flash("הלקוח לא נמצא.", "error")
         return redirect(url_for("customers.list_customers"))
 
     id_client = request.form.get("id_client", "")
     if repos.appointments.get_by_id(id_client) is None:
-        flash("Appointment not found.", "error")
+        flash("התור לא נמצא.", "error")
         return redirect(url_for("customers.detail", customer_id=customer_id))
 
     repos.appointments.link_customer(id_client, customer_id)
-    flash("Appointment linked to customer successfully.", "success")
+    flash("התור קושר ללקוח בהצלחה.", "success")
     return redirect(url_for("customers.detail", customer_id=customer_id))
 
 
@@ -116,15 +116,15 @@ def link_appointment(customer_id):
 def delete(customer_id):
     repos = get_repos()
     if repos.customers.get_by_id(customer_id) is None:
-        flash("Customer not found.", "error")
+        flash("הלקוח לא נמצא.", "error")
         return redirect(url_for("customers.list_customers"))
 
     has_appointments = not repos.appointments.get_by_customer_id(customer_id).empty
     has_invoices = not repos.invoices.get_by_customer(customer_id).empty
     if has_appointments or has_invoices:
-        flash("Cannot delete: this customer has linked appointments or invoices.", "error")
+        flash("לא ניתן למחוק: ללקוח יש תורים או חשבוניות מקושרים.", "error")
         return redirect(url_for("customers.detail", customer_id=customer_id))
 
     repos.customers.delete(customer_id)
-    flash("Customer deleted successfully.", "success")
+    flash("הלקוח נמחק בהצלחה.", "success")
     return redirect(url_for("customers.list_customers"))
