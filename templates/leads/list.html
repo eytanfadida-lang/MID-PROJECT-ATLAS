@@ -63,16 +63,16 @@
             <tr>
                 <th class="col-select"><input type="checkbox" id="select-all-checkbox"></th>
                 <th class="col-created">תאריך</th>
+                <th class="col-status">סטטוס</th>
+                <th class="col-assigned">מנהל לקוח</th>
                 <th class="col-updated">עדכון אחרון</th>
-                <th class="col-id">מזהה</th>
+                <th class="col-channel">ערוץ</th>
                 <th class="col-name">שם</th>
                 <th class="col-phone">טלפון</th>
-                <th class="col-status">סטטוס</th>
-                <th class="col-channel">ערוץ</th>
-                <th class="col-branch">סניף</th>
-                <th class="col-routings">ניתוב</th>
-                <th class="col-assigned">מנהל לקוח</th>
                 <th class="col-notes">הערות</th>
+                <th class="col-routings">ניתוב</th>
+                <th class="col-branch">סניף</th>
+                <th class="col-id">מזהה</th>
                 <th class="col-actions">פעולות</th>
             </tr>
         </thead>
@@ -81,8 +81,29 @@
             <tr>
                 <td class="col-select"><input type="checkbox" class="lead-select-checkbox" value="{{ lead.id }}"></td>
                 <td class="col-created">{{ lead.created_datetime_stamp | format_lead_datetime }}</td>
+                <td class="col-status">
+                    <form method="post" action="{{ url_for('leads.update_status', lead_id=lead.id) }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                        <select name="status" class="status-select" style="--status-color: {{ status_colors.get(lead.status, default_status_color) }};" onchange="this.form.submit()">
+                            {% for s in statuses %}
+                            <option value="{{ s }}" style="background: {{ status_colors.get(s, default_status_color) }}; color: #fff;" {{ "selected" if s == lead.status else "" }}>{{ s }}</option>
+                            {% endfor %}
+                        </select>
+                    </form>
+                </td>
+                <td class="col-assigned">
+                    <form method="post" action="{{ url_for('leads.assign_lead', lead_id=lead.id) }}" class="inline-form">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                        <select name="assigned_user" class="assigned-select" onchange="this.form.submit()">
+                            <option value="">— ללא משויך —</option>
+                            {% for user in users %}
+                            <option value="{{ user.username }}" {{ "selected" if user.username == lead.assigned_user else "" }}>{{ user.username }}</option>
+                            {% endfor %}
+                        </select>
+                    </form>
+                </td>
                 <td class="col-updated">{{ lead.last_updated_datetime_stamp | format_lead_datetime }}</td>
-                <td class="col-id">{{ lead.id }}</td>
+                <td class="col-channel">{{ lead.channel }}</td>
                 <td class="col-name">{{ lead.full_name }}</td>
                 <td class="col-phone">
                     <span class="phone-cell">
@@ -100,32 +121,11 @@
                         {% endif %}
                     </span>
                 </td>
-                <td class="col-status">
-                    <form method="post" action="{{ url_for('leads.update_status', lead_id=lead.id) }}">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                        <select name="status" class="status-select" style="--status-color: {{ status_colors.get(lead.status, default_status_color) }};" onchange="this.form.submit()">
-                            {% for s in statuses %}
-                            <option value="{{ s }}" style="background: {{ status_colors.get(s, default_status_color) }}; color: #fff;" {{ "selected" if s == lead.status else "" }}>{{ s }}</option>
-                            {% endfor %}
-                        </select>
-                    </form>
-                </td>
-                <td class="col-channel">{{ lead.channel }}</td>
-                <td class="col-branch">{{ lead.branch or '-' }}</td>
-                <td class="col-routings">{{ lead.routings_count or 0 }}</td>
-                <td class="col-assigned">
-                    <form method="post" action="{{ url_for('leads.assign_lead', lead_id=lead.id) }}" class="inline-form">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                        <select name="assigned_user" class="assigned-select" onchange="this.form.submit()">
-                            <option value="">— ללא משויך —</option>
-                            {% for user in users %}
-                            <option value="{{ user.username }}" {{ "selected" if user.username == lead.assigned_user else "" }}>{{ user.username }}</option>
-                            {% endfor %}
-                        </select>
-                    </form>
-                </td>
                 <td class="col-notes {{ 'has-notes' if lead.notes else '' }}"
                     {% if lead.notes %}data-full-notes="{{ lead.notes }}" data-lead-name="{{ lead.full_name }}" title="לחץ להצגת ההערה המלאה"{% endif %}>{{ lead.notes }}</td>
+                <td class="col-routings">{{ lead.routings_count or 0 }}</td>
+                <td class="col-branch">{{ lead.branch or '-' }}</td>
+                <td class="col-id">{{ lead.id }}</td>
                 <td class="col-actions actions-row">
                     <a href="{{ url_for('leads.edit', lead_id=lead.id) }}" class="btn btn-secondary icon-btn" title="ערוך" aria-label="ערוך">✎</a>
                     <a href="{{ url_for('leads.convert', lead_id=lead.id) }}" class="btn btn-secondary icon-btn" title="המר" aria-label="המר">↺</a>
