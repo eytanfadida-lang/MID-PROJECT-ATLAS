@@ -232,6 +232,14 @@ arbox_location_map.json
 .meta_processed_leads.json
 .last_meta_payload.json
 
+# WhatsApp CRM chatbot secrets
+.anthropic_api_key
+.whatsapp_verify_token
+.whatsapp_app_secret
+.whatsapp_access_token
+.whatsapp_allowed_numbers
+.last_whatsapp_payload.json
+
 # Local runtime data/secrets - never track these
 appointments.db
 appointments_backup_*.db

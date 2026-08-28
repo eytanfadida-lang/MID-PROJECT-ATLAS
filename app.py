@@ -13,6 +13,7 @@ from arbox_sync import sync_arbox_clients, apply_arbox_users_to_leads
 import google_leads
 import landing_page_leads
 import meta_leads
+import whatsapp_bot
 from lead_input import CHANNELS
 from auth import load_secret_key, generate_csrf_token, validate_csrf, current_user
 from view_utils import role_badge_class, format_lead_datetime, whatsapp_link, to_records
@@ -297,6 +298,44 @@ def meta_leads_poll():
 
     result = meta_leads.poll_new_leads(db_context.get_repos(), CHANNELS)
     return jsonify(result)
+
+
+# מקבלת הודעות וואטסאפ נכנסות מהבוט הפנימי (CRM WhaApp Bot). כמו ה-webhook של מטא לידים:
+# GET הוא ה-handshake, POST היא ההודעה עצמה. עונה רק למספרים ברשימת המורשים (בעל העסק) -
+# זה כלי פנימי לשאילת נתונים, לא בוט ללקוחות
+@app.route("/tasks/whatsapp-webhook", methods=["GET", "POST"])
+def whatsapp_webhook():
+    if request.method == "GET":
+        mode = request.args.get("hub.mode")
+        token = request.args.get("hub.verify_token", "")
+        challenge = request.args.get("hub.challenge", "")
+        expected_token = whatsapp_bot.load_verify_token()
+        if mode == "subscribe" and expected_token and secrets.compare_digest(token, expected_token):
+            return challenge, 200
+        abort(403)
+
+    signature = request.headers.get("X-Hub-Signature-256", "")
+    if not whatsapp_bot.verify_signature(request.get_data(), signature):
+        abort(403)
+
+    payload = request.get_json(silent=True) or {}
+    print(f"[WhatsApp webhook] raw payload: {payload}", flush=True)
+    Path(".last_whatsapp_payload.json").write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+
+    from_number, text = whatsapp_bot.extract_incoming_message(payload)
+    if not from_number or not text:
+        return jsonify({"status": "ignored"})
+
+    allowed_numbers = whatsapp_bot.load_allowed_numbers()
+    if from_number not in allowed_numbers:
+        print(f"[WhatsApp webhook] ignoring message from unauthorized number: {from_number}", flush=True)
+        return jsonify({"status": "ignored", "reason": "unauthorized"})
+
+    # תשובת הד זמנית, רק כדי לוודא שהצינור עובד מקצה לקצה - תוחלף בקריאה בפועל ל-Claude
+    whatsapp_bot.send_text_message(from_number, f"קיבלתי: {text}")
+    return jsonify({"status": "ok"})
 
 
 if __name__ == "__main__":
