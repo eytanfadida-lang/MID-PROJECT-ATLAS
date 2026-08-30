@@ -239,6 +239,7 @@ arbox_location_map.json
 .whatsapp_access_token
 .whatsapp_allowed_numbers
 .last_whatsapp_payload.json
+.whatsapp_conversations.json
 
 # Local runtime data/secrets - never track these
 appointments.db

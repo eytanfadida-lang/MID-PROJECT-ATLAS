@@ -14,6 +14,7 @@ import google_leads
 import landing_page_leads
 import meta_leads
 import whatsapp_bot
+import crm_assistant
 from lead_input import CHANNELS
 from auth import load_secret_key, generate_csrf_token, validate_csrf, current_user
 from view_utils import role_badge_class, format_lead_datetime, whatsapp_link, to_records
@@ -333,8 +334,15 @@ def whatsapp_webhook():
         print(f"[WhatsApp webhook] ignoring message from unauthorized number: {from_number}", flush=True)
         return jsonify({"status": "ignored", "reason": "unauthorized"})
 
-    # תשובת הד זמנית, רק כדי לוודא שהצינור עובד מקצה לקצה - תוחלף בקריאה בפועל ל-Claude
-    whatsapp_bot.send_text_message(from_number, f"קיבלתי: {text}")
+    repos = db_context.get_repos()
+    statuses = repos.lead_statuses.get_names()
+    try:
+        reply_text = crm_assistant.answer_question(repos, statuses, from_number, text)
+    except Exception as exc:
+        print(f"[WhatsApp webhook] assistant failed: {exc}", flush=True)
+        reply_text = "אירעה שגיאה בעיבוד הבקשה, נסה שוב מאוחר יותר."
+
+    whatsapp_bot.send_text_message(from_number, reply_text)
     return jsonify({"status": "ok"})
 
 
