@@ -5,7 +5,7 @@ from user_repository import UserRepository
 import roles
 
 # סקריפט חד-פעמי (מריצים ידנית, לא חלק מהאפליקציה) ליצירת חשבון admin ולאחריו
-# כמה שמשתמשים רגילים שרוצים, לפני ההרצה הראשונה של rest_app.py
+# כמה שמשתמשים רגילים שרוצים, לפני ההרצה הראשונה של האתר
 
 
 def _prompt_new_user(role):

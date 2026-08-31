@@ -15,7 +15,7 @@ import landing_page_leads
 import meta_leads
 import whatsapp_bot
 import crm_assistant
-from lead_input import CHANNELS
+from settings import CHANNELS
 from auth import load_secret_key, generate_csrf_token, validate_csrf, current_user
 from view_utils import role_badge_class, format_lead_datetime, whatsapp_link, to_records
 

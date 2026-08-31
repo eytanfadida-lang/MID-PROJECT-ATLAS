@@ -4,7 +4,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash
 
 from db_context import get_repos
 from auth import login_required, admin_required, permission_required, PERMISSION_MANAGE_APPOINTMENTS
-from appointment_input import BRANCHES
+from settings import BRANCHES
 from view_utils import to_records
 
 bp = Blueprint("appointments", __name__, url_prefix="/appointments")

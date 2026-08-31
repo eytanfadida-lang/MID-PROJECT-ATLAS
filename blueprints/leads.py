@@ -5,9 +5,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash,
 
 from db_context import get_repos
 from auth import login_required, admin_required, permission_required, PERMISSION_MANAGE_LEADS
-from lead_input import CHANNELS
-from lead_menu import LEAD_UPDATABLE_FIELDS, CONVERTED_STATUS
-from appointment_input import BRANCHES
+from settings import CHANNELS, LEAD_UPDATABLE_FIELDS, CONVERTED_STATUS, BRANCHES
 from lead_bulk_import import import_leads_from_file
 from arbox_sync import apply_arbox_users_to_leads
 from view_utils import to_records
