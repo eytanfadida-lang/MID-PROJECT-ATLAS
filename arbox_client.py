@@ -1,12 +1,13 @@
 import json
-from pathlib import Path
 
 import requests
 
+from paths import secret
+
 API_BASE_URL = "https://arboxserver.arboxapp.com/api/public/v3"
-API_KEY_FILE = Path(".arbox_api_key")
+API_KEY_FILE = secret(".arbox_api_key")
 API_KEY_PLACEHOLDER = "PUT_YOUR_ARBOX_API_KEY_HERE"
-LOCATION_MAP_FILE = Path("arbox_location_map.json")
+LOCATION_MAP_FILE = secret("arbox_location_map.json")
 PAGE_LIMIT = 500
 
 

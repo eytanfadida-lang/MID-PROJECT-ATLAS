@@ -1,6 +1,6 @@
-from pathlib import Path
+from paths import secret
 
-WEBHOOK_KEY_FILE = Path(".google_leads_webhook_key")
+WEBHOOK_KEY_FILE = secret(".google_leads_webhook_key")
 
 # שמות שדות אפשריים ב-user_column_data של Google (לא כולם מאומתים מול payload אמיתי עדיין -
 # מכוונים לרשימה רחבה בכוונה, ומתאימים בפועל אחרי שרואים lead-בדיקה אמיתי מ-Google Ads)

@@ -1,13 +1,14 @@
 import hashlib
 import hmac
-from pathlib import Path
 
 import requests
 
-VERIFY_TOKEN_FILE = Path(".whatsapp_verify_token")
-APP_SECRET_FILE = Path(".whatsapp_app_secret")
-ACCESS_TOKEN_FILE = Path(".whatsapp_access_token")
-ALLOWED_NUMBERS_FILE = Path(".whatsapp_allowed_numbers")
+from paths import secret
+
+VERIFY_TOKEN_FILE = secret(".whatsapp_verify_token")
+APP_SECRET_FILE = secret(".whatsapp_app_secret")
+ACCESS_TOKEN_FILE = secret(".whatsapp_access_token")
+ALLOWED_NUMBERS_FILE = secret(".whatsapp_allowed_numbers")
 
 GRAPH_API_VERSION = "v21.0"
 PHONE_NUMBER_ID = "986207831253626"

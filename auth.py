@@ -1,17 +1,17 @@
 import secrets
 from functools import wraps
-from pathlib import Path
 
 from flask import abort, request, session, redirect, url_for
 
 import roles
+from paths import secret
 
 PERMISSION_MANAGE_USERS = "manage_users"
 PERMISSION_MANAGE_APPOINTMENTS = "manage_appointments"
 PERMISSION_MANAGE_LEADS = "manage_leads"
 PERMISSION_MANAGE_CUSTOMERS = "manage_customers"
 
-SECRET_KEY_FILE = Path(".flask_secret")
+SECRET_KEY_FILE = secret(".flask_secret")
 
 
 # טוענת מפתח session קבוע מקובץ מקומי (יוצרת אותו אם לא קיים), כדי שהפעלה מחדש

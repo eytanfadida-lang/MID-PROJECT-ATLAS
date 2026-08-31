@@ -1,10 +1,4 @@
-import os
 import sys
-
-# מריצים תמיד יחסית לתיקיית הסקריפט עצמו (לא לתיקיית העבודה של הקורא) - חיוני כשמריצים
-# את זה כ-Scheduled Task ב-PythonAnywhere, ששם תיקיית העבודה היא ברירת המחדל (home) ולא הפרויקט
-os.chdir(os.path.dirname(os.path.abspath(__file__)))
-
 from types import SimpleNamespace
 
 from lead_db import LeadDB

@@ -3,12 +3,12 @@ import os
 import secrets
 import threading
 import time
-from pathlib import Path
 
 from flask import Flask, abort, jsonify, redirect, render_template, request, url_for, session
 
 import roles
 import db_context
+from paths import secret
 from arbox_sync import sync_arbox_clients, apply_arbox_users_to_leads
 import google_leads
 import landing_page_leads
@@ -30,7 +30,7 @@ ARBOX_SYNC_INTERVAL_SECONDS = 300
 ARBOX_AUTO_SYNC_ENABLED = True
 
 # טוקן להפעלת סנכרון Arbox דרך HTTP (למשל משירות cron חיצוני, בסביבות אירוח בלי background thread/Scheduled Tasks)
-ARBOX_SYNC_TOKEN_FILE = Path(".arbox_sync_token")
+ARBOX_SYNC_TOKEN_FILE = secret(".arbox_sync_token")
 
 # יוצר/ממגר את כל הטבלאות פעם אחת בזמן import (רץ גם תחת flask run וגם תחת python app.py)
 db_context.bootstrap_databases()
@@ -203,7 +203,7 @@ def landing_page_lead():
     print(f"[Landing page lead] raw payload: {data}", flush=True)
     # שומרים גם לקובץ debug מקומי - print() לא תמיד נראה מיד בלוג של WSGI (buffering),
     # קל יותר פשוט לקרוא את הקובץ הזה ישירות אחרי בדיקה
-    Path(".last_landing_page_payload.json").write_text(
+    secret(".last_landing_page_payload.json").write_text(
         json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8"
     )
 
@@ -247,7 +247,7 @@ def meta_leads_webhook():
 
     payload = request.get_json(silent=True) or {}
     print(f"[Meta leads webhook] raw payload: {payload}", flush=True)
-    Path(".last_meta_payload.json").write_text(
+    secret(".last_meta_payload.json").write_text(
         json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8"
     )
 
@@ -321,7 +321,7 @@ def whatsapp_webhook():
 
     payload = request.get_json(silent=True) or {}
     print(f"[WhatsApp webhook] raw payload: {payload}", flush=True)
-    Path(".last_whatsapp_payload.json").write_text(
+    secret(".last_whatsapp_payload.json").write_text(
         json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8"
     )
 

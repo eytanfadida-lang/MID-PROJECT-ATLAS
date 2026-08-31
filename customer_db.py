@@ -1,7 +1,9 @@
 import os
 import sqlite3
 
-DB_FILE = os.environ.get("DB_FILE", "appointments.db")
+from paths import data
+
+DB_FILE = os.environ.get("DB_FILE", str(data("appointments.db")))
 
 
 # אחראית על החיבור למסד הנתונים ועל יצירת הטבלאות customers ו-invoices - נפרדות מטבלת appointments

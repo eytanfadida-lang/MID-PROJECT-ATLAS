@@ -1,10 +1,11 @@
 import json
-from pathlib import Path
 
 import anthropic
 
-API_KEY_FILE = Path(".anthropic_api_key")
-CONVERSATIONS_FILE = Path(".whatsapp_conversations.json")
+from paths import secret
+
+API_KEY_FILE = secret(".anthropic_api_key")
+CONVERSATIONS_FILE = secret(".whatsapp_conversations.json")
 
 MODEL = "claude-sonnet-5"
 MAX_RESULTS = 20

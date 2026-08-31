@@ -1,7 +1,8 @@
 import re
-from pathlib import Path
 
-TOKEN_FILE = Path(".landing_page_token")
+from paths import secret
+
+TOKEN_FILE = secret(".landing_page_token")
 
 # Elementor Pro שולחת form-encoded עם מפתחות בסגנון PHP array, למשל:
 # fields[phone][id]=phone, fields[phone][type]=tel, fields[phone][value]=0501234567

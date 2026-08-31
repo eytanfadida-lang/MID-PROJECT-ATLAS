@@ -3,16 +3,17 @@ import hmac
 import json
 import time
 from datetime import datetime
-from pathlib import Path
 
 import requests
 
-VERIFY_TOKEN_FILE = Path(".meta_verify_token")
-APP_SECRET_FILE = Path(".meta_app_secret")
-PAGE_ACCESS_TOKEN_FILE = Path(".meta_page_access_token")
-POLL_TOKEN_FILE = Path(".meta_poll_token")
-LAST_POLL_FILE = Path(".meta_last_poll_time")
-PROCESSED_LEADS_FILE = Path(".meta_processed_leads.json")
+from paths import secret
+
+VERIFY_TOKEN_FILE = secret(".meta_verify_token")
+APP_SECRET_FILE = secret(".meta_app_secret")
+PAGE_ACCESS_TOKEN_FILE = secret(".meta_page_access_token")
+POLL_TOKEN_FILE = secret(".meta_poll_token")
+LAST_POLL_FILE = secret(".meta_last_poll_time")
+PROCESSED_LEADS_FILE = secret(".meta_processed_leads.json")
 
 GRAPH_API_VERSION = "v21.0"
 PAGE_ID = "725716050843235"
