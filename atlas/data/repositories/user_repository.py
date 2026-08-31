@@ -2,7 +2,7 @@ import json
 
 import pandas as pd
 
-from password_hashing import hash_password, verify_password
+from atlas.core.password_hashing import hash_password, verify_password
 
 TABLE_NAME = "users"
 

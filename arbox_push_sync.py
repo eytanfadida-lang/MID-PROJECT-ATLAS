@@ -3,7 +3,7 @@ import sys
 
 import requests
 
-from arbox_client import fetch_arbox_users
+from atlas.integrations.arbox.client import fetch_arbox_users
 
 if sys.stdout.encoding != "utf-8":
     sys.stdout.reconfigure(encoding="utf-8")

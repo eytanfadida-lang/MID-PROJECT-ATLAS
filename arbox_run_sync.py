@@ -1,9 +1,9 @@
 import sys
 from types import SimpleNamespace
 
-from lead_db import LeadDB
-from lead_repository import LeadRepository
-from arbox_sync import sync_arbox_clients
+from atlas.data.lead_db import LeadDB
+from atlas.data.repositories.lead_repository import LeadRepository
+from atlas.integrations.arbox.sync import sync_arbox_clients
 
 if sys.stdout.encoding != "utf-8":
     sys.stdout.reconfigure(encoding="utf-8")

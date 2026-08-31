@@ -2,10 +2,10 @@ import datetime
 
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 
-from db_context import get_repos
-from auth import login_required, admin_required, permission_required, PERMISSION_MANAGE_APPOINTMENTS
-from settings import BRANCHES
-from view_utils import to_records
+from atlas.data.context import get_repos
+from atlas.core.auth import login_required, admin_required, permission_required, PERMISSION_MANAGE_APPOINTMENTS
+from atlas.settings import BRANCHES
+from atlas.core.view_utils import to_records
 
 bp = Blueprint("appointments", __name__, url_prefix="/appointments")
 

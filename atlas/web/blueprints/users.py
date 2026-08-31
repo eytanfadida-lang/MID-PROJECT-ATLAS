@@ -2,10 +2,10 @@ import sqlite3
 
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 
-from db_context import get_repos
-from auth import admin_required, current_user
-from view_utils import to_records
-import roles
+from atlas.data.context import get_repos
+from atlas.core.auth import admin_required, current_user
+from atlas.core.view_utils import to_records
+from atlas.core import roles
 
 bp = Blueprint("users", __name__, url_prefix="/users")
 

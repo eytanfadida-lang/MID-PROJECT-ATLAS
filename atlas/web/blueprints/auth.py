@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash
 
-from db_context import get_repos
+from atlas.data.context import get_repos
 
 bp = Blueprint("auth", __name__)
 

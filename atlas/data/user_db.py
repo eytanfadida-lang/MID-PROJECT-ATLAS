@@ -1,7 +1,7 @@
 import os
 import sqlite3
 
-from paths import data
+from atlas.paths import data
 
 DB_FILE = os.environ.get("DB_FILE", str(data("appointments.db")))
 

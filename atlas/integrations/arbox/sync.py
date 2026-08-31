@@ -1,4 +1,4 @@
-from arbox_client import fetch_arbox_users, load_arbox_api_key
+from atlas.integrations.arbox.client import fetch_arbox_users, load_arbox_api_key
 
 ARBOX_CONVERTED_STATUS = "הפך ללקוח"
 

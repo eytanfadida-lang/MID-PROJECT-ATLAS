@@ -3,7 +3,7 @@ import hmac
 
 import requests
 
-from paths import secret
+from atlas.paths import secret
 
 VERIFY_TOKEN_FILE = secret(".whatsapp_verify_token")
 APP_SECRET_FILE = secret(".whatsapp_app_secret")

@@ -2,7 +2,7 @@ import json
 
 import anthropic
 
-from paths import secret
+from atlas.paths import secret
 
 API_KEY_FILE = secret(".anthropic_api_key")
 CONVERSATIONS_FILE = secret(".whatsapp_conversations.json")

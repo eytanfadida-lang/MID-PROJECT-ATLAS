@@ -1,6 +1,6 @@
 import re
 
-from paths import secret
+from atlas.paths import secret
 
 TOKEN_FILE = secret(".landing_page_token")
 

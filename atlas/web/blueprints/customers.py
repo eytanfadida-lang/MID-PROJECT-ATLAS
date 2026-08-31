@@ -1,9 +1,9 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 
-from db_context import get_repos
-from auth import login_required, admin_required, permission_required, PERMISSION_MANAGE_CUSTOMERS
-from settings import MEMBERSHIP_PLANS
-from view_utils import to_records
+from atlas.data.context import get_repos
+from atlas.core.auth import login_required, admin_required, permission_required, PERMISSION_MANAGE_CUSTOMERS
+from atlas.settings import MEMBERSHIP_PLANS
+from atlas.core.view_utils import to_records
 
 bp = Blueprint("customers", __name__, url_prefix="/customers")
 

@@ -2,7 +2,7 @@ import json
 
 import requests
 
-from paths import secret
+from atlas.paths import secret
 
 API_BASE_URL = "https://arboxserver.arboxapp.com/api/public/v3"
 API_KEY_FILE = secret(".arbox_api_key")

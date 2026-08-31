@@ -3,8 +3,8 @@ from functools import wraps
 
 from flask import abort, request, session, redirect, url_for
 
-import roles
-from paths import secret
+from atlas.core import roles
+from atlas.paths import secret
 
 PERMISSION_MANAGE_USERS = "manage_users"
 PERMISSION_MANAGE_APPOINTMENTS = "manage_appointments"

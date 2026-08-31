@@ -3,12 +3,12 @@ import sqlite3
 
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session, jsonify
 
-from db_context import get_repos
-from auth import login_required, admin_required, permission_required, PERMISSION_MANAGE_LEADS
-from settings import CHANNELS, LEAD_UPDATABLE_FIELDS, CONVERTED_STATUS, BRANCHES
-from lead_bulk_import import import_leads_from_file
-from arbox_sync import apply_arbox_users_to_leads
-from view_utils import to_records
+from atlas.data.context import get_repos
+from atlas.core.auth import login_required, admin_required, permission_required, PERMISSION_MANAGE_LEADS
+from atlas.settings import CHANNELS, LEAD_UPDATABLE_FIELDS, CONVERTED_STATUS, BRANCHES
+from atlas.services.lead_bulk_import import import_leads_from_file
+from atlas.integrations.arbox.sync import apply_arbox_users_to_leads
+from atlas.core.view_utils import to_records
 
 DEFAULT_STATUS_COLOR = "#95a5a6"
 LEADS_PAGE_SIZE = 50

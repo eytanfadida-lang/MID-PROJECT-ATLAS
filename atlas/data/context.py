@@ -3,18 +3,18 @@ from types import SimpleNamespace
 
 from flask import g
 
-from db import AppointmentDB, DB_FILE
-from appointment_repository import AppointmentRepository
-from availability import AvailabilityService
-from lead_db import LeadDB
-from lead_repository import LeadRepository
-from lead_status_repository import LeadStatusRepository
-from customer_db import CustomerDB
-from customer_repository import CustomerRepository
-from invoice_repository import InvoiceRepository
-from user_db import UserDB
-from user_repository import UserRepository
-from id_sequence import IdSequence
+from atlas.data.db import AppointmentDB, DB_FILE
+from atlas.data.repositories.appointment_repository import AppointmentRepository
+from atlas.services.availability import AvailabilityService
+from atlas.data.lead_db import LeadDB
+from atlas.data.repositories.lead_repository import LeadRepository
+from atlas.data.repositories.lead_status_repository import LeadStatusRepository
+from atlas.data.customer_db import CustomerDB
+from atlas.data.repositories.customer_repository import CustomerRepository
+from atlas.data.repositories.invoice_repository import InvoiceRepository
+from atlas.data.user_db import UserDB
+from atlas.data.repositories.user_repository import UserRepository
+from atlas.data.id_sequence import IdSequence
 
 
 # מריצה חד-פעמית באתחול (import-time של app.py): יוצרת/ממגרת את כל הטבלאות,

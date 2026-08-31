@@ -1,4 +1,4 @@
-from paths import secret
+from atlas.paths import secret
 
 WEBHOOK_KEY_FILE = secret(".google_leads_webhook_key")
 
