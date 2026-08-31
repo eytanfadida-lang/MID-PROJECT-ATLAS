@@ -15,13 +15,15 @@ from atlas.data.repositories.invoice_repository import InvoiceRepository
 from atlas.data.user_db import UserDB
 from atlas.data.repositories.user_repository import UserRepository
 from atlas.data.id_sequence import IdSequence
+from atlas.data.whatsapp_state_db import WhatsAppStateDB
+from atlas.data.repositories.whatsapp_state_repository import WhatsAppStateRepository
 
 
 # מריצה חד-פעמית באתחול (import-time של app.py): יוצרת/ממגרת את כל הטבלאות,
 # באמצעות אותה לוגיקת יצירה שכל *DB Class כבר מכיל, בלי לשנות אותם.
 # בטוחה להרצה חוזרת (idempotent) - כל שלב הוא CREATE TABLE IF NOT EXISTS / ALTER מותנה / seed מותנה
 def bootstrap_databases():
-    for db_class in (AppointmentDB, CustomerDB, LeadDB, UserDB):
+    for db_class in (AppointmentDB, CustomerDB, LeadDB, UserDB, WhatsAppStateDB):
         instance = db_class()
         instance.close()
 
@@ -52,6 +54,7 @@ def get_repos():
             invoices=InvoiceRepository(conn),
             users=UserRepository(conn),
             id_sequence=IdSequence(conn),
+            whatsapp_state=WhatsAppStateRepository(conn),
         )
     return g.repos
 
