@@ -234,6 +234,8 @@ arbox_location_map.json
 
 # WhatsApp CRM chatbot secrets
 .anthropic_api_key
+.gemini_api_key
+.groq_api_key
 .whatsapp_verify_token
 .whatsapp_app_secret
 .whatsapp_access_token
