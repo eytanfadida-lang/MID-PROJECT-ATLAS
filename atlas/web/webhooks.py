@@ -270,3 +270,57 @@ def whatsapp_webhook():
 
     whatsapp_bot.send_text_message(bot_config, from_number, reply_text)
     return jsonify({"status": "ok"})
+
+
+# מקבלת הודעות וואטסאפ נכנסות מבוט הלקוחות (מספר נפרד, אפליקציית מטא נפרדת) - כמו
+# whatsapp_webhook, אבל בלי רשימת מורשים (זה בוט פונה-לקוחות, לא כלי פנימי) ובלי
+# customer_assistant עדיין (המודול הזה טרם נבנה - כרגע תגובה קבועה בלבד, שלב ביניים
+# שמאפשר לבדוק את כל השרשרת הטכנית - webhook, חתימה, דה-דופליקציה - לפני בניית ה-AI עצמו)
+@bp.route("/whatsapp-customer-webhook", methods=["GET", "POST"])
+def whatsapp_customer_webhook():
+    bot_config = whatsapp_bot.CUSTOMER_BOT
+
+    if request.method == "GET":
+        mode = request.args.get("hub.mode")
+        token = request.args.get("hub.verify_token", "")
+        challenge = request.args.get("hub.challenge", "")
+        expected_token = whatsapp_bot.load_verify_token(bot_config)
+        if mode == "subscribe" and expected_token and secrets.compare_digest(token, expected_token):
+            return challenge, 200
+        abort(403)
+
+    signature = request.headers.get("X-Hub-Signature-256", "")
+    if not whatsapp_bot.verify_signature(bot_config, request.get_data(), signature):
+        abort(403)
+
+    payload = request.get_json(silent=True) or {}
+    print(f"[WhatsApp customer webhook] raw payload: {payload}", flush=True)
+    secret(".last_whatsapp_customer_payload.json").write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+
+    from_number, message_id, message_type, text = whatsapp_bot.extract_incoming_event(payload)
+    if not from_number:
+        return jsonify({"status": "ignored"})
+
+    repos = db_context.get_repos()
+
+    if message_id and repos.whatsapp_state.has_processed(message_id):
+        print(f"[WhatsApp customer webhook] duplicate delivery ignored: {message_id}", flush=True)
+        return jsonify({"status": "ignored", "reason": "duplicate"})
+    if message_id:
+        repos.whatsapp_state.mark_processed(message_id)
+
+    if message_type != "text":
+        whatsapp_bot.send_text_message(
+            bot_config, from_number, "אני יכול לקרוא כרגע רק הודעות טקסט - אפשר לכתוב לי? 🙏"
+        )
+        return jsonify({"status": "ignored", "reason": "non_text"})
+
+    # TODO: להחליף בקריאה ל-customer_assistant.answer_question(...) כשהמודול ייבנה
+    whatsapp_bot.send_text_message(
+        bot_config,
+        from_number,
+        "תודה על פנייתך לסטודיו של אפרת רוזנברג! קיבלנו את ההודעה שלך ונחזור אליך בהקדם 💪",
+    )
+    return jsonify({"status": "ok"})

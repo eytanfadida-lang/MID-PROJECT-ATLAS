@@ -28,6 +28,13 @@ ADMIN_BOT = WhatsAppBotConfig(
     phone_number_id="986207831253626",
 )
 
+CUSTOMER_BOT = WhatsAppBotConfig(
+    verify_token_file=secret(".whatsapp_customer_verify_token"),
+    app_secret_file=secret(".whatsapp_customer_app_secret"),
+    access_token_file=secret(".whatsapp_customer_access_token"),
+    phone_number_id="1220667597806529",
+)
+
 
 def _read_local_file(path):
     if not path.exists():
