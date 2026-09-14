@@ -49,6 +49,10 @@
         </select>
         <button type="submit" class="btn btn-secondary">נתב לנבחרים</button>
     </form>
+    <form method="get" action="{{ url_for('leads.bulk_export') }}" id="bulk-export-form">
+        <button type="submit" name="format" value="csv" class="btn btn-secondary">ייצוא ל-CSV</button>
+        <button type="submit" name="format" value="xlsx" class="btn btn-secondary">ייצוא ל-Excel</button>
+    </form>
     {% if current_user.role == ROLE_ADMIN %}
     <form method="post" action="{{ url_for('leads.bulk_delete') }}" id="bulk-delete-form"
           onsubmit="return confirm('האם אתה בטוח שברצונך למחוק את הלידים שנבחרו?');">
@@ -187,6 +191,7 @@
     const bulkForms = [
         document.getElementById('bulk-status-form'),
         document.getElementById('bulk-assign-form'),
+        document.getElementById('bulk-export-form'),
         document.getElementById('bulk-delete-form'),
     ].filter(Boolean);
 

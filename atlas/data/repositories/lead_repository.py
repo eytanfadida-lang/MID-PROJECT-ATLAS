@@ -130,6 +130,17 @@ class LeadRepository:
     def get_all(self):
         return pd.read_sql_query(f"SELECT * FROM {TABLE_NAME} ORDER BY id DESC", self.conn)
 
+    # מחזירה לידים לפי רשימת מזהים (בחירה מרובה, למשל לייצוא לקובץ)
+    def get_by_ids(self, lead_ids):
+        if not lead_ids:
+            return pd.read_sql_query(f"SELECT * FROM {TABLE_NAME} WHERE 0", self.conn)
+        placeholders = ",".join("?" for _ in lead_ids)
+        return pd.read_sql_query(
+            f"SELECT * FROM {TABLE_NAME} WHERE id IN ({placeholders}) ORDER BY id DESC",
+            self.conn,
+            params=tuple(lead_ids),
+        )
+
     # מחזירה את הלידים לפי סטטוס נתון
     def get_by_status(self, status):
         return pd.read_sql_query(

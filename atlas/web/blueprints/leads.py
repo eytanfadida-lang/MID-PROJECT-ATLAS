@@ -1,17 +1,34 @@
+import io
 import json
 import sqlite3
 
-from flask import Blueprint, render_template, request, redirect, url_for, flash, session, jsonify
+from flask import Blueprint, render_template, request, redirect, url_for, flash, session, jsonify, send_file
 
 from atlas.data.context import get_repos
 from atlas.core.auth import login_required, admin_required, permission_required, PERMISSION_MANAGE_LEADS
 from atlas.settings import CHANNELS, LEAD_UPDATABLE_FIELDS, CONVERTED_STATUS, BRANCHES
 from atlas.services.lead_bulk_import import import_leads_from_file
 from atlas.integrations.arbox.sync import apply_arbox_users_to_leads
-from atlas.core.view_utils import to_records
+from atlas.core.view_utils import to_records, format_lead_datetime
 
 DEFAULT_STATUS_COLOR = "#95a5a6"
 LEADS_PAGE_SIZE = 50
+
+# סדר ושמות העמודות בקובץ המיוצא (CSV/Excel) - תואם לעמודות המוצגות בטבלה במסך
+EXPORT_COLUMN_LABELS = {
+    "id": "מזהה",
+    "created_datetime_stamp": "תאריך יצירה",
+    "status": "סטטוס",
+    "assigned_user": "מנהל לקוח",
+    "last_updated_datetime_stamp": "עדכון אחרון",
+    "channel": "ערוץ",
+    "full_name": "שם",
+    "phone": "טלפון",
+    "notes": "הערות",
+    "routings_count": "ניתובים",
+    "sms_count": "מספר SMS",
+    "branch": "סניף",
+}
 
 bp = Blueprint("leads", __name__, url_prefix="/leads")
 
@@ -315,6 +332,38 @@ def bulk_assign():
         flash(f"{len(lead_ids)} לידים נותבו בהצלחה.", "success")
 
     return redirect(url_for("leads.list_leads"))
+
+
+@bp.route("/bulk/export")
+@login_required
+def bulk_export():
+    lead_ids = [int(value) for value in request.args.getlist("lead_ids") if value.strip().isdigit()]
+    export_format = request.args.get("format", "csv")
+
+    if not lead_ids:
+        flash("לא נבחרו לידים.", "error")
+        return redirect(url_for("leads.list_leads"))
+
+    df = get_repos().leads.get_by_ids(lead_ids)
+    df["created_datetime_stamp"] = df["created_datetime_stamp"].apply(format_lead_datetime)
+    df["last_updated_datetime_stamp"] = df["last_updated_datetime_stamp"].apply(format_lead_datetime)
+    df = df[list(EXPORT_COLUMN_LABELS.keys())].rename(columns=EXPORT_COLUMN_LABELS)
+
+    if export_format == "xlsx":
+        buffer = io.BytesIO()
+        df.to_excel(buffer, index=False, engine="openpyxl")
+        buffer.seek(0)
+        return send_file(
+            buffer,
+            as_attachment=True,
+            download_name="leads_export.xlsx",
+            mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+
+    buffer = io.BytesIO()
+    df.to_csv(buffer, index=False, encoding="utf-8-sig")
+    buffer.seek(0)
+    return send_file(buffer, as_attachment=True, download_name="leads_export.csv", mimetype="text/csv")
 
 
 @bp.route("/bulk/delete", methods=["POST"])
