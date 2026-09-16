@@ -25,7 +25,9 @@ arbox_location_map.json
 .whatsapp_customer_verify_token
 .whatsapp_customer_app_secret
 .whatsapp_customer_access_token
+.whatsapp_customer_2fa_pin
 .last_whatsapp_customer_payload.json
+.whatsapp_customer_conversations.json
 appointments.db
 appointments_backup_*.db
 

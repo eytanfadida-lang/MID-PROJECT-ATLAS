@@ -11,6 +11,8 @@ from atlas.integrations import landing_page as landing_page_leads
 from atlas.integrations.meta import lead_ads as meta_leads
 from atlas.integrations.whatsapp import bot as whatsapp_bot
 from atlas.integrations.whatsapp import admin_assistant as crm_assistant
+from atlas.integrations.whatsapp import customer_assistant
+from atlas.services.phone_utils import normalize_phone
 from atlas.settings import CHANNELS
 
 # כל נקודות הקצה החיצוניות (webhooks + cron endpoints) שאין להן session/login - כל אחת
@@ -273,9 +275,7 @@ def whatsapp_webhook():
 
 
 # מקבלת הודעות וואטסאפ נכנסות מבוט הלקוחות (מספר נפרד, אפליקציית מטא נפרדת) - כמו
-# whatsapp_webhook, אבל בלי רשימת מורשים (זה בוט פונה-לקוחות, לא כלי פנימי) ובלי
-# customer_assistant עדיין (המודול הזה טרם נבנה - כרגע תגובה קבועה בלבד, שלב ביניים
-# שמאפשר לבדוק את כל השרשרת הטכנית - webhook, חתימה, דה-דופליקציה - לפני בניית ה-AI עצמו)
+# whatsapp_webhook, אבל בלי רשימת מורשים (זה בוט פונה-לקוחות, לא כלי פנימי)
 @bp.route("/whatsapp-customer-webhook", methods=["GET", "POST"])
 def whatsapp_customer_webhook():
     bot_config = whatsapp_bot.CUSTOMER_BOT
@@ -317,10 +317,12 @@ def whatsapp_customer_webhook():
         )
         return jsonify({"status": "ignored", "reason": "non_text"})
 
-    # TODO: להחליף בקריאה ל-customer_assistant.answer_question(...) כשהמודול ייבנה
-    whatsapp_bot.send_text_message(
-        bot_config,
-        from_number,
-        "תודה על פנייתך לסטודיו של אפרת רוזנברג! קיבלנו את ההודעה שלך ונחזור אליך בהקדם 💪",
-    )
+    caller_phone = normalize_phone(from_number)
+    try:
+        reply_text = customer_assistant.answer_question(repos, caller_phone, text)
+    except Exception as exc:
+        print(f"[WhatsApp customer webhook] assistant failed: {exc}", flush=True)
+        reply_text = "אירעה שגיאה בעיבוד הבקשה, נסה שוב מאוחר יותר."
+
+    whatsapp_bot.send_text_message(bot_config, from_number, reply_text)
     return jsonify({"status": "ok"})
