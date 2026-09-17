@@ -78,6 +78,8 @@ SYSTEM_PROMPT_TEMPLATE = """את/ה העוזר/ת הדיגיטלי/ת של הע�
   request_human_callback ואמרי שהצוות יחזור לתאם.
 - אם ללקוח שאין אצלנו במערכת יש עניין שדורש חזרה אליו (למשל, מתלהב ורוצה שיחה חוזרת/הרשמה),
   אפשר להשתמש ב-leave_my_details כדי לשמור את השם והטלפון שלו כליד, ואז request_human_callback.
+- לשאלות על מנוי (תוקף, אם פעיל) - השתמשי ב-get_my_membership. אם found=false, זה אומר שהמספר
+  לא נמצא במערכת המנויים (Arbox) - אין להסיק מזה שהמנוי לא פעיל, פשוט אין רישום תואם.
 
 ## קביעת תורים
 - לפני קביעה, ודא שיש לך: שם מלא, תאריך, שעה וסניף. אם חסר משהו - שאלי.
@@ -142,6 +144,11 @@ TOOL_DECLARATIONS = [
     {
         "name": "get_my_appointments",
         "description": "מחזיר את התור/הפרטים הרשומים של הלקוח שכותב כרגע (אם קיימים במערכת).",
+        "parameters": {"type": "object", "properties": {}},
+    },
+    {
+        "name": "get_my_membership",
+        "description": "מחזיר את סטטוס המנוי (Arbox) של הלקוח שכותב כרגע - האם פעיל ותאריכי תוקף.",
         "parameters": {"type": "object", "properties": {}},
     },
     {
@@ -211,6 +218,17 @@ def _build_tool_executors(repos, caller_phone, last_user_text):
         records = df.head(5).to_dict("records")
         return {"found": True, "results": records}
 
+    def get_my_membership():
+        member = repos.arbox_member_cache.get_by_phone(caller_phone)
+        if member is None:
+            return {"found": False}
+        return {
+            "found": True,
+            "active": member["active"],
+            "membership_start_date": member["membership_start_date"],
+            "membership_end_date": member["membership_end_date"],
+        }
+
     def get_available_days():
         return {"available_days": repos.availability.get_available_days()}
 
@@ -264,6 +282,7 @@ def _build_tool_executors(repos, caller_phone, last_user_text):
 
     return {
         "get_my_appointments": get_my_appointments,
+        "get_my_membership": get_my_membership,
         "get_available_days": get_available_days,
         "get_available_hours": get_available_hours,
         "book_appointment": book_appointment,

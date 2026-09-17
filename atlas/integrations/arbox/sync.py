@@ -40,7 +40,8 @@ def apply_arbox_users_to_leads(repos, arbox_users):
     }
 
 
-# מושכת מ-Arbox את כל מי שהפך ללקוח (only_clients=1, active=1) ומעדכנת לידים קיימים בהתאם.
+# מושכת מ-Arbox את כל מי שהוא לקוח (only_clients=1, כולל לא-פעילים) ומעדכנת לידים קיימים
+# בהתאם, וכן מרעננת את קאש המנויים המקומי (ראו arbox_member_cache_repository.py, §3.8).
 # משתמשת ב-API key מקומי, ולכן דורשת גישת רשת יוצאת ל-Arbox (מתאים להרצה מקומית/מהמחשב שלך,
 # לא בהכרח מכל סביבת אירוח)
 def sync_arbox_clients(repos):
@@ -48,5 +49,6 @@ def sync_arbox_clients(repos):
     if not api_key:
         return {"skipped": True, "reason": "missing_api_key"}
 
-    arbox_users = fetch_arbox_users(api_key, only_clients="1", active="1")
+    arbox_users = fetch_arbox_users(api_key, only_clients="1")
+    repos.arbox_member_cache.replace_all(arbox_users)
     return apply_arbox_users_to_leads(repos, arbox_users)

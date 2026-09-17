@@ -18,7 +18,9 @@ def main():
     target_url = os.environ["ARBOX_SYNC_TARGET_URL"]
     token = os.environ["ARBOX_SYNC_TOKEN"]
 
-    arbox_users = fetch_arbox_users(api_key, only_clients="1", active="1")
+    # לא מסננים active="1" - כדי שגם מנויים שפגו יגיעו עם active=0, ותהיה לבוט הלקוחות
+    # תשובה אמיתית ("המנוי שלך הסתיים בתאריך X") במקום "לא נמצא במערכת", ראו §3.8 בתוכנית
+    arbox_users = fetch_arbox_users(api_key, only_clients="1")
     print(f"Fetched {len(arbox_users)} clients from Arbox.")
 
     response = requests.post(

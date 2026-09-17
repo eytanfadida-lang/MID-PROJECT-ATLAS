@@ -59,7 +59,9 @@ def receive_arbox_sync_data():
     if not isinstance(arbox_users, list):
         abort(400)
 
-    result = apply_arbox_users_to_leads(db_context.get_repos(), arbox_users)
+    repos = db_context.get_repos()
+    repos.arbox_member_cache.replace_all(arbox_users)
+    result = apply_arbox_users_to_leads(repos, arbox_users)
     return jsonify(result)
 
 
