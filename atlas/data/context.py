@@ -21,6 +21,8 @@ from atlas.data.bot_content_gap_db import BotContentGapDB
 from atlas.data.repositories.bot_content_gap_repository import BotContentGapRepository
 from atlas.data.arbox_member_cache_db import ArboxMemberCacheDB
 from atlas.data.repositories.arbox_member_cache_repository import ArboxMemberCacheRepository
+from atlas.data.arbox_class_cache_db import ArboxClassCacheDB
+from atlas.data.repositories.arbox_class_cache_repository import ArboxClassCacheRepository
 
 
 # מריצה חד-פעמית באתחול (import-time של app.py): יוצרת/ממגרת את כל הטבלאות,
@@ -28,7 +30,8 @@ from atlas.data.repositories.arbox_member_cache_repository import ArboxMemberCac
 # בטוחה להרצה חוזרת (idempotent) - כל שלב הוא CREATE TABLE IF NOT EXISTS / ALTER מותנה / seed מותנה
 def bootstrap_databases():
     for db_class in (
-        AppointmentDB, CustomerDB, LeadDB, UserDB, WhatsAppStateDB, BotContentGapDB, ArboxMemberCacheDB,
+        AppointmentDB, CustomerDB, LeadDB, UserDB, WhatsAppStateDB, BotContentGapDB,
+        ArboxMemberCacheDB, ArboxClassCacheDB,
     ):
         instance = db_class()
         instance.close()
@@ -63,6 +66,7 @@ def get_repos():
             whatsapp_state=WhatsAppStateRepository(conn),
             bot_content_gaps=BotContentGapRepository(conn),
             arbox_member_cache=ArboxMemberCacheRepository(conn),
+            arbox_class_cache=ArboxClassCacheRepository(conn),
         )
     return g.repos
 

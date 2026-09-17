@@ -80,6 +80,8 @@ SYSTEM_PROMPT_TEMPLATE = """את/ה העוזר/ת הדיגיטלי/ת של הע�
   אפשר להשתמש ב-leave_my_details כדי לשמור את השם והטלפון שלו כליד, ואז request_human_callback.
 - לשאלות על מנוי (תוקף, אם פעיל) - השתמשי ב-get_my_membership. אם found=false, זה אומר שהמספר
   לא נמצא במערכת המנויים (Arbox) - אין להסיק מזה שהמנוי לא פעיל, פשוט אין רישום תואם.
+- לשאלות על שיעורים קבוצתיים (אילו שיעורים יש, באיזו שעה, איזו מדריכה) - השתמשי ב-get_class_schedule.
+  אין מידע על כמה מקומות נשארו בשיעור - אל תמציאי מספר, ואם נשאלת, אמרי שאפשר להירשם ולבדוק בפועל.
 
 ## קביעת תורים
 - לפני קביעה, ודא שיש לך: שם מלא, תאריך, שעה וסניף. אם חסר משהו - שאלי.
@@ -150,6 +152,18 @@ TOOL_DECLARATIONS = [
         "name": "get_my_membership",
         "description": "מחזיר את סטטוס המנוי (Arbox) של הלקוח שכותב כרגע - האם פעיל ותאריכי תוקף.",
         "parameters": {"type": "object", "properties": {}},
+    },
+    {
+        "name": "get_class_schedule",
+        "description": "מחזיר את לוח השיעורים הקבוצתיים האמיתי מ-Arbox לתאריך נתון - שם שיעור, "
+        "שעה, סניף, מדריכה ומספר משתתפים מקסימלי (לא כמה מקומות נשארו).",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "date": {"type": "string", "description": "תאריך בפורמט YYYY-MM-DD"},
+            },
+            "required": ["date"],
+        },
     },
     {
         "name": "get_available_days",
@@ -229,6 +243,9 @@ def _build_tool_executors(repos, caller_phone, last_user_text):
             "membership_end_date": member["membership_end_date"],
         }
 
+    def get_class_schedule(date):
+        return {"date": date, "classes": repos.arbox_class_cache.get_by_date(date)}
+
     def get_available_days():
         return {"available_days": repos.availability.get_available_days()}
 
@@ -283,6 +300,7 @@ def _build_tool_executors(repos, caller_phone, last_user_text):
     return {
         "get_my_appointments": get_my_appointments,
         "get_my_membership": get_my_membership,
+        "get_class_schedule": get_class_schedule,
         "get_available_days": get_available_days,
         "get_available_hours": get_available_hours,
         "book_appointment": book_appointment,

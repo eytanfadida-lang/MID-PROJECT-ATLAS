@@ -1,4 +1,8 @@
-from atlas.integrations.arbox.client import fetch_arbox_users, load_arbox_api_key
+import datetime
+
+from atlas.integrations.arbox.client import fetch_arbox_users, fetch_arbox_schedule, load_arbox_api_key
+
+SCHEDULE_DAYS_AHEAD = 10
 
 ARBOX_CONVERTED_STATUS = "הפך ללקוח"
 
@@ -51,4 +55,11 @@ def sync_arbox_clients(repos):
 
     arbox_users = fetch_arbox_users(api_key, only_clients="1")
     repos.arbox_member_cache.replace_all(arbox_users)
+
+    today = datetime.date.today()
+    from_date = today.isoformat()
+    to_date = (today + datetime.timedelta(days=SCHEDULE_DAYS_AHEAD)).isoformat()
+    schedule = fetch_arbox_schedule(api_key, from_date, to_date)
+    repos.arbox_class_cache.replace_range(from_date, to_date, schedule)
+
     return apply_arbox_users_to_leads(repos, arbox_users)

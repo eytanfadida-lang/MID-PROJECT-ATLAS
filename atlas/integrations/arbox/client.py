@@ -49,3 +49,25 @@ def fetch_arbox_users(api_key, **filters):
             break
         page += 1
     return users
+
+
+# מושכת את לוח השיעורים האמיתי מ-Arbox (עם pagination) בין שני תאריכים - שם שיעור,
+# תאריך/שעה, סניף, מדריך, מקסימום משתתפים. אין ב-Arbox endpoint שחושף כמה מקומות
+# נותרו בפועל (רק את המקסימום) - ראה ה"שאלה פתוחה ל-Arbox support" בתוכנית
+def fetch_arbox_schedule(api_key, from_date, to_date):
+    sessions = []
+    page = 1
+    while True:
+        response = requests.get(
+            f"{API_BASE_URL}/schedule",
+            headers={"Accept": "application/json", "api-key": api_key},
+            params={"from_date": from_date, "to_date": to_date, "limit": PAGE_LIMIT, "page": page},
+            timeout=30,
+        )
+        response.raise_for_status()
+        page_sessions = response.json().get("data", []) or []
+        sessions.extend(page_sessions)
+        if len(page_sessions) < PAGE_LIMIT:
+            break
+        page += 1
+    return sessions

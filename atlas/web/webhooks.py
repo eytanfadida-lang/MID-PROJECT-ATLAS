@@ -61,6 +61,13 @@ def receive_arbox_sync_data():
 
     repos = db_context.get_repos()
     repos.arbox_member_cache.replace_all(arbox_users)
+
+    schedule = payload.get("schedule")
+    from_date = payload.get("schedule_from_date")
+    to_date = payload.get("schedule_to_date")
+    if isinstance(schedule, list) and from_date and to_date:
+        repos.arbox_class_cache.replace_range(from_date, to_date, schedule)
+
     result = apply_arbox_users_to_leads(repos, arbox_users)
     return jsonify(result)
 
