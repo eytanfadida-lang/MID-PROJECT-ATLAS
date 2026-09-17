@@ -27,6 +27,13 @@ class AppointmentDB:
             )
         """)
         self._ensure_customer_id_column(conn)
+        # מונעת שני תורים על אותו תאריך+שעה גם במקרה של שתי בקשות מקבילות (race condition) -
+        # ראו WHATSAPP_CUSTOMER_BOT_PLAN.md סעיף 3.7. תורים ללא תאריך/שעה (לקוח שהומר מליד
+        # בלי תור משויך עדיין) לא מושפעים - SQLite מתייחס לכמה NULL כערכים נבדלים ב-UNIQUE
+        conn.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_appointments_unique_slot "
+            "ON appointments(appointment_date, appointment_time)"
+        )
         return conn
 
     # מיגרציה קלה: מוסיפה את עמודת customer_id (מפתח זר ללקוח) אם עוד לא קיימת -

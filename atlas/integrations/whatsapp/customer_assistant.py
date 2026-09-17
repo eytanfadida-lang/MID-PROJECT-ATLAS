@@ -74,10 +74,16 @@ SYSTEM_PROMPT_TEMPLATE = """את/ה העוזר/ת הדיגיטלי/ת של הע�
 ## מה מותר לך לעשות
 יש לך כלים לשליפת מידע אמיתי מהמערכת. **תמיד השתמש בהם** ואל תנחש לעולם.
 - הכלים מחזירים אך ורק את המידע של הלקוח שכותב לך כרגע. זה מובנה במערכת - אין דרך לבדוק מספר אחר.
-- קביעת תורים חדשים, ביטולים ושינויים עדיין לא מתבצעים דרך הבוט - לבקשות כאלה, הפעילי
-  את request_human_callback ואמרי שהצוות יחזור לתאם.
+- ביטול או שינוי של תור קיים עדיין לא מתבצעים דרך הבוט - לבקשות כאלה, הפעילי את
+  request_human_callback ואמרי שהצוות יחזור לתאם.
 - אם ללקוח שאין אצלנו במערכת יש עניין שדורש חזרה אליו (למשל, מתלהב ורוצה שיחה חוזרת/הרשמה),
   אפשר להשתמש ב-leave_my_details כדי לשמור את השם והטלפון שלו כליד, ואז request_human_callback.
+
+## קביעת תורים
+- לפני קביעה, ודא שיש לך: שם מלא, תאריך, שעה וסניף. אם חסר משהו - שאלי.
+- הצעי רק תאריכים/שעות שחזרו מ-get_available_days / get_available_hours. אל תמציאי זמינות.
+- אחרי הפעלת book_appointment, אם success=false (המשבצת נתפסה ממש כרגע) - הציעי לבחור זמן אחר.
+- אחרי קביעה מוצלחת, חזרי על הפרטים המלאים לאישור (תאריך, שעה, סניף).
 
 ## כללים קשיחים - אין מהם חריגה
 1. לעולם אל תמציא מידע שלא מופיע במידע העסקי למטה או שלא חזר מכלי.
@@ -139,6 +145,37 @@ TOOL_DECLARATIONS = [
         "parameters": {"type": "object", "properties": {}},
     },
     {
+        "name": "get_available_days",
+        "description": "מחזיר תאריכים קרובים שיש בהם לפחות שעה פנויה לתור (עד שבוע קדימה, לא בימי שישי/שבת).",
+        "parameters": {"type": "object", "properties": {}},
+    },
+    {
+        "name": "get_available_hours",
+        "description": "מחזיר שעות פנויות לתור בתאריך נתון.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "date": {"type": "string", "description": "תאריך בפורמט YYYY-MM-DD"},
+            },
+            "required": ["date"],
+        },
+    },
+    {
+        "name": "book_appointment",
+        "description": "קובע תור חדש ללקוח שכותב כרגע. יש לוודא תאריך ושעה פנויים "
+        "(get_available_hours) ולקבל שם וסניף מהלקוח לפני הפעלה.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "full_name": {"type": "string", "description": "השם המלא של הלקוח"},
+                "date": {"type": "string", "description": "תאריך בפורמט YYYY-MM-DD"},
+                "time": {"type": "string", "description": "שעה בפורמט HH:MM"},
+                "branch": {"type": "string", "description": "שם הסניף - מוצקין או טירת כרמל"},
+            },
+            "required": ["full_name", "date", "time", "branch"],
+        },
+    },
+    {
         "name": "leave_my_details",
         "description": "שומר את השם של הלקוח שכותב כרגע כליד חדש במערכת, לצורך חזרה אליו. "
         "יש להשתמש רק אחרי שהלקוח נתן את שמו במפורש בשיחה.",
@@ -174,6 +211,35 @@ def _build_tool_executors(repos, caller_phone, last_user_text):
         records = df.head(5).to_dict("records")
         return {"found": True, "results": records}
 
+    def get_available_days():
+        return {"available_days": repos.availability.get_available_days()}
+
+    def get_available_hours(date):
+        return {"date": date, "available_hours": repos.availability.get_available_hours(date)}
+
+    def book_appointment(full_name, date, time, branch):
+        if branch not in BRANCHES:
+            return {"error": f"סניף לא מוכר: {branch}. סניפים קיימים: {BRANCHES}"}
+        try:
+            appointment_date = datetime.datetime.strptime(date, "%Y-%m-%d")
+            appointment_time = datetime.datetime.strptime(time, "%H:%M")
+        except ValueError:
+            return {"error": "תאריך או שעה בפורמט לא תקין"}
+
+        id_client = str(repos.id_sequence.next_id())
+        success = repos.appointments.create({
+            "id_client": id_client,
+            "name_of_client": full_name,
+            "phone_client": caller_phone,
+            "name_of_store": branch,
+            "appointment_date": appointment_date,
+            "appointment_time": appointment_time,
+            "created_datetime_stamp": datetime.datetime.now(),
+        })
+        if not success:
+            return {"success": False, "reason": "המשבצת הזו נתפסה ממש כרגע, יש לבחור זמן אחר"}
+        return {"success": True, "date": date, "time": time, "branch": branch}
+
     def leave_my_details(full_name):
         statuses = repos.lead_statuses.get_names()
         lead = {
@@ -198,6 +264,9 @@ def _build_tool_executors(repos, caller_phone, last_user_text):
 
     return {
         "get_my_appointments": get_my_appointments,
+        "get_available_days": get_available_days,
+        "get_available_hours": get_available_hours,
+        "book_appointment": book_appointment,
         "leave_my_details": leave_my_details,
         "request_human_callback": request_human_callback,
     }

@@ -20,7 +20,9 @@ class AppointmentRepository:
         )
         return not df.empty
 
-    # יוצרת רשומת תור חדשה בטבלה
+    # יוצרת רשומת תור חדשה בטבלה. מחזירה True אם נוצרה בהצלחה, False אם המזהה או
+    # משבצת התאריך+שעה (ראו האינדקס הייחודי ב-db.py) תפוסים כבר - כולל מקרה של שתי
+    # בקשות מקבילות שמנסות לתפוס את אותה משבצת (race condition), ראו §3.7 בתוכנית
     def create(self, appointment):
         row = pd.DataFrame([{
             "id_client": appointment["id_client"],
@@ -33,8 +35,10 @@ class AppointmentRepository:
         }])
         try:
             row.to_sql(TABLE_NAME, self.conn, if_exists="append", index=False)
+            return True
         except sqlite3.IntegrityError:
-            print("An appointment with this id already exists.")
+            print("An appointment with this id or slot already exists.")
+            return False
 
     # יוצרת רשומת לקוח חדשה ללא תור משויך (ללא תאריך/שעה) - למשל בהמרת ליד ללקוח
     def create_client(self, id_client, name_of_client, phone_client, name_of_store):
