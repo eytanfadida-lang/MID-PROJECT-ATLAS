@@ -1,6 +1,11 @@
 import datetime
 
-from atlas.integrations.arbox.client import fetch_arbox_users, fetch_arbox_schedule, load_arbox_api_key
+from atlas.integrations.arbox.client import (
+    fetch_arbox_users,
+    fetch_arbox_schedule,
+    fetch_arbox_active_memberships,
+    load_arbox_api_key,
+)
 
 SCHEDULE_DAYS_AHEAD = 10
 
@@ -54,7 +59,8 @@ def sync_arbox_clients(repos):
         return {"skipped": True, "reason": "missing_api_key"}
 
     arbox_users = fetch_arbox_users(api_key, only_clients="1")
-    repos.arbox_member_cache.replace_all(arbox_users)
+    arbox_memberships = fetch_arbox_active_memberships(api_key)
+    repos.arbox_member_cache.replace_all(arbox_users, arbox_memberships)
 
     today = datetime.date.today()
     from_date = today.isoformat()

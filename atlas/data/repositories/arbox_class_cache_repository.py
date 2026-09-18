@@ -42,19 +42,20 @@ class ArboxClassCacheRepository:
 
     def get_by_date(self, date):
         rows = self.conn.execute(
-            f"SELECT date, start_time, end_time, location_name, session_name, staff_name, max_participants "
-            f"FROM {TABLE_NAME} WHERE date = ? ORDER BY start_time",
+            f"SELECT schedule_id, date, start_time, end_time, location_name, session_name, staff_name, "
+            f"max_participants FROM {TABLE_NAME} WHERE date = ? ORDER BY start_time",
             (date,),
         ).fetchall()
         return [
             {
-                "date": row[0],
-                "start_time": row[1],
-                "end_time": row[2],
-                "location_name": row[3],
-                "session_name": row[4],
-                "staff_name": row[5],
-                "max_participants": row[6],
+                "schedule_id": row[0],
+                "date": row[1],
+                "start_time": row[2],
+                "end_time": row[3],
+                "location_name": row[4],
+                "session_name": row[5],
+                "staff_name": row[6],
+                "max_participants": row[7],
             }
             for row in rows
         ]

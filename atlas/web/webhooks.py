@@ -59,8 +59,12 @@ def receive_arbox_sync_data():
     if not isinstance(arbox_users, list):
         abort(400)
 
+    arbox_memberships = payload.get("memberships")
+    if not isinstance(arbox_memberships, list):
+        arbox_memberships = None
+
     repos = db_context.get_repos()
-    repos.arbox_member_cache.replace_all(arbox_users)
+    repos.arbox_member_cache.replace_all(arbox_users, arbox_memberships)
 
     schedule = payload.get("schedule")
     from_date = payload.get("schedule_from_date")

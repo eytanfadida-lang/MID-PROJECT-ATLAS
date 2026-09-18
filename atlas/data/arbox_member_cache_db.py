@@ -25,7 +25,26 @@ class ArboxMemberCacheDB:
                 synced_at TEXT NOT NULL
             )
         """)
+        self._ensure_enrichment_columns(conn)
         return conn
+
+    # מיגרציה קלה: מוסיפה עמודות עשרת מנוי (מ-/users/memberships) ומזהי Arbox
+    # (דרושים לרישום/ביטול שיעור אמיתי) אם עוד לא קיימות - כך שגם מסד נתונים ישן
+    # ימשיך לעבוד. הטבלה כולה מתמלאת מחדש כל 15 דקות (replace_all), אז אין צורך
+    # לגבות ערכי ברירת מחדל משמעותיים - NULL עד לרענון הבא זה בסדר
+    @staticmethod
+    def _ensure_enrichment_columns(conn):
+        columns = {row[1] for row in conn.execute("PRAGMA table_info(arbox_member_cache)").fetchall()}
+        new_columns = {
+            "user_id": "INTEGER",
+            "membership_user_id": "INTEGER",
+            "membership_type_name": "TEXT",
+            "debt": "TEXT",
+            "cancelled": "INTEGER",
+        }
+        for name, column_type in new_columns.items():
+            if name not in columns:
+                conn.execute(f"ALTER TABLE arbox_member_cache ADD COLUMN {name} {column_type}")
 
     def close(self):
         self.conn.close()

@@ -5,6 +5,7 @@ import re
 import llm_client
 from atlas.paths import PROJECT_ROOT, secret
 from atlas.integrations.whatsapp import bot as whatsapp_bot
+from atlas.integrations.arbox import client as arbox_client
 from atlas.settings import BRANCHES
 
 CONVERSATIONS_FILE = secret(".whatsapp_customer_conversations.json")
@@ -74,14 +75,17 @@ SYSTEM_PROMPT_TEMPLATE = """את/ה העוזר/ת הדיגיטלי/ת של הע�
 ## מה מותר לך לעשות
 יש לך כלים לשליפת מידע אמיתי מהמערכת. **תמיד השתמש בהם** ואל תנחש לעולם.
 - הכלים מחזירים אך ורק את המידע של הלקוח שכותב לך כרגע. זה מובנה במערכת - אין דרך לבדוק מספר אחר.
-- ביטול או שינוי של תור קיים עדיין לא מתבצעים דרך הבוט - לבקשות כאלה, הפעילי את
-  request_human_callback ואמרי שהצוות יחזור לתאם.
+- ביטול או שינוי של **תור אישי** (שנקבע דרך book_appointment) עדיין לא מתבצעים דרך הבוט -
+  לבקשות כאלה, הפעילי את request_human_callback ואמרי שהצוות יחזור לתאם.
 - אם ללקוח שאין אצלנו במערכת יש עניין שדורש חזרה אליו (למשל, מתלהב ורוצה שיחה חוזרת/הרשמה),
   אפשר להשתמש ב-leave_my_details כדי לשמור את השם והטלפון שלו כליד, ואז request_human_callback.
-- לשאלות על מנוי (תוקף, אם פעיל) - השתמשי ב-get_my_membership. אם found=false, זה אומר שהמספר
-  לא נמצא במערכת המנויים (Arbox) - אין להסיק מזה שהמנוי לא פעיל, פשוט אין רישום תואם.
-- לשאלות על שיעורים קבוצתיים (אילו שיעורים יש, באיזו שעה, איזו מדריכה) - השתמשי ב-get_class_schedule.
+- לשאלות על מנוי (תוקף, אם פעיל, סוג מנוי) - השתמשי ב-get_my_membership. אם found=false, זה אומר
+  שהמספר לא נמצא במערכת המנויים (Arbox) - אין להסיק מזה שהמנוי לא פעיל, פשוט אין רישום תואם.
+  אם יש debt (חוב פתוח) - הזכירי זאת בעדינות ובלי לחץ, והציעי request_human_callback לתיאום תשלום.
+- לשאלות על **שיעורים קבוצתיים** (אילו שיעורים יש, באיזו שעה, איזו מדריכה) - השתמשי ב-get_class_schedule.
   אין מידע על כמה מקומות נשארו בשיעור - אל תמציאי מספר, ואם נשאלת, אמרי שאפשר להירשם ולבדוק בפועל.
+  לרישום/ביטול בפועל לשיעור קבוצתי (לא תור אישי!) - השתמשי ב-book_class / cancel_class_booking עם
+  ה-schedule_id. אם success=false בגלל שאין מנוי פעיל תואם - הפני ל-request_human_callback.
 
 ## קביעת תורים
 - לפני קביעה, ודא שיש לך: שם מלא, תאריך, שעה וסניף. אם חסר משהו - שאלי.
@@ -156,13 +160,37 @@ TOOL_DECLARATIONS = [
     {
         "name": "get_class_schedule",
         "description": "מחזיר את לוח השיעורים הקבוצתיים האמיתי מ-Arbox לתאריך נתון - שם שיעור, "
-        "שעה, סניף, מדריכה ומספר משתתפים מקסימלי (לא כמה מקומות נשארו).",
+        "שעה, סניף, מדריכה, מספר משתתפים מקסימלי (לא כמה מקומות נשארו) ומזהה schedule_id "
+        "הדרוש להרשמה בפועל עם book_class.",
         "parameters": {
             "type": "object",
             "properties": {
                 "date": {"type": "string", "description": "תאריך בפורמט YYYY-MM-DD"},
             },
             "required": ["date"],
+        },
+    },
+    {
+        "name": "book_class",
+        "description": "רושמת את הלקוח שכותב כרגע לשיעור קבוצתי אמיתי ב-Arbox (לא ליומן הפנימי). "
+        "יש לוודא עם הלקוח את פרטי השיעור (שם, תאריך, שעה) לפני הפעלה. דורש מנוי פעיל.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "schedule_id": {"type": "integer", "description": "schedule_id שחזר מ-get_class_schedule"},
+            },
+            "required": ["schedule_id"],
+        },
+    },
+    {
+        "name": "cancel_class_booking",
+        "description": "מבטלת רישום קיים של הלקוח שכותב כרגע לשיעור קבוצתי ב-Arbox.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "schedule_id": {"type": "integer", "description": "schedule_id של השיעור לביטול"},
+            },
+            "required": ["schedule_id"],
         },
     },
     {
@@ -241,10 +269,46 @@ def _build_tool_executors(repos, caller_phone, last_user_text):
             "active": member["active"],
             "membership_start_date": member["membership_start_date"],
             "membership_end_date": member["membership_end_date"],
+            "membership_type_name": member["membership_type_name"] or None,
+            "debt": member["debt"] or None,
+            "cancelled": member["cancelled"],
         }
 
     def get_class_schedule(date):
         return {"date": date, "classes": repos.arbox_class_cache.get_by_date(date)}
+
+    # רישום/ביטול אמיתי ב-Arbox הם כתיבה חייבת-זמן-אמת - לא עוברים דרך הקאש (שרק
+    # לקריאה). דורש שהתהליך יוכל להגיע ל-Arbox יוצא (לא PythonAnywhere בתוכנית
+    # החינמית - ראו §3.8), ולכן דורש שדרוג ל-Hacker plan או מקביל
+    def book_class(schedule_id):
+        member = repos.arbox_member_cache.get_by_phone(caller_phone)
+        if not member or not member.get("user_id") or not member.get("membership_user_id"):
+            return {"success": False, "reason": "לא נמצא מנוי פעיל של הלקוח לרישום לשיעור"}
+
+        api_key = arbox_client.load_arbox_api_key()
+        if not api_key:
+            return {"success": False, "reason": "שגיאה טכנית בגישה ל-Arbox"}
+
+        response = arbox_client.book_arbox_session(
+            api_key, member["user_id"], schedule_id, member["membership_user_id"]
+        )
+        if response.status_code == 200:
+            return {"success": True}
+        return {"success": False, "reason": f"Arbox החזירה שגיאה ({response.status_code})"}
+
+    def cancel_class_booking(schedule_id):
+        member = repos.arbox_member_cache.get_by_phone(caller_phone)
+        if not member or not member.get("user_id"):
+            return {"success": False, "reason": "לא נמצא רישום של הלקוח"}
+
+        api_key = arbox_client.load_arbox_api_key()
+        if not api_key:
+            return {"success": False, "reason": "שגיאה טכנית בגישה ל-Arbox"}
+
+        response = arbox_client.cancel_arbox_booking(api_key, member["user_id"], schedule_id)
+        if response.status_code == 200:
+            return {"success": True}
+        return {"success": False, "reason": f"Arbox החזירה שגיאה ({response.status_code})"}
 
     def get_available_days():
         return {"available_days": repos.availability.get_available_days()}
@@ -301,6 +365,8 @@ def _build_tool_executors(repos, caller_phone, last_user_text):
         "get_my_appointments": get_my_appointments,
         "get_my_membership": get_my_membership,
         "get_class_schedule": get_class_schedule,
+        "book_class": book_class,
+        "cancel_class_booking": cancel_class_booking,
         "get_available_days": get_available_days,
         "get_available_hours": get_available_hours,
         "book_appointment": book_appointment,

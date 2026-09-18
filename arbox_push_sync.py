@@ -4,7 +4,7 @@ import sys
 
 import requests
 
-from atlas.integrations.arbox.client import fetch_arbox_users, fetch_arbox_schedule
+from atlas.integrations.arbox.client import fetch_arbox_users, fetch_arbox_schedule, fetch_arbox_active_memberships
 
 if sys.stdout.encoding != "utf-8":
     sys.stdout.reconfigure(encoding="utf-8")
@@ -26,6 +26,9 @@ def main():
     arbox_users = fetch_arbox_users(api_key, only_clients="1")
     print(f"Fetched {len(arbox_users)} clients from Arbox.")
 
+    arbox_memberships = fetch_arbox_active_memberships(api_key)
+    print(f"Fetched {len(arbox_memberships)} active memberships from Arbox.")
+
     today = datetime.date.today()
     from_date = today.isoformat()
     to_date = (today + datetime.timedelta(days=SCHEDULE_DAYS_AHEAD)).isoformat()
@@ -37,6 +40,7 @@ def main():
         params={"token": token},
         json={
             "users": arbox_users,
+            "memberships": arbox_memberships,
             "schedule": schedule,
             "schedule_from_date": from_date,
             "schedule_to_date": to_date,
