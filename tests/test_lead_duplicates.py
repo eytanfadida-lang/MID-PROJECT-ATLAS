@@ -1,6 +1,6 @@
 import sqlite3
 
-from lead_repository import LeadRepository
+from atlas.data.repositories.lead_repository import LeadRepository
 
 
 def test_duplicate_phone_marks_new_lead_as_duplicate(tmp_path):
