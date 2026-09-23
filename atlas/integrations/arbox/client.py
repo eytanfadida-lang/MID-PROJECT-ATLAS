@@ -118,3 +118,56 @@ def cancel_arbox_booking(api_key, user_id, schedule_id):
         timeout=30,
     )
     return response
+
+
+# מחפשת משתמש קיים ב-Arbox לפי טלפון (מספר-מלא-אחד, לא רשימה) - מחזירה user_id
+# ראשון שנמצא, או None אם אין. נחוץ כדי לדעת אם לקוחה/מתעניינת חדשה כבר קיימת
+# ב-Arbox (כליד, למשל) לפני שרושמים אותה לשיעור ניסיון
+def search_arbox_user_by_phone(api_key, phone):
+    response = requests.get(
+        f"{API_BASE_URL}/users/searchUser",
+        headers={"Accept": "application/json", "api-key": api_key},
+        params={"type": "phone", "value": phone},
+        timeout=30,
+    )
+    response.raise_for_status()
+    results = response.json().get("data", []) or []
+    return results[0]["user_id"] if results else None
+
+
+# יוצרת ליד חדש ב-Arbox (POST /v3/users נבדק ולא הצליח - השיעור-ניסיון דוחה את
+# ה-user_id שהוא מחזיר עם "not valid"; רק לידים שנוצרו דרך /leads עובדים) - למשל
+# מתעניינת חדשה שרוצה שיעור ניסיון ועדיין לא קיימת ב-Arbox בכלל. מחזירה את ה-user_id
+def create_arbox_lead(api_key, first_name, last_name, phone, location_id):
+    response = requests.post(
+        f"{API_BASE_URL}/leads",
+        headers={"Accept": "application/json", "api-key": api_key},
+        json={"first_name": first_name, "last_name": last_name, "phone": phone, "location_id": location_id},
+        timeout=30,
+    )
+    response.raise_for_status()
+    return response.json()["data"]["user_id"]
+
+
+# רושמת (משתמש קיים או חדש) לשיעור ניסיון ב-Arbox - endpoint ייעודי שלא דורש מנוי
+# פעיל (בשונה מ-bookSession הרגיל). Arbox עצמה דוחה את הבקשה אם השיעור מלא, וזו
+# בפועל הדרך היחידה לדעת אם יש מקום פנוי (אין endpoint נפרד לכך)
+def book_arbox_trial(api_key, user_id, schedule_id):
+    response = requests.post(
+        f"{API_BASE_URL}/schedule/booking/trial",
+        headers={"Accept": "application/json", "api-key": api_key},
+        json={"user_id": user_id, "schedule_id": schedule_id},
+        timeout=30,
+    )
+    return response
+
+
+# מבטלת רישום קיים לשיעור ניסיון
+def cancel_arbox_trial(api_key, user_id, schedule_id):
+    response = requests.delete(
+        f"{API_BASE_URL}/schedule/booking/trial",
+        headers={"Accept": "application/json", "api-key": api_key},
+        params={"user_id": user_id, "schedule_id": schedule_id},
+        timeout=30,
+    )
+    return response

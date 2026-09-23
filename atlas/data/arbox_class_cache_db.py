@@ -26,7 +26,17 @@ class ArboxClassCacheDB:
                 synced_at TEXT NOT NULL
             )
         """)
+        self._ensure_location_id_column(conn)
         return conn
+
+    # מיגרציה קלה: מוסיפה location_id (דרוש ליצירת ליד חדש באותו סניף, ראו §3.8 -
+    # שיעור ניסיון) אם עוד לא קיימת. הטבלה מתמלאת מחדש כל 15 דקות (replace_range),
+    # אז NULL עד לרענון הבא זה בסדר
+    @staticmethod
+    def _ensure_location_id_column(conn):
+        columns = {row[1] for row in conn.execute("PRAGMA table_info(arbox_class_cache)").fetchall()}
+        if "location_id" not in columns:
+            conn.execute("ALTER TABLE arbox_class_cache ADD COLUMN location_id INTEGER")
 
     def close(self):
         self.conn.close()

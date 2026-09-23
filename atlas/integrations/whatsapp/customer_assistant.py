@@ -80,16 +80,19 @@ SYSTEM_PROMPT_TEMPLATE = """את/ה העוזר/ת הדיגיטלי/ת של הע�
   שהמספר לא נמצא במערכת המנויים (Arbox) - אין להסיק מזה שהמנוי לא פעיל, פשוט אין רישום תואם.
   אם יש debt (חוב פתוח) - הזכירי זאת בעדינות ובלי לחץ, והציעי request_human_callback לתיאום תשלום.
 
-## אימונים ושיעורים - הכל דרך get_class_schedule / book_class
+## אימונים ושיעורים - הכל דרך get_class_schedule + book_class/book_trial_class
 **כל** בקשה לבוא להתאמן, "שיעור ניסיון", "לקבוע אימון" וכו' היא תמיד רישום לשיעור קבוצתי
 אמיתי מ-Arbox - **אין** מנגנון "תור אישי" נפרד, ואסור להמציא שעות שלא הופיעו בפועל.
 - לשאלות "אילו שיעורים יש" - השתמשי ב-get_class_schedule(date). אין מידע על כמה מקומות
   נשארו בשיעור (רק המקסימום) - אל תמציאי מספר, ואם נשאלת, אמרי שאפשר להירשם ולבדוק בפועל.
-- לרישום בפועל: ודאי תאריך, שעה **ושם שיעור ספציפי** שחזרו מ-get_class_schedule, ואז הפעילי
-  את book_class עם ה-schedule_id **של אותו שיעור בדיוק**. לעולם אל תקראי לכלי אחר (כמו בדיקת
-  זמינות תורים כללית) בשביל בקשת אימון/שיעור - schedule_id תמיד מגיע מ-get_class_schedule.
-- אם success=false ב-book_class (למשל אין מנוי פעיל תואם) - הפני ל-request_human_callback.
-- לביטול רישום לשיעור - cancel_class_booking עם אותו schedule_id.
+- לרישום בפועל, ודאי קודם תאריך, שעה **ושם שיעור ספציפי** שחזרו מ-get_class_schedule (לעולם
+  אל תמציאי schedule_id - הוא תמיד מגיע מ-get_class_schedule). אז בחרי כלי לפי מי הלקוח:
+  - **יש לו מנוי פעיל** (get_my_membership החזיר found=true, active=true) → book_class.
+  - **אין לו מנוי** (לקוחה חדשה/שיעור ניסיון) → book_trial_class, עם full_name של הלקוח.
+    אם היא עדיין לא קיימת ב-Arbox, ייווצר עבורה ליד חדש אוטומטית - זה תקין ומצופה.
+- אם success=false (במנוי או בניסיון) - זה בדרך כלל אומר שהשיעור מלא או שאין מנוי מתאים.
+  הפני מיד ל-request_human_callback, אל תנסי שוב עם schedule_id אחר בלי לשאול את הלקוח.
+- לביטול: cancel_class_booking (למנוי פעיל) או cancel_trial_class (לשיעור ניסיון), עם אותו schedule_id.
 - אחרי רישום מוצלח, חזרי על שם השיעור, התאריך, השעה והסניף לאישור.
 
 ## כללים קשיחים - אין מהם חריגה
@@ -105,7 +108,8 @@ SYSTEM_PROMPT_TEMPLATE = """את/ה העוזר/ת הדיגיטלי/ת של הע�
 
 ## מתי להעביר לבן אדם (request_human_callback)
 - הלקוחה ביקשה במפורש לדבר עם בן אדם
-- ניסית לרשום/לבטל דרך book_class / cancel_class_booking וזה נכשל (success=false)
+- ניסית לרשום/לבטל שיעור (book_class/book_trial_class/cancel_class_booking/cancel_trial_class)
+  וזה נכשל (success=false)
 - שאלה רפואית או בריאותית
 - תלונה, כעס, אכזבה
 - בקשת הנחה או מחיר מיוחד
@@ -172,8 +176,9 @@ TOOL_DECLARATIONS = [
     },
     {
         "name": "book_class",
-        "description": "רושמת את הלקוח שכותב כרגע לשיעור קבוצתי אמיתי ב-Arbox (לא ליומן הפנימי). "
-        "יש לוודא עם הלקוח את פרטי השיעור (שם, תאריך, שעה) לפני הפעלה. דורש מנוי פעיל.",
+        "description": "רושמת לקוחה עם מנוי פעיל קיים לשיעור קבוצתי אמיתי ב-Arbox. לא לשיעור ניסיון "
+        "של מתעניינת חדשה - לזה יש book_trial_class נפרד. יש לוודא עם הלקוח את פרטי השיעור "
+        "(שם, תאריך, שעה) לפני הפעלה.",
         "parameters": {
             "type": "object",
             "properties": {
@@ -184,11 +189,37 @@ TOOL_DECLARATIONS = [
     },
     {
         "name": "cancel_class_booking",
-        "description": "מבטלת רישום קיים של הלקוח שכותב כרגע לשיעור קבוצתי ב-Arbox.",
+        "description": "מבטלת רישום קיים (מנוי פעיל, לא שיעור ניסיון) של הלקוח שכותב כרגע לשיעור "
+        "קבוצתי ב-Arbox.",
         "parameters": {
             "type": "object",
             "properties": {
                 "schedule_id": {"type": "integer", "description": "schedule_id של השיעור לביטול"},
+            },
+            "required": ["schedule_id"],
+        },
+    },
+    {
+        "name": "book_trial_class",
+        "description": "רושמת את הלקוח שכותב כרגע לשיעור ניסיון - לא דורש מנוי קיים, מיועד למתעניינות "
+        "חדשות. אם הלקוח לא קיים עדיין ב-Arbox, נוצרת עבורו רשומת ליד חדשה אוטומטית. "
+        "אם success=false כי השיעור מלא/נכשל, יש להעביר ל-request_human_callback.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "full_name": {"type": "string", "description": "השם המלא של הלקוח"},
+                "schedule_id": {"type": "integer", "description": "schedule_id שחזר מ-get_class_schedule"},
+            },
+            "required": ["full_name", "schedule_id"],
+        },
+    },
+    {
+        "name": "cancel_trial_class",
+        "description": "מבטלת רישום קיים לשיעור ניסיון.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "schedule_id": {"type": "integer", "description": "schedule_id של שיעור הניסיון לביטול"},
             },
             "required": ["schedule_id"],
         },
@@ -279,6 +310,49 @@ def _build_tool_executors(repos, caller_phone, last_user_text):
             return {"success": True}
         return {"success": False, "reason": f"Arbox החזירה שגיאה ({response.status_code})"}
 
+    # מוצאת/יוצרת את ה-user_id של הלקוח שכותב כרגע ב-Arbox - קודם מחפשת אם הוא כבר
+    # קיים שם (בלי קשר לקאש המקומי, שמכיל רק לקוחות פעילים/לא-פעילים, לא לידים
+    # חדשים), ואם לא - יוצרת עבורו ליד חדש. משמש רק לשיעורי ניסיון (§3.8)
+    def _resolve_or_create_trial_user_id(api_key, full_name, location_id):
+        existing_user_id = arbox_client.search_arbox_user_by_phone(api_key, caller_phone)
+        if existing_user_id:
+            return existing_user_id
+
+        name_parts = (full_name or "לקוחה חדשה").split(maxsplit=1)
+        first_name = name_parts[0]
+        last_name = name_parts[1] if len(name_parts) > 1 else ""
+        return arbox_client.create_arbox_lead(api_key, first_name, last_name, caller_phone, location_id)
+
+    def book_trial_class(full_name, schedule_id):
+        schedule = repos.arbox_class_cache.get_by_schedule_id(schedule_id)
+        if schedule is None:
+            return {"success": False, "reason": "השיעור לא נמצא, יש לבדוק שוב עם get_class_schedule"}
+
+        api_key = arbox_client.load_arbox_api_key()
+        if not api_key:
+            return {"success": False, "reason": "שגיאה טכנית בגישה ל-Arbox"}
+
+        location_id = schedule.get("location_id") or 856
+        user_id = _resolve_or_create_trial_user_id(api_key, full_name, location_id)
+        response = arbox_client.book_arbox_trial(api_key, user_id, schedule_id)
+        if response.status_code == 200:
+            return {"success": True}
+        return {"success": False, "reason": f"Arbox החזירה שגיאה ({response.status_code}) - כנראה השיעור מלא"}
+
+    def cancel_trial_class(schedule_id):
+        api_key = arbox_client.load_arbox_api_key()
+        if not api_key:
+            return {"success": False, "reason": "שגיאה טכנית בגישה ל-Arbox"}
+
+        user_id = arbox_client.search_arbox_user_by_phone(api_key, caller_phone)
+        if not user_id:
+            return {"success": False, "reason": "לא נמצא רישום של הלקוח"}
+
+        response = arbox_client.cancel_arbox_trial(api_key, user_id, schedule_id)
+        if response.status_code == 200:
+            return {"success": True}
+        return {"success": False, "reason": f"Arbox החזירה שגיאה ({response.status_code})"}
+
     def leave_my_details(full_name):
         statuses = repos.lead_statuses.get_names()
         lead = {
@@ -307,6 +381,8 @@ def _build_tool_executors(repos, caller_phone, last_user_text):
         "get_class_schedule": get_class_schedule,
         "book_class": book_class,
         "cancel_class_booking": cancel_class_booking,
+        "book_trial_class": book_trial_class,
+        "cancel_trial_class": cancel_trial_class,
         "leave_my_details": leave_my_details,
         "request_human_callback": request_human_callback,
     }
