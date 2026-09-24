@@ -1,0 +1,79 @@
+import sqlite3
+from types import SimpleNamespace
+
+from flask import g
+
+from atlas.data.db import AppointmentDB, DB_FILE
+from atlas.data.repositories.appointment_repository import AppointmentRepository
+from atlas.services.availability import AvailabilityService
+from atlas.data.lead_db import LeadDB
+from atlas.data.repositories.lead_repository import LeadRepository
+from atlas.data.repositories.lead_status_repository import LeadStatusRepository
+from atlas.data.customer_db import CustomerDB
+from atlas.data.repositories.customer_repository import CustomerRepository
+from atlas.data.repositories.invoice_repository import InvoiceRepository
+from atlas.data.user_db import UserDB
+from atlas.data.repositories.user_repository import UserRepository
+from atlas.data.id_sequence import IdSequence
+from atlas.data.whatsapp_state_db import WhatsAppStateDB
+from atlas.data.repositories.whatsapp_state_repository import WhatsAppStateRepository
+from atlas.data.bot_content_gap_db import BotContentGapDB
+from atlas.data.repositories.bot_content_gap_repository import BotContentGapRepository
+from atlas.data.arbox_member_cache_db import ArboxMemberCacheDB
+from atlas.data.repositories.arbox_member_cache_repository import ArboxMemberCacheRepository
+from atlas.data.arbox_class_cache_db import ArboxClassCacheDB
+from atlas.data.repositories.arbox_class_cache_repository import ArboxClassCacheRepository
+
+
+# מריצה חד-פעמית באתחול (import-time של app.py): יוצרת/ממגרת את כל הטבלאות,
+# באמצעות אותה לוגיקת יצירה שכל *DB Class כבר מכיל, בלי לשנות אותם.
+# בטוחה להרצה חוזרת (idempotent) - כל שלב הוא CREATE TABLE IF NOT EXISTS / ALTER מותנה / seed מותנה
+def bootstrap_databases():
+    for db_class in (
+        AppointmentDB, CustomerDB, LeadDB, UserDB, WhatsAppStateDB, BotContentGapDB,
+        ArboxMemberCacheDB, ArboxClassCacheDB,
+    ):
+        instance = db_class()
+        instance.close()
+
+    # נוצר אחרי ש-appointments ו-customers כבר קיימות, כדי להיזרע נכון מהמזהים הקיימים (ראו id_sequence.py)
+    conn = sqlite3.connect(DB_FILE)
+    IdSequence(conn)
+    conn.close()
+
+
+# פותחת חיבור sqlite3 חדש לבקשה הנוכחית, נשמר על flask.g כדי לא לפתוח כמה פעמים באותה בקשה
+def get_conn():
+    if "db_conn" not in g:
+        g.db_conn = sqlite3.connect(DB_FILE, timeout=10)
+    return g.db_conn
+
+
+# בונה את כל אובייקטי ה-Repository סביב חיבור הבקשה הנוכחית, פעם אחת לבקשה
+def get_repos():
+    if "repos" not in g:
+        conn = get_conn()
+        appointments = AppointmentRepository(conn)
+        g.repos = SimpleNamespace(
+            appointments=appointments,
+            availability=AvailabilityService(appointments),
+            leads=LeadRepository(conn),
+            lead_statuses=LeadStatusRepository(conn),
+            customers=CustomerRepository(conn),
+            invoices=InvoiceRepository(conn),
+            users=UserRepository(conn),
+            id_sequence=IdSequence(conn),
+            whatsapp_state=WhatsAppStateRepository(conn),
+            bot_content_gaps=BotContentGapRepository(conn),
+            arbox_member_cache=ArboxMemberCacheRepository(conn),
+            arbox_class_cache=ArboxClassCacheRepository(conn),
+        )
+    return g.repos
+
+
+def init_app(app):
+    @app.teardown_appcontext
+    def close_conn(exception):
+        conn = g.pop("db_conn", None)
+        if conn is not None:
+            conn.close()
