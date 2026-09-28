@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block page_title %}שיחה - {{ phone }}{% endblock %}
+{% block page_heading %}שיחה עם {{ phone }}{% endblock %}
+
+{% block content %}
+<p><a href="{{ url_for('bot_conversations.list_conversations') }}">← חזרה לרשימת השיחות</a></p>
+
+<div class="chat-thread">
+    {% for m in messages %}
+    <div class="chat-bubble {{ 'chat-bubble-in' if m.direction == 'in' else 'chat-bubble-out' }}">
+        {{ m.body }}
+        <span class="chat-time">{{ m.created_at | format_lead_datetime }}</span>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

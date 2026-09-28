@@ -36,6 +36,8 @@
                 {% if current_user and current_user.role == ROLE_ADMIN %}
                 <a href="{{ url_for('users.list_users') }}"
                    class="{{ 'active' if request.path.startswith('/users') else '' }}">👤 משתמשים</a>
+                <a href="{{ url_for('bot_conversations.list_conversations') }}"
+                   class="{{ 'active' if request.path.startswith('/bot-conversations') else '' }}">💬 שיחות בוט הלקוחות</a>
                 {% endif %}
             </div>
 

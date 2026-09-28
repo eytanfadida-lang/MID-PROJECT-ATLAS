@@ -324,18 +324,22 @@ def whatsapp_customer_webhook():
     if message_id:
         repos.whatsapp_state.mark_processed(message_id)
 
+    caller_phone = normalize_phone(from_number)
+
     if message_type != "text":
-        whatsapp_bot.send_text_message(
-            bot_config, from_number, "אני יכול לקרוא כרגע רק הודעות טקסט - אפשר לכתוב לי? 🙏"
-        )
+        fallback_text = "אני יכול לקרוא כרגע רק הודעות טקסט - אפשר לכתוב לי? 🙏"
+        repos.customer_bot_messages.log(caller_phone, "in", f"[הודעה לא-טקסטואלית: {message_type}]")
+        repos.customer_bot_messages.log(caller_phone, "out", fallback_text)
+        whatsapp_bot.send_text_message(bot_config, from_number, fallback_text)
         return jsonify({"status": "ignored", "reason": "non_text"})
 
-    caller_phone = normalize_phone(from_number)
+    repos.customer_bot_messages.log(caller_phone, "in", text)
     try:
         reply_text = customer_assistant.answer_question(repos, caller_phone, text)
     except Exception as exc:
         print(f"[WhatsApp customer webhook] assistant failed: {exc}", flush=True)
         reply_text = "אירעה שגיאה בעיבוד הבקשה, נסה שוב מאוחר יותר."
 
+    repos.customer_bot_messages.log(caller_phone, "out", reply_text)
     whatsapp_bot.send_text_message(bot_config, from_number, reply_text)
     return jsonify({"status": "ok"})

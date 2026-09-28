@@ -952,3 +952,42 @@ label {
     text-align: center;
     color: #0f172a;
 }
+
+.chat-thread {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-width: 640px;
+}
+
+.chat-bubble {
+    max-width: 75%;
+    padding: 10px 14px;
+    border-radius: 14px;
+    font-size: 14px;
+    line-height: 1.5;
+    white-space: pre-wrap;
+}
+
+.chat-bubble .chat-time {
+    display: block;
+    margin-top: 4px;
+    font-size: 11px;
+    color: var(--muted);
+}
+
+.chat-bubble-in {
+    align-self: flex-start;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+}
+
+.chat-bubble-out {
+    align-self: flex-end;
+    background: var(--primary);
+    color: #fff;
+}
+
+.chat-bubble-out .chat-time {
+    color: rgba(255, 255, 255, 0.75);
+}

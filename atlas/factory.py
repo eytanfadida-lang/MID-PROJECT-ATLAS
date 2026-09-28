@@ -14,6 +14,7 @@ from atlas.web.blueprints.appointments import bp as appointments_bp
 from atlas.web.blueprints.leads import bp as leads_bp
 from atlas.web.blueprints.customers import bp as customers_bp
 from atlas.web.blueprints.users import bp as users_bp
+from atlas.web.blueprints.bot_conversations import bp as bot_conversations_bp
 from atlas.web.webhooks import bp as webhooks_bp
 
 # אין אישור על תמיכת Arbox ב-webhook, לכן זו קירוב בפולינג תדיר (לא טריגר אמיתי בזמן אמת)
@@ -66,6 +67,7 @@ def create_app():
     app.register_blueprint(leads_bp)
     app.register_blueprint(customers_bp)
     app.register_blueprint(users_bp)
+    app.register_blueprint(bot_conversations_bp)
     app.register_blueprint(webhooks_bp)
 
     app.before_request(validate_csrf)
