@@ -4,27 +4,19 @@
 
 {% block content %}
 {% if conversations %}
-<div class="table-scroll">
-    <table>
-        <thead>
-            <tr>
-                <th>טלפון</th>
-                <th>הודעה אחרונה</th>
-                <th>מספר הודעות</th>
-                <th>עדכון אחרון</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for c in conversations %}
-            <tr>
-                <td><a href="{{ url_for('bot_conversations.view_conversation', phone=c.phone) }}">{{ c.phone }}</a></td>
-                <td>{{ c.last_message_body }}</td>
-                <td>{{ c.message_count }}</td>
-                <td>{{ c.last_message_at | format_lead_datetime }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+<div class="chat-list">
+    {% for c in conversations %}
+    <a href="{{ url_for('bot_conversations.view_conversation', phone=c.phone) }}" class="chat-list-item">
+        <div class="chat-list-avatar">👤</div>
+        <div class="chat-list-info">
+            <div class="chat-list-top">
+                <span class="chat-list-name">{{ c.phone }}</span>
+                <span class="chat-list-time">{{ c.last_message_at | format_lead_datetime }}</span>
+            </div>
+            <div class="chat-list-preview">{{ c.last_message_body }}</div>
+        </div>
+    </a>
+    {% endfor %}
 </div>
 {% else %}
 <p class="empty-state">אין עדיין שיחות עם בוט הלקוחות.</p>
