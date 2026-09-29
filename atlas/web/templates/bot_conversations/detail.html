@@ -13,4 +13,13 @@
     </div>
     {% endfor %}
 </div>
+
+<form method="post" action="{{ url_for('bot_conversations.reply', phone=phone) }}" class="form-card">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <div class="form-group">
+        <label>שליחת הודעה ידנית ללקוח</label>
+        <textarea name="body" rows="3" required placeholder="כתוב כאן..."></textarea>
+    </div>
+    <button type="submit" class="btn">שלח</button>
+</form>
 {% endblock %}
