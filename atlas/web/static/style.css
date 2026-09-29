@@ -1016,13 +1016,67 @@ body.dark .chat-bubble-out .chat-time {
     color: rgba(233, 237, 239, 0.55);
 }
 
-.chat-list {
+.chat-app {
     display: flex;
-    flex-direction: column;
-    max-width: 680px;
+    height: 72vh;
+    min-height: 420px;
     border: 1px solid var(--border);
     border-radius: 12px;
     overflow: hidden;
+}
+
+.chat-app-list {
+    width: 320px;
+    flex-shrink: 0;
+    overflow-y: auto;
+    border-left: 1px solid var(--border);
+    background: var(--surface);
+}
+
+.chat-app-thread {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.chat-app-thread .chat-thread {
+    flex: 1;
+    overflow-y: auto;
+    max-width: none;
+    border-radius: 0;
+    margin: 0;
+}
+
+.chat-app-empty {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--muted);
+    background: #e9edef;
+}
+
+body.dark .chat-app-empty {
+    background: #0b141a;
+}
+
+.chat-reply-form {
+    display: flex;
+    gap: 10px;
+    align-items: flex-end;
+    padding: 12px;
+    border-top: 1px solid var(--border);
+    background: var(--surface);
+}
+
+.chat-reply-form textarea {
+    flex: 1;
+    resize: none;
+}
+
+.chat-list-item.active {
+    background: var(--surface-2);
 }
 
 .chat-list-item {

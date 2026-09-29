@@ -11,20 +11,28 @@ from atlas.integrations.whatsapp import bot as whatsapp_bot
 bp = Blueprint("bot_conversations", __name__, url_prefix="/bot-conversations")
 
 
+# שני הראוטים למטה מציגים את אותו עמוד דו-עמודות (רשימת שיחות מימין, שיחה נבחרת
+# משמאל, כמו וואטסאפ עצמו) - view_conversation רק מוסיף לו את השיחה הנבחרת
 @bp.route("/")
 @admin_required
 def list_conversations():
     conversations = get_repos().customer_bot_messages.get_conversation_summaries()
-    return render_template("bot_conversations/list.html", conversations=conversations)
+    return render_template(
+        "bot_conversations/index.html", conversations=conversations, active_phone=None, messages=None
+    )
 
 
 @bp.route("/<phone>")
 @admin_required
 def view_conversation(phone):
-    messages = get_repos().customer_bot_messages.get_by_phone(phone)
+    repos = get_repos()
+    conversations = repos.customer_bot_messages.get_conversation_summaries()
+    messages = repos.customer_bot_messages.get_by_phone(phone)
     if not messages:
         abort(404)
-    return render_template("bot_conversations/detail.html", phone=phone, messages=messages)
+    return render_template(
+        "bot_conversations/index.html", conversations=conversations, active_phone=phone, messages=messages
+    )
 
 
 # שולחת הודעה ידנית ללקוח ישירות מהממשק (השתלטות ידנית על שיחה, למשל אחרי
