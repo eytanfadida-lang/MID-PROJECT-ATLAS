@@ -4,15 +4,18 @@ TABLE_NAME = "customer_bot_messages"
 
 
 # אחראית על יומן ההודעות הקבוע של בוט הלקוחות - לצפייה בממשק הניהול (ראו
-# customer_bot_message_db.py). "direction" הוא "in" (מהלקוח) או "out" (מהבוט)
+# customer_bot_message_db.py). "direction" הוא "in" (מהלקוח) או "out" (מהבוט).
+# bot_phone_number_id הוא איזה מהמספרים שלנו התנהלה בו השיחה - רלוונטי מרגע
+# שכמה מספרים רשמיים מחוברים לאותה אפליקציה (ראו webhooks.py)
 class CustomerBotMessageRepository:
     def __init__(self, conn):
         self.conn = conn
 
-    def log(self, phone, direction, body):
+    def log(self, phone, direction, body, bot_phone_number_id=None):
         self.conn.execute(
-            f"INSERT INTO {TABLE_NAME} (phone, direction, body, created_at) VALUES (?, ?, ?, ?)",
-            (phone, direction, body, datetime.datetime.now().isoformat(timespec="seconds")),
+            f"INSERT INTO {TABLE_NAME} (phone, direction, body, created_at, bot_phone_number_id) "
+            "VALUES (?, ?, ?, ?, ?)",
+            (phone, direction, body, datetime.datetime.now().isoformat(timespec="seconds"), bot_phone_number_id),
         )
         self.conn.commit()
 
@@ -45,3 +48,13 @@ class CustomerBotMessageRepository:
             (phone,),
         ).fetchall()
         return [{"direction": row[0], "body": row[1], "created_at": row[2]} for row in rows]
+
+    # מוצאת את מספר-הבוט האחרון שבו נוהלה שיחה עם לקוח נתון - כדי שתגובה ידנית
+    # (ראו bot_conversations.py) תישלח מאותו מספר, לא תמיד מברירת המחדל
+    def get_latest_bot_phone_number_id(self, phone):
+        row = self.conn.execute(
+            f"SELECT bot_phone_number_id FROM {TABLE_NAME} "
+            "WHERE phone = ? AND bot_phone_number_id IS NOT NULL ORDER BY id DESC LIMIT 1",
+            (phone,),
+        ).fetchone()
+        return row[0] if row else None

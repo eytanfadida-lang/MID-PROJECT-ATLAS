@@ -316,6 +316,10 @@ def whatsapp_customer_webhook():
     if not from_number:
         return jsonify({"status": "ignored"})
 
+    # לא בהכרח config.phone_number_id - כמה מספרים יכולים להיות מחוברים לאותה
+    # אפליקציה/WABA, וצריך לענות מאותו מספר שהלקוח כתב אליו
+    reply_phone_number_id = whatsapp_bot.extract_metadata_phone_number_id(payload) or bot_config.phone_number_id
+
     repos = db_context.get_repos()
 
     if message_id and repos.whatsapp_state.has_processed(message_id):
@@ -328,18 +332,20 @@ def whatsapp_customer_webhook():
 
     if message_type != "text":
         fallback_text = "אני יכול לקרוא כרגע רק הודעות טקסט - אפשר לכתוב לי? 🙏"
-        repos.customer_bot_messages.log(caller_phone, "in", f"[הודעה לא-טקסטואלית: {message_type}]")
-        repos.customer_bot_messages.log(caller_phone, "out", fallback_text)
-        whatsapp_bot.send_text_message(bot_config, from_number, fallback_text)
+        repos.customer_bot_messages.log(
+            caller_phone, "in", f"[הודעה לא-טקסטואלית: {message_type}]", reply_phone_number_id
+        )
+        repos.customer_bot_messages.log(caller_phone, "out", fallback_text, reply_phone_number_id)
+        whatsapp_bot.send_text_message(bot_config, from_number, fallback_text, phone_number_id=reply_phone_number_id)
         return jsonify({"status": "ignored", "reason": "non_text"})
 
-    repos.customer_bot_messages.log(caller_phone, "in", text)
+    repos.customer_bot_messages.log(caller_phone, "in", text, reply_phone_number_id)
     try:
         reply_text = customer_assistant.answer_question(repos, caller_phone, text)
     except Exception as exc:
         print(f"[WhatsApp customer webhook] assistant failed: {exc}", flush=True)
         reply_text = "אירעה שגיאה בעיבוד הבקשה, נסה שוב מאוחר יותר."
 
-    repos.customer_bot_messages.log(caller_phone, "out", reply_text)
-    whatsapp_bot.send_text_message(bot_config, from_number, reply_text)
+    repos.customer_bot_messages.log(caller_phone, "out", reply_text, reply_phone_number_id)
+    whatsapp_bot.send_text_message(bot_config, from_number, reply_text, phone_number_id=reply_phone_number_id)
     return jsonify({"status": "ok"})

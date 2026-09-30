@@ -25,7 +25,16 @@ class CustomerBotMessageDB:
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_customer_bot_messages_phone ON customer_bot_messages(phone)"
         )
+        self._ensure_bot_phone_number_id_column(conn)
         return conn
+
+    # מיגרציה קלה: מוסיפה bot_phone_number_id (באיזה מהמספרים שלנו התנהלה השיחה -
+    # רלוונטי מרגע שכמה מספרים רשמיים מחוברים לאותה אפליקציה) אם עוד לא קיימת
+    @staticmethod
+    def _ensure_bot_phone_number_id_column(conn):
+        columns = {row[1] for row in conn.execute("PRAGMA table_info(customer_bot_messages)").fetchall()}
+        if "bot_phone_number_id" not in columns:
+            conn.execute("ALTER TABLE customer_bot_messages ADD COLUMN bot_phone_number_id TEXT")
 
     def close(self):
         self.conn.close()

@@ -51,11 +51,17 @@ def reply(phone):
         flash("מספר טלפון לא תקין לשליחה.", "error")
         return redirect(url_for("bot_conversations.view_conversation", phone=phone))
 
+    repos = get_repos()
+    # עונה מאותו מספר שבו התנהלה השיחה עד כה - רלוונטי מרגע שכמה מספרים מחוברים
+    bot_phone_number_id = repos.customer_bot_messages.get_latest_bot_phone_number_id(phone)
+
     try:
-        whatsapp_bot.send_text_message(whatsapp_bot.CUSTOMER_BOT, whatsapp_phone, body)
+        whatsapp_bot.send_text_message(
+            whatsapp_bot.CUSTOMER_BOT, whatsapp_phone, body, phone_number_id=bot_phone_number_id
+        )
     except Exception as exc:
         flash(f"שליחת ההודעה נכשלה: {exc}", "error")
         return redirect(url_for("bot_conversations.view_conversation", phone=phone))
 
-    get_repos().customer_bot_messages.log(phone, "out", body)
+    repos.customer_bot_messages.log(phone, "out", body, bot_phone_number_id)
     return redirect(url_for("bot_conversations.view_conversation", phone=phone))

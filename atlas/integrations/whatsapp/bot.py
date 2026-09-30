@@ -64,12 +64,16 @@ def verify_signature(config, raw_body, signature_header):
     return hmac.compare_digest(expected, provided)
 
 
-def send_text_message(config, to, body):
+# phone_number_id אופציונלי דורס את זה שב-config - נחוץ כשלאותה אפליקציה/WABA מחוברים
+# כמה מספרים (ראו extract_metadata_phone_number_id), כדי שהתגובה תישלח מאותו מספר
+# שהלקוח כתב אליו, לא תמיד מהמספר ה"ברירת מחדל" שקבוע ב-config
+def send_text_message(config, to, body, phone_number_id=None):
     access_token = load_access_token(config)
     if not access_token:
         return None
+    target_phone_number_id = phone_number_id or config.phone_number_id
     response = requests.post(
-        f"https://graph.facebook.com/{GRAPH_API_VERSION}/{config.phone_number_id}/messages",
+        f"https://graph.facebook.com/{GRAPH_API_VERSION}/{target_phone_number_id}/messages",
         headers={"Authorization": f"Bearer {access_token}"},
         json={
             "messaging_product": "whatsapp",
@@ -102,6 +106,20 @@ def extract_incoming_event(payload):
                         return from_number, message_id, "text", text
                 return from_number, message_id, message_type or "unknown", None
     return None, None, None, None
+
+
+# מחלצת את phone_number_id של המספר שהלקוח כתב אליו (לא ממי שהוא כתב) - כדי לתמוך
+# בכמה מספרים תחת אותה אפליקציה/WABA (ראו §multi-number). נחוץ כדי לדעת מאיזה מספר
+# לענות - config.phone_number_id הוא רק ברירת מחדל, לא בהכרח המספר הנכון יותר מהיום
+def extract_metadata_phone_number_id(payload):
+    for entry in payload.get("entry") or []:
+        for change in entry.get("changes") or []:
+            value = change.get("value") or {}
+            metadata = value.get("metadata") or {}
+            phone_number_id = metadata.get("phone_number_id")
+            if phone_number_id:
+                return phone_number_id
+    return None
 
 
 # תאימות לאחור לקוד קיים שקורא רק להודעות טקסט (הבוט הפנימי) - עוטפת את
