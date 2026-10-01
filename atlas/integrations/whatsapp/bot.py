@@ -87,6 +87,49 @@ def send_text_message(config, to, body, phone_number_id=None):
     return response.json()
 
 
+# מעלה קובץ (תמונה/מסמך) לשרתי Meta ומחזירה media_id - שלב מקדים הכרחי לפני שליחת
+# הודעת מדיה, לפי ה-Cloud API (לא ניתן לשלוח בייטים ישירות בהודעה עצמה)
+def upload_media(config, file_bytes, filename, mime_type, phone_number_id=None):
+    access_token = load_access_token(config)
+    if not access_token:
+        return None
+    target_phone_number_id = phone_number_id or config.phone_number_id
+    response = requests.post(
+        f"https://graph.facebook.com/{GRAPH_API_VERSION}/{target_phone_number_id}/media",
+        headers={"Authorization": f"Bearer {access_token}"},
+        data={"messaging_product": "whatsapp"},
+        files={"file": (filename, file_bytes, mime_type)},
+        timeout=60,
+    )
+    response.raise_for_status()
+    return response.json()["id"]
+
+
+# שולחת הודעת מדיה (תמונה/מסמך) שכבר הועלתה (media_id מ-upload_media). media_type
+# הוא "image" או "document" - קובע גם את שם המפתח בגוף הבקשה (ככה ה-API של מטא דורש)
+def send_media_message(config, to, media_id, media_type, phone_number_id=None, caption=None):
+    access_token = load_access_token(config)
+    if not access_token:
+        return None
+    target_phone_number_id = phone_number_id or config.phone_number_id
+    media_payload = {"id": media_id}
+    if caption:
+        media_payload["caption"] = caption
+    response = requests.post(
+        f"https://graph.facebook.com/{GRAPH_API_VERSION}/{target_phone_number_id}/messages",
+        headers={"Authorization": f"Bearer {access_token}"},
+        json={
+            "messaging_product": "whatsapp",
+            "to": to,
+            "type": media_type,
+            media_type: media_payload,
+        },
+        timeout=30,
+    )
+    response.raise_for_status()
+    return response.json()
+
+
 # מפענחת הודעה נכנסת אחת מ-payload של webhook, מכל סוג (לא רק טקסט) - כדי שאפשר
 # יהיה להבחין בין "אין הודעה בכלל" (למשל התראת סטטוס משלוח) לבין "הודעה שהגיעה
 # אבל היא לא טקסט" (הודעה קולית/תמונה/מדבקה), ולהגיב לכל אחד מהם אחרת

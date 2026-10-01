@@ -253,3 +253,7 @@ arbox_location_map.json
 appointments.db
 appointments_backup_*.db
 .flask_secret
+
+# קבצים/תמונות שהועלו דרך בוט הלקוחות (ראו bot_conversations.py) - נתוני לקוחות
+# אמיתיים, לא צריכים להיות בגיט
+atlas/web/static/uploads/

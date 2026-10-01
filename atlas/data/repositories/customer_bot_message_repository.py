@@ -11,11 +11,18 @@ class CustomerBotMessageRepository:
     def __init__(self, conn):
         self.conn = conn
 
-    def log(self, phone, direction, body, bot_phone_number_id=None):
+    def log(self, phone, direction, body, bot_phone_number_id=None, attachment_url=None):
         self.conn.execute(
-            f"INSERT INTO {TABLE_NAME} (phone, direction, body, created_at, bot_phone_number_id) "
-            "VALUES (?, ?, ?, ?, ?)",
-            (phone, direction, body, datetime.datetime.now().isoformat(timespec="seconds"), bot_phone_number_id),
+            f"INSERT INTO {TABLE_NAME} (phone, direction, body, created_at, bot_phone_number_id, attachment_url) "
+            "VALUES (?, ?, ?, ?, ?, ?)",
+            (
+                phone,
+                direction,
+                body,
+                datetime.datetime.now().isoformat(timespec="seconds"),
+                bot_phone_number_id,
+                attachment_url,
+            ),
         )
         self.conn.commit()
 
@@ -44,10 +51,13 @@ class CustomerBotMessageRepository:
 
     def get_by_phone(self, phone):
         rows = self.conn.execute(
-            f"SELECT direction, body, created_at FROM {TABLE_NAME} WHERE phone = ? ORDER BY id",
+            f"SELECT direction, body, created_at, attachment_url FROM {TABLE_NAME} WHERE phone = ? ORDER BY id",
             (phone,),
         ).fetchall()
-        return [{"direction": row[0], "body": row[1], "created_at": row[2]} for row in rows]
+        return [
+            {"direction": row[0], "body": row[1], "created_at": row[2], "attachment_url": row[3]}
+            for row in rows
+        ]
 
     # מוצאת את מספר-הבוט האחרון שבו נוהלה שיחה עם לקוח נתון - כדי שתגובה ידנית
     # (ראו bot_conversations.py) תישלח מאותו מספר, לא תמיד מברירת המחדל

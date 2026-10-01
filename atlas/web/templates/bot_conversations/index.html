@@ -29,15 +29,29 @@
         <div class="chat-thread">
             {% for m in messages %}
             <div class="chat-bubble {{ 'chat-bubble-in' if m.direction == 'in' else 'chat-bubble-out' }}">
-                {{ m.body }}
+                {% if m.attachment_url %}
+                    {% if m.attachment_url.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.webp')) %}
+                    <a href="{{ m.attachment_url }}" target="_blank" rel="noopener">
+                        <img src="{{ m.attachment_url }}" class="chat-attachment-image" alt="תמונה מצורפת">
+                    </a>
+                    {% else %}
+                    <a href="{{ m.attachment_url }}" target="_blank" rel="noopener" class="chat-attachment-file">📎 קובץ מצורף</a>
+                    {% endif %}
+                {% endif %}
+                {% if m.body %}<div>{{ m.body }}</div>{% endif %}
                 <span class="chat-time">{{ m.created_at | format_lead_datetime }}</span>
             </div>
             {% endfor %}
         </div>
 
-        <form method="post" action="{{ url_for('bot_conversations.reply', phone=active_phone) }}" class="chat-reply-form">
+        <form method="post" action="{{ url_for('bot_conversations.reply', phone=active_phone) }}"
+              class="chat-reply-form" enctype="multipart/form-data">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-            <textarea name="body" rows="2" required placeholder="כתוב הודעה..."></textarea>
+            <label class="chat-attach-btn" title="צירוף קובץ/תמונה">
+                📎
+                <input type="file" name="attachment" hidden>
+            </label>
+            <textarea name="body" rows="1" placeholder="כתוב הודעה..."></textarea>
             <button type="submit" class="btn">שלח</button>
         </form>
         {% else %}
