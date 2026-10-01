@@ -956,7 +956,7 @@ label {
 .chat-thread {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 6px;
     max-width: 680px;
     background: #e9edef;
     background-image: linear-gradient(rgba(0,0,0,0.02), rgba(0,0,0,0.02));
@@ -969,11 +969,11 @@ body.dark .chat-thread {
 }
 
 .chat-bubble {
-    max-width: 70%;
-    padding: 8px 12px;
+    max-width: 60%;
+    padding: 6px 10px;
     border-radius: 8px;
-    font-size: 14.5px;
-    line-height: 1.45;
+    font-size: 13px;
+    line-height: 1.35;
     white-space: pre-wrap;
     color: #111b21;
     box-shadow: 0 1px 1px rgba(0, 0, 0, 0.08);
