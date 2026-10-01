@@ -1,4 +1,5 @@
 import datetime
+import re
 
 import pandas as pd
 
@@ -28,6 +29,15 @@ def whatsapp_link(phone):
     elif not digits.startswith("972"):
         digits = "972" + digits
     return f"https://wa.me/{digits}"
+
+
+# מצמצמת כמה שורות ריקות ברצף לשורה ריקה אחת (לכל היותר) - הודעות וואטסאפ אמיתיות
+# (ובמיוחד תשובות LLM) מגיעות לפעמים עם הרבה שורות ריקות רצופות, שעם
+# white-space: pre-wrap נשמרות בדיוק ככה ומנפחות את גובה הבועה בצ'אט לענק
+def collapse_blank_lines(text):
+    if not text:
+        return text
+    return re.sub(r"\n{3,}", "\n\n", text)
 
 
 # מציגה חותמת זמן ISO (למשל "2026-07-31T15:03") כ-"HH:MM DD/MM/YYYY", לתצוגה בטבלאות

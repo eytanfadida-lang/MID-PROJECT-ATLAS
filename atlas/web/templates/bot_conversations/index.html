@@ -38,7 +38,7 @@
                     <a href="{{ m.attachment_url }}" target="_blank" rel="noopener" class="chat-attachment-file">📎 קובץ מצורף</a>
                     {% endif %}
                 {% endif %}
-                {% if m.body %}<div>{{ m.body }}</div>{% endif %}
+                {% if m.body %}<div>{{ m.body | collapse_blank_lines }}</div>{% endif %}
                 <span class="chat-time">{{ m.created_at | format_lead_datetime }}</span>
             </div>
             {% endfor %}

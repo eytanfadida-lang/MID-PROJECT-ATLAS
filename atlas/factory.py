@@ -7,7 +7,13 @@ from atlas.core import roles
 from atlas.data import context as db_context
 from atlas.integrations.arbox.sync import sync_arbox_clients
 from atlas.core.auth import load_secret_key, generate_csrf_token, validate_csrf, current_user
-from atlas.core.view_utils import role_badge_class, format_lead_datetime, whatsapp_link, to_records
+from atlas.core.view_utils import (
+    role_badge_class,
+    format_lead_datetime,
+    whatsapp_link,
+    to_records,
+    collapse_blank_lines,
+)
 
 from atlas.web.blueprints.auth import bp as auth_bp
 from atlas.web.blueprints.appointments import bp as appointments_bp
@@ -75,6 +81,7 @@ def create_app():
     app.jinja_env.globals["role_badge_class"] = role_badge_class
     app.jinja_env.filters["format_lead_datetime"] = format_lead_datetime
     app.jinja_env.filters["whatsapp_link"] = whatsapp_link
+    app.jinja_env.filters["collapse_blank_lines"] = collapse_blank_lines
 
     @app.context_processor
     def inject_template_globals():
