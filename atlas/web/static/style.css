@@ -977,13 +977,13 @@ body.dark .chat-thread {
     white-space: pre-wrap;
     color: #111b21;
     box-shadow: 0 1px 1px rgba(0, 0, 0, 0.08);
-    overflow: hidden;
 }
 
 .chat-bubble .chat-time {
-    float: left;
-    margin: 2px 0 0 8px;
+    display: inline-block;
+    margin-right: 8px;
     font-size: 10.5px;
+    white-space: nowrap;
     color: rgba(17, 27, 33, 0.5);
 }
 
