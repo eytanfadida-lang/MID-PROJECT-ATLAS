@@ -147,8 +147,48 @@ def extract_incoming_event(payload):
                     text = (message.get("text") or {}).get("body", "")
                     if text:
                         return from_number, message_id, "text", text
+                if message_type == "document":
+                    document = message.get("document") or {}
+                    return from_number, message_id, "document", {
+                        "media_id": document.get("id"),
+                        "filename": document.get("filename") or "מסמך",
+                        "mime_type": document.get("mime_type") or "application/octet-stream",
+                    }
                 return from_number, message_id, message_type or "unknown", None
     return None, None, None, None
+
+
+# מחלצת את השם שהלקוח הגדיר לעצמו בוואטסאפ (שם הפרופיל שלו) - לא בהכרח שמו האמיתי,
+# אבל שימושי לפנייה אישית ("הי דנה!") עוד לפני שהוא הציג את עצמו בשיחה בפועל
+def extract_sender_profile_name(payload):
+    for entry in payload.get("entry") or []:
+        for change in entry.get("changes") or []:
+            value = change.get("value") or {}
+            for contact in value.get("contacts") or []:
+                name = (contact.get("profile") or {}).get("name")
+                if name:
+                    return name
+    return None
+
+
+# מורידה קובץ שהתקבל בהודעה נכנסת (למשל קורות חיים) - שלב כפול לפי ה-Cloud API:
+# קודם שליפת כתובת זמנית לפי media_id, ואז הורדת הבייטים עצמם מאותה כתובת
+def download_media(config, media_id):
+    access_token = load_access_token(config)
+    if not access_token:
+        return None, None
+    meta_response = requests.get(
+        f"https://graph.facebook.com/{GRAPH_API_VERSION}/{media_id}",
+        headers={"Authorization": f"Bearer {access_token}"},
+        timeout=30,
+    )
+    meta_response.raise_for_status()
+    media_info = meta_response.json()
+    file_response = requests.get(
+        media_info["url"], headers={"Authorization": f"Bearer {access_token}"}, timeout=60
+    )
+    file_response.raise_for_status()
+    return file_response.content, media_info.get("mime_type", "application/octet-stream")
 
 
 # מחלצת את phone_number_id של המספר שהלקוח כתב אליו (לא ממי שהוא כתב) - כדי לתמוך

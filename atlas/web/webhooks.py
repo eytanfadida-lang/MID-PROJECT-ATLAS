@@ -1,7 +1,11 @@
+import datetime
 import json
+import re
 import secrets
+from pathlib import Path
 
 from flask import Blueprint, abort, jsonify, request
+from werkzeug.utils import secure_filename
 
 from atlas.paths import secret
 from atlas.data import context as db_context
@@ -12,13 +16,33 @@ from atlas.integrations.meta import lead_ads as meta_leads
 from atlas.integrations.whatsapp import bot as whatsapp_bot
 from atlas.integrations.whatsapp import admin_assistant as crm_assistant
 from atlas.integrations.whatsapp import customer_assistant
+from atlas.integrations.whatsapp.customer_assistant import OWNER_WHATSAPP_NUMBER
 from atlas.services.phone_utils import normalize_phone
 from atlas.settings import CHANNELS
+from atlas.web.blueprints.bot_conversations import UPLOADS_DIR
 
 # כל נקודות הקצה החיצוניות (webhooks + cron endpoints) שאין להן session/login - כל אחת
 # מאומתת בטוקן/חתימה משלה. הועברו לכאן מ-atlas/factory.py, בלי שינוי בכתובות (url_prefix
 # משחזר בדיוק את אותם נתיבי /tasks/... כמו קודם)
 bp = Blueprint("webhooks", __name__, url_prefix="/tasks")
+
+
+# שומרת קובץ שהתקבל מהלקוח (למשל קורות חיים) תחת static/uploads, באותו מבנה תיקיות
+# כמו קבצים שהבעלים מעלה ידנית מהממשק (bot_conversations.py) - כדי שגם אלה יוצגו
+# בבועת הצ'אט בעמוד שיחות בוט הלקוחות, לא רק קבצים שנשלחו החוצה
+def _save_incoming_document(phone, filename, file_bytes):
+    phone_dir = UPLOADS_DIR / phone
+    phone_dir.mkdir(parents=True, exist_ok=True)
+    timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
+    # שמות קבצים בעברית (למשל "קורות חיים.pdf") מתאפסים לגמרי ע"י secure_filename
+    # (כולל הנקודה והסיומת) - שומרים את הסיומת בנפרד כדי שהקובץ יישאר ניתן לפתיחה
+    safe_name = secure_filename(filename or "")
+    if not safe_name or "." not in safe_name:
+        extension = re.sub(r"[^A-Za-z0-9.]", "", Path(filename or "").suffix)
+        safe_name = f"attachment{extension}" if extension else (safe_name or "attachment")
+    stored_name = f"{timestamp}_{safe_name}"
+    (phone_dir / stored_name).write_bytes(file_bytes)
+    return f"/static/uploads/{phone}/{stored_name}"
 
 # טוקן להפעלת סנכרון Arbox דרך HTTP (למשל משירות cron חיצוני, בסביבות אירוח בלי background thread/Scheduled Tasks)
 ARBOX_SYNC_TOKEN_FILE = secret(".arbox_sync_token")
@@ -330,6 +354,45 @@ def whatsapp_customer_webhook():
 
     caller_phone = normalize_phone(from_number)
 
+    # מסמך שהתקבל (למשל קורות חיים בתגובה לפנייה בנושא משרה) - מתקבל ונשמר בנפרד
+    # מההודעות הלא-טקסטואליות הכלליות למטה, כי כאן יש התנהגות ייעודית: לשמור את
+    # הקובץ, להודיע לבעלים, ולהשיב ללקוחה בחום (ולא "אני יודע לקרוא רק טקסט")
+    if message_type == "document":
+        document_info = text or {}
+        sender_name = whatsapp_bot.extract_sender_profile_name(payload)
+        attachment_url = None
+        try:
+            file_bytes, _mime_type = whatsapp_bot.download_media(bot_config, document_info.get("media_id"))
+            if file_bytes:
+                attachment_url = _save_incoming_document(
+                    caller_phone, document_info.get("filename") or "מסמך", file_bytes
+                )
+        except Exception as exc:
+            print(f"[WhatsApp customer webhook] document download failed: {exc}", flush=True)
+
+        repos.customer_bot_messages.log(
+            caller_phone,
+            "in",
+            f"[קובץ: {document_info.get('filename') or 'מסמך'}]",
+            reply_phone_number_id,
+            attachment_url=attachment_url,
+        )
+
+        thank_you_text = "תודה רבה! קיבלתי את הקובץ ואחזור אלייך עם כל הפרטים בהקדם 🙏"
+        repos.customer_bot_messages.log(caller_phone, "out", thank_you_text, reply_phone_number_id)
+        whatsapp_bot.send_text_message(bot_config, from_number, thank_you_text, phone_number_id=reply_phone_number_id)
+
+        owner_notification = (
+            f"📄 התקבלו קורות חיים מ-{sender_name or caller_phone} ({caller_phone}).\n"
+            f"אפשר לצפות בשיחה בעמוד שיחות בוט הלקוחות."
+        )
+        try:
+            whatsapp_bot.send_text_message(whatsapp_bot.ADMIN_BOT, OWNER_WHATSAPP_NUMBER, owner_notification)
+        except Exception as exc:
+            print(f"[WhatsApp customer webhook] owner notification failed: {exc}", flush=True)
+
+        return jsonify({"status": "ok", "reason": "document_received"})
+
     if message_type != "text":
         fallback_text = "אני יכול לקרוא כרגע רק הודעות טקסט - אפשר לכתוב לי? 🙏"
         repos.customer_bot_messages.log(
@@ -339,9 +402,10 @@ def whatsapp_customer_webhook():
         whatsapp_bot.send_text_message(bot_config, from_number, fallback_text, phone_number_id=reply_phone_number_id)
         return jsonify({"status": "ignored", "reason": "non_text"})
 
+    sender_name = whatsapp_bot.extract_sender_profile_name(payload)
     repos.customer_bot_messages.log(caller_phone, "in", text, reply_phone_number_id)
     try:
-        reply_text = customer_assistant.answer_question(repos, caller_phone, text)
+        reply_text = customer_assistant.answer_question(repos, caller_phone, text, sender_name=sender_name)
     except Exception as exc:
         print(f"[WhatsApp customer webhook] assistant failed: {exc}", flush=True)
         reply_text = "אירעה שגיאה בעיבוד הבקשה, נסה שוב מאוחר יותר."

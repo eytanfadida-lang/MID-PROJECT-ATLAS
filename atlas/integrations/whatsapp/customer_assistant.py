@@ -69,6 +69,7 @@ SYSTEM_PROMPT_TEMPLATE = """את/ה העוזר/ת הדיגיטלי/ת של הע�
 
 ## מי הלקוח שמולך
 {caller_status}
+שם הפרופיל בוואטסאפ (אם ידוע, לא בהכרח השם האמיתי): {sender_name}
 התאריך היום: {today}
 
 ## מה מותר לך לעשות
@@ -94,6 +95,15 @@ SYSTEM_PROMPT_TEMPLATE = """את/ה העוזר/ת הדיגיטלי/ת של הע�
   הפני מיד ל-request_human_callback, אל תנסי שוב עם schedule_id אחר בלי לשאול את הלקוח.
 - לביטול: cancel_class_booking (למנוי פעיל) או cancel_trial_class (לשיעור ניסיון), עם אותו schedule_id.
 - אחרי רישום מוצלח, חזרי על שם השיעור, התאריך, השעה והסניף לאישור.
+
+## פנייה בנושא משרה/עבודה
+אם הלקוח/ה שואל/ת על משרה פתוחה, עבודה, גיוס, או מגיב/ה לפרסום (כולל פרסומת
+באינסטגרם שמפנה לוואטסאפ) - **אל תשתמשי בשום כלי ואל תחפשי במידע העסקי**. עני
+מיד בנוסח הבא, עם "הי" ושם פרטי אם יש לך שם פרופיל אמיתי למעלה (אחרת "הי" לבד,
+בלי להמציא שם ובלי לכתוב "הי [שם]" מילולית):
+"הי <שם אם יש>! בשמחה, אשמח שתשאירי לי קורות חיים ואחזור אלייך עם כל הפרטים 🙏"
+לאחר מכן פשוט המתיני - אם היא תשלח קובץ (קורות חיים), המערכת תטפל בכך אוטומטית
+(שמירה + הודעה לאפרת), את/ה לא צריכה לעשות כלום נוסף בעניין הזה.
 
 ## כללים קשיחים - אין מהם חריגה
 1. לעולם אל תמציא מידע שלא מופיע במידע העסקי למטה או שלא חזר מכלי.
@@ -124,9 +134,10 @@ SYSTEM_PROMPT_TEMPLATE = """את/ה העוזר/ת הדיגיטלי/ת של הע�
 """
 
 
-def _build_system_prompt(caller_status):
+def _build_system_prompt(caller_status, sender_name=None):
     return SYSTEM_PROMPT_TEMPLATE.format(
         caller_status=caller_status,
+        sender_name=sender_name or "לא ידוע",
         today=datetime.date.today().isoformat(),
         business_info=_load_business_info(),
     )
@@ -400,12 +411,12 @@ def _execute_tool(executors, name, args):
 
 # עונה על הודעה אחת מהוואטסאפ, כולל לולאת tool-use מלאה מול Gemini. שומרת/טוענת
 # היסטוריית שיחה קצרה לפי מספר הטלפון כדי לשמור הקשר בין הודעות עוקבות
-def answer_question(repos, caller_phone, user_text):
+def answer_question(repos, caller_phone, user_text, sender_name=None):
     if not llm_client.load_api_key():
         return "אני לא זמינה כרגע (בעיה טכנית), אעביר את זה לאפרת."
 
     caller_status = _resolve_caller_status(repos, caller_phone)
-    system_prompt = _build_system_prompt(caller_status)
+    system_prompt = _build_system_prompt(caller_status, sender_name)
     executors = _build_tool_executors(repos, caller_phone, user_text)
 
     contents = list(_load_history(caller_phone))

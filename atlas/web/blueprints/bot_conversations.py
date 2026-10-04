@@ -1,4 +1,6 @@
 import datetime
+import re
+from pathlib import Path
 
 from flask import Blueprint, render_template, redirect, url_for, request, flash, abort
 from werkzeug.utils import secure_filename
@@ -47,7 +49,12 @@ def _save_upload_locally(phone, uploaded_file):
     phone_dir = UPLOADS_DIR / phone
     phone_dir.mkdir(parents=True, exist_ok=True)
     timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
-    safe_name = secure_filename(uploaded_file.filename) or "attachment"
+    # שמות קבצים בעברית מתאפסים לגמרי ע"י secure_filename (כולל הנקודה והסיומת) -
+    # שומרים את הסיומת בנפרד כדי שהקובץ יישאר ניתן לפתיחה (ראו גם webhooks.py)
+    safe_name = secure_filename(uploaded_file.filename or "")
+    if not safe_name or "." not in safe_name:
+        extension = re.sub(r"[^A-Za-z0-9.]", "", Path(uploaded_file.filename or "").suffix)
+        safe_name = f"attachment{extension}" if extension else (safe_name or "attachment")
     stored_name = f"{timestamp}_{safe_name}"
     uploaded_file.save(phone_dir / stored_name)
     return f"/static/uploads/{phone}/{stored_name}"
