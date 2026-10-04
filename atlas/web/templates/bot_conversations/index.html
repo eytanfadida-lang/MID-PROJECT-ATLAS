@@ -16,6 +16,7 @@
                         <span class="chat-list-time">{{ c.last_message_at | format_lead_datetime }}</span>
                     </div>
                     <div class="chat-list-preview">{{ c.last_message_body }}</div>
+                    <div class="chat-list-number">📞 {{ c.bot_phone_label }}</div>
                 </div>
             </a>
             {% endfor %}
@@ -26,6 +27,7 @@
 
     <div class="chat-app-thread">
         {% if messages %}
+        <div class="chat-thread-header">התקבל/נשלח דרך: {{ active_bot_label }}</div>
         <div class="chat-thread">
             {% for m in messages %}
             <div class="chat-bubble {{ 'chat-bubble-in' if m.direction == 'in' else 'chat-bubble-out' }}">

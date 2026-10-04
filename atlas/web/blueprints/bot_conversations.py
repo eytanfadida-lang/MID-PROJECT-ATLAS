@@ -21,10 +21,18 @@ UPLOADS_DIR = PROJECT_ROOT / "atlas" / "web" / "static" / "uploads"
 
 # שני הראוטים למטה מציגים את אותו עמוד דו-עמודות (רשימת שיחות מימין, שיחה נבחרת
 # משמאל, כמו וואטסאפ עצמו) - view_conversation רק מוסיף לו את השיחה הנבחרת
+def _with_number_labels(conversations):
+    for conversation in conversations:
+        conversation["bot_phone_label"] = whatsapp_bot.describe_phone_number_id(
+            conversation.get("bot_phone_number_id")
+        )
+    return conversations
+
+
 @bp.route("/")
 @admin_required
 def list_conversations():
-    conversations = get_repos().customer_bot_messages.get_conversation_summaries()
+    conversations = _with_number_labels(get_repos().customer_bot_messages.get_conversation_summaries())
     return render_template(
         "bot_conversations/index.html", conversations=conversations, active_phone=None, messages=None
     )
@@ -34,12 +42,19 @@ def list_conversations():
 @admin_required
 def view_conversation(phone):
     repos = get_repos()
-    conversations = repos.customer_bot_messages.get_conversation_summaries()
+    conversations = _with_number_labels(repos.customer_bot_messages.get_conversation_summaries())
     messages = repos.customer_bot_messages.get_by_phone(phone)
     if not messages:
         abort(404)
+    active_bot_label = whatsapp_bot.describe_phone_number_id(
+        repos.customer_bot_messages.get_latest_bot_phone_number_id(phone)
+    )
     return render_template(
-        "bot_conversations/index.html", conversations=conversations, active_phone=phone, messages=messages
+        "bot_conversations/index.html",
+        conversations=conversations,
+        active_phone=phone,
+        messages=messages,
+        active_bot_label=active_bot_label,
     )
 
 

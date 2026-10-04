@@ -26,6 +26,11 @@ from atlas.web.blueprints.bot_conversations import UPLOADS_DIR
 # משחזר בדיוק את אותם נתיבי /tasks/... כמו קודם)
 bp = Blueprint("webhooks", __name__, url_prefix="/tasks")
 
+# שם תבנית וואטסאפ מאושרת (נוצרת ב-WhatsApp Manager, ראו הנחיות) שמודיעה לבעלים על
+# קורות חיים חדשים - חייבת תבנית ולא טקסט חופשי כי זו הודעה יזומה מהעסק, לא בהכרח
+# בתוך 24 שעות מהודעה אחרונה של הבעלים לבוט הפנימי
+CV_NOTIFICATION_TEMPLATE_NAME = "cv_received_notification"
+
 
 # שומרת קובץ שהתקבל מהלקוח (למשל קורות חיים) תחת static/uploads, באותו מבנה תיקיות
 # כמו קבצים שהבעלים מעלה ידנית מהממשק (bot_conversations.py) - כדי שגם אלה יוצגו
@@ -382,14 +387,28 @@ def whatsapp_customer_webhook():
         repos.customer_bot_messages.log(caller_phone, "out", thank_you_text, reply_phone_number_id)
         whatsapp_bot.send_text_message(bot_config, from_number, thank_you_text, phone_number_id=reply_phone_number_id)
 
-        owner_notification = (
-            f"📄 התקבלו קורות חיים מ-{sender_name or caller_phone} ({caller_phone}).\n"
-            f"אפשר לצפות בשיחה בעמוד שיחות בוט הלקוחות."
-        )
+        # הודעת תבנית (template) - בניגוד לטקסט חופשי, מגיעה גם אם לא כתבת לבוט הפנימי
+        # ב-24 השעות האחרונות (ראו CV_NOTIFICATION_TEMPLATE_NAME). נופלת חזרה לטקסט חופשי
+        # רק אם שליחת התבנית נכשלת (למשל לפני שאושרה ב-WhatsApp Manager) - עדיף ניסיון
+        # שעלול להיחסם על פני ויתור מוחלט
         try:
-            whatsapp_bot.send_text_message(whatsapp_bot.ADMIN_BOT, OWNER_WHATSAPP_NUMBER, owner_notification)
+            whatsapp_bot.send_template_message(
+                whatsapp_bot.ADMIN_BOT,
+                OWNER_WHATSAPP_NUMBER,
+                CV_NOTIFICATION_TEMPLATE_NAME,
+                "he",
+                body_params=[sender_name or caller_phone, caller_phone],
+            )
         except Exception as exc:
-            print(f"[WhatsApp customer webhook] owner notification failed: {exc}", flush=True)
+            print(f"[WhatsApp customer webhook] owner template notification failed: {exc}", flush=True)
+            owner_notification = (
+                f"📄 התקבלו קורות חיים מ-{sender_name or caller_phone} ({caller_phone}).\n"
+                f"אפשר לצפות בשיחה בעמוד שיחות בוט הלקוחות."
+            )
+            try:
+                whatsapp_bot.send_text_message(whatsapp_bot.ADMIN_BOT, OWNER_WHATSAPP_NUMBER, owner_notification)
+            except Exception as exc2:
+                print(f"[WhatsApp customer webhook] owner fallback notification failed: {exc2}", flush=True)
 
         return jsonify({"status": "ok", "reason": "document_received"})
 

@@ -35,6 +35,18 @@ CUSTOMER_BOT = WhatsAppBotConfig(
     phone_number_id="1220667597806529",
 )
 
+# כמה מספרים רשמיים יכולים לחלוק את אותה אפליקציה/WABA (ראו extract_metadata_phone_number_id) -
+# המיפוי הזה הוא רק לתצוגה באדמין (עמוד שיחות בוט הלקוחות), כדי לדעת דרך איזה מספר
+# התנהלה כל שיחה. לא משפיע על לוגיקת השליחה/קבלה בפועל
+CUSTOMER_BOT_NUMBER_LABELS = {
+    "1220667597806529": "+1 808-309-7433",
+    "413443605196685": "+972 50-306-6767",
+}
+
+
+def describe_phone_number_id(phone_number_id):
+    return CUSTOMER_BOT_NUMBER_LABELS.get(phone_number_id, phone_number_id or "לא ידוע")
+
 
 def _read_local_file(path):
     if not path.exists():
@@ -123,6 +135,36 @@ def send_media_message(config, to, media_id, media_type, phone_number_id=None, c
             "to": to,
             "type": media_type,
             media_type: media_payload,
+        },
+        timeout=30,
+    )
+    response.raise_for_status()
+    return response.json()
+
+
+# שולחת הודעת תבנית (template) מאושרת מראש - בניגוד להודעת טקסט חופשית, זו יכולה
+# להגיע גם מחוץ לחלון 24 השעות מההודעה האחרונה של הנמען (למשל התראה יזומה לבעלים
+# שלא בהכרח כתבה לבוט לאחרונה). body_params הן רשימת המחרוזות שממלאות את ה-{{1}},
+# {{2}} וכו' בגוף התבנית, לפי הסדר שבו הוגדרו כשהתבנית נוצרה ב-WhatsApp Manager
+def send_template_message(config, to, template_name, language_code, body_params=None, phone_number_id=None):
+    access_token = load_access_token(config)
+    if not access_token:
+        return None
+    target_phone_number_id = phone_number_id or config.phone_number_id
+    template_payload = {"name": template_name, "language": {"code": language_code}}
+    if body_params:
+        template_payload["components"] = [{
+            "type": "body",
+            "parameters": [{"type": "text", "text": value} for value in body_params],
+        }]
+    response = requests.post(
+        f"https://graph.facebook.com/{GRAPH_API_VERSION}/{target_phone_number_id}/messages",
+        headers={"Authorization": f"Bearer {access_token}"},
+        json={
+            "messaging_product": "whatsapp",
+            "to": to,
+            "type": "template",
+            "template": template_payload,
         },
         timeout=30,
     )

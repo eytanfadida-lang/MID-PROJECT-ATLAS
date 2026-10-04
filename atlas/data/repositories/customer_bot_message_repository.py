@@ -34,7 +34,10 @@ class CustomerBotMessageRepository:
                    COUNT(*) AS message_count,
                    MAX(created_at) AS last_message_at,
                    (SELECT body FROM {TABLE_NAME} m2
-                    WHERE m2.phone = m1.phone ORDER BY m2.id DESC LIMIT 1) AS last_message_body
+                    WHERE m2.phone = m1.phone ORDER BY m2.id DESC LIMIT 1) AS last_message_body,
+                   (SELECT bot_phone_number_id FROM {TABLE_NAME} m3
+                    WHERE m3.phone = m1.phone AND m3.bot_phone_number_id IS NOT NULL
+                    ORDER BY m3.id DESC LIMIT 1) AS bot_phone_number_id
             FROM {TABLE_NAME} m1
             GROUP BY phone
             ORDER BY last_message_at DESC
@@ -45,6 +48,7 @@ class CustomerBotMessageRepository:
                 "message_count": row[1],
                 "last_message_at": row[2],
                 "last_message_body": row[3],
+                "bot_phone_number_id": row[4],
             }
             for row in rows
         ]
