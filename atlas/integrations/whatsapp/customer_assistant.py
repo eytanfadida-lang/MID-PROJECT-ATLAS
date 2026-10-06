@@ -16,6 +16,11 @@ MAX_TOOL_LOOPS = 5
 # מכוונת התראות מסירה-לאדם לבעלת העסק - אותו מספר שכבר מוגדר כמורשה לבוט הפנימי
 OWNER_WHATSAPP_NUMBER = "972526223432"
 
+# שם תבנית וואטסאפ מאושרת כללית (גוף חופשי יחיד {{1}}) להתראות יזומות לבעלים - חייבת
+# תבנית ולא טקסט חופשי כי זו הודעה יזומה מהעסק, לא בהכרח בתוך 24 שעות מהודעה אחרונה
+# של הבעלים לבוט הפנימי (ראו גם CV_NOTIFICATION_TEMPLATE_NAME ב-webhooks.py)
+OWNER_ALERT_TEMPLATE_NAME = "bot_owner_alert"
+
 
 def _load_all_conversations():
     if not CONVERSATIONS_FILE.exists():
@@ -379,11 +384,25 @@ def _build_tool_executors(repos, caller_phone, last_user_text):
 
     def request_human_callback(reason):
         repos.bot_content_gaps.log(caller_phone, last_user_text, reason)
-        whatsapp_bot.send_text_message(
-            whatsapp_bot.ADMIN_BOT,
-            OWNER_WHATSAPP_NUMBER,
-            f"📩 בוט הלקוחות: פנייה שדורשת מענה אישי\nמספר: {caller_phone}\nסיבה: {reason}",
-        )
+        alert_text = f"פנייה שדורשת מענה אישי\nמספר: {caller_phone}\nסיבה: {reason}"
+        # הודעת תבנית מאושרת - מגיעה גם אם לא כתבת לבוט הפנימי ב-24 השעות האחרונות
+        # (ראו OWNER_ALERT_TEMPLATE_NAME). נופלת לטקסט חופשי רק אם שליחת התבנית נכשלת
+        try:
+            whatsapp_bot.send_template_message(
+                whatsapp_bot.ADMIN_BOT,
+                OWNER_WHATSAPP_NUMBER,
+                OWNER_ALERT_TEMPLATE_NAME,
+                "he",
+                body_params=[alert_text],
+            )
+        except Exception as exc:
+            print(f"[customer_assistant] owner template alert failed: {exc}", flush=True)
+            try:
+                whatsapp_bot.send_text_message(
+                    whatsapp_bot.ADMIN_BOT, OWNER_WHATSAPP_NUMBER, f"📩 {alert_text}"
+                )
+            except Exception as exc2:
+                print(f"[customer_assistant] owner fallback alert failed: {exc2}", flush=True)
         return {"success": True}
 
     return {
