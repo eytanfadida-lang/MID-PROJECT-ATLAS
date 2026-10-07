@@ -1,5 +1,6 @@
 import datetime
 import json
+import mimetypes
 import re
 import secrets
 from pathlib import Path
@@ -16,7 +17,7 @@ from atlas.integrations.meta import lead_ads as meta_leads
 from atlas.integrations.whatsapp import bot as whatsapp_bot
 from atlas.integrations.whatsapp import admin_assistant as crm_assistant
 from atlas.integrations.whatsapp import customer_assistant
-from atlas.integrations.whatsapp.customer_assistant import OWNER_WHATSAPP_NUMBER
+from atlas.integrations.whatsapp.customer_assistant import OWNER_WHATSAPP_NUMBER, OWNER_ALERT_TEMPLATE_NAME
 from atlas.services.phone_utils import normalize_phone
 from atlas.settings import CHANNELS
 from atlas.web.blueprints.bot_conversations import UPLOADS_DIR
@@ -48,6 +49,18 @@ def _save_incoming_document(phone, filename, file_bytes):
     stored_name = f"{timestamp}_{safe_name}"
     (phone_dir / stored_name).write_bytes(file_bytes)
     return f"/static/uploads/{phone}/{stored_name}"
+
+
+# תמונה/וידאו שמגיעים מוואטסאפ לא נושאים filename (בניגוד למסמך) - רק mime_type.
+# מיפוי ידני לסוגים הנפוצים כי mimetypes.guess_extension לא תמיד עקבי בין סביבות
+_MEDIA_EXTENSION_OVERRIDES = {"image/jpeg": ".jpg", "video/mp4": ".mp4", "video/3gpp": ".3gp"}
+
+
+def _guess_media_extension(mime_type):
+    base_mime = (mime_type or "").split(";")[0].strip()
+    if base_mime in _MEDIA_EXTENSION_OVERRIDES:
+        return _MEDIA_EXTENSION_OVERRIDES[base_mime]
+    return mimetypes.guess_extension(base_mime) or ""
 
 # טוקן להפעלת סנכרון Arbox דרך HTTP (למשל משירות cron חיצוני, בסביבות אירוח בלי background thread/Scheduled Tasks)
 ARBOX_SYNC_TOKEN_FILE = secret(".arbox_sync_token")
@@ -411,6 +424,49 @@ def whatsapp_customer_webhook():
                 print(f"[WhatsApp customer webhook] owner fallback notification failed: {exc2}", flush=True)
 
         return jsonify({"status": "ok", "reason": "document_received"})
+
+    # תמונה/וידאו - נשמרים (לצפייה בעמוד שיחות בוט הלקוחות) ומעבירים לבעלים, כי
+    # בניגוד לטקסט הבוט לא "רואה" את התוכן ולא יכול להגיב עליו בעצמו
+    if message_type in ("image", "video"):
+        media_info = text or {}
+        sender_name = whatsapp_bot.extract_sender_profile_name(payload)
+        kind_label = "תמונה" if message_type == "image" else "סרטון"
+        attachment_url = None
+        try:
+            file_bytes, mime_type = whatsapp_bot.download_media(bot_config, media_info.get("media_id"))
+            if file_bytes:
+                extension = _guess_media_extension(mime_type or media_info.get("mime_type"))
+                attachment_url = _save_incoming_document(
+                    caller_phone, f"{message_type}{extension}", file_bytes
+                )
+        except Exception as exc:
+            print(f"[WhatsApp customer webhook] {message_type} download failed: {exc}", flush=True)
+
+        log_body = f"[{kind_label}]"
+        if media_info.get("caption"):
+            log_body += f" {media_info['caption']}"
+        repos.customer_bot_messages.log(
+            caller_phone, "in", log_body, reply_phone_number_id, attachment_url=attachment_url
+        )
+
+        thank_you_text = f"תודה! קיבלתי את ה{kind_label}, אעביר את זה הלאה ונחזור אלייך בהקדם 🙏"
+        repos.customer_bot_messages.log(caller_phone, "out", thank_you_text, reply_phone_number_id)
+        whatsapp_bot.send_text_message(bot_config, from_number, thank_you_text, phone_number_id=reply_phone_number_id)
+
+        alert_text = f"התקבל/ה {kind_label} מ-{sender_name or caller_phone} ({caller_phone}) - אפשר לצפות בעמוד שיחות בוט הלקוחות."
+        try:
+            whatsapp_bot.send_template_message(
+                whatsapp_bot.ADMIN_BOT, OWNER_WHATSAPP_NUMBER, OWNER_ALERT_TEMPLATE_NAME, "he",
+                body_params=[alert_text],
+            )
+        except Exception as exc:
+            print(f"[WhatsApp customer webhook] owner {message_type} template alert failed: {exc}", flush=True)
+            try:
+                whatsapp_bot.send_text_message(whatsapp_bot.ADMIN_BOT, OWNER_WHATSAPP_NUMBER, f"📎 {alert_text}")
+            except Exception as exc2:
+                print(f"[WhatsApp customer webhook] owner {message_type} fallback alert failed: {exc2}", flush=True)
+
+        return jsonify({"status": "ok", "reason": f"{message_type}_received"})
 
     if message_type != "text":
         fallback_text = "אני יכול לקרוא כרגע רק הודעות טקסט - אפשר לכתוב לי? 🙏"

@@ -196,6 +196,13 @@ def extract_incoming_event(payload):
                         "filename": document.get("filename") or "מסמך",
                         "mime_type": document.get("mime_type") or "application/octet-stream",
                     }
+                if message_type in ("image", "video"):
+                    media = message.get(message_type) or {}
+                    return from_number, message_id, message_type, {
+                        "media_id": media.get("id"),
+                        "caption": media.get("caption") or "",
+                        "mime_type": media.get("mime_type") or "application/octet-stream",
+                    }
                 return from_number, message_id, message_type or "unknown", None
     return None, None, None, None
 
