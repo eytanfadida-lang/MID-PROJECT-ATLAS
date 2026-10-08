@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block page_title %}בלאקליסט גלובלי - אוטומציות{% endblock %}
+{% block page_heading %}בלאקליסט גלובלי{% endblock %}
+
+{% block content %}
+<div class="toolbar">
+    <a href="{{ url_for('automations.list_automations') }}" class="btn">חזרה לאוטומציות</a>
+</div>
+<p class="hint">מספרים ברשימה הזו לא יקבלו אף הודעה מתוזמנת, מכל אוטומציה שהיא.</p>
+
+<form method="post" action="{{ url_for('automations.add_to_blacklist') }}" class="form-card">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <div class="form-group">
+        <label>טלפון</label>
+        <input type="text" name="phone" placeholder="0501234567" required>
+    </div>
+    <div class="form-group">
+        <label>שם (אופציונלי)</label>
+        <input type="text" name="full_name">
+    </div>
+    <button type="submit" class="btn">הוספה לבלאקליסט</button>
+</form>
+
+{% if entries %}
+<table>
+    <thead>
+        <tr><th>טלפון</th><th>שם</th><th></th></tr>
+    </thead>
+    <tbody>
+        {% for e in entries %}
+        <tr>
+            <td>{{ e.phone }}</td>
+            <td>{{ e.full_name or '' }}</td>
+            <td>
+                <form method="post" action="{{ url_for('automations.remove_from_blacklist', blacklist_id=e.id) }}" style="display:inline;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <button type="submit" class="btn">הסרה</button>
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p class="empty-state">הבלאקליסט ריק.</p>
+{% endif %}
+{% endblock %}

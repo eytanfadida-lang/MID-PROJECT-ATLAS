@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block page_title %}שיחות בוט הלקוחות{% endblock %}
+{% block page_heading %}שיחות בוט הלקוחות{% endblock %}
+
+{% block content %}
+<div class="chat-app">
+    <div class="chat-app-list">
+        {% if conversations %}
+            {% for c in conversations %}
+            <a href="{{ url_for('bot_conversations.view_conversation', phone=c.phone) }}"
+               class="chat-list-item {{ 'active' if c.phone == active_phone else '' }}">
+                <div class="chat-list-avatar">👤</div>
+                <div class="chat-list-info">
+                    <div class="chat-list-top">
+                        <span class="chat-list-name">{{ c.phone }}</span>
+                        <span class="chat-list-time">{{ c.last_message_at | format_lead_datetime }}</span>
+                    </div>
+                    <div class="chat-list-preview">{{ c.last_message_body }}</div>
+                    <div class="chat-list-number">📞 {{ c.bot_phone_label }}</div>
+                </div>
+            </a>
+            {% endfor %}
+        {% else %}
+        <p class="empty-state">אין עדיין שיחות עם בוט הלקוחות.</p>
+        {% endif %}
+    </div>
+
+    <div class="chat-app-thread">
+        {% if messages %}
+        <div class="chat-thread-header">התקבל/נשלח דרך: {{ active_bot_label }}</div>
+        <div class="chat-thread">
+            {% for m in messages %}
+            <div class="chat-bubble {{ 'chat-bubble-in' if m.direction == 'in' else 'chat-bubble-out' }}">
+                {% if m.attachment_url %}
+                    {% if m.attachment_url.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.webp')) %}
+                    <a href="{{ m.attachment_url }}" target="_blank" rel="noopener">
+                        <img src="{{ m.attachment_url }}" class="chat-attachment-image" alt="תמונה מצורפת">
+                    </a>
+                    {% elif m.attachment_url.lower().endswith(('.mp4', '.3gp', '.mov', '.webm')) %}
+                    <video src="{{ m.attachment_url }}" class="chat-attachment-image" controls></video>
+                    {% else %}
+                    <a href="{{ m.attachment_url }}" target="_blank" rel="noopener" class="chat-attachment-file">📎 קובץ מצורף</a>
+                    {% endif %}
+                {% endif %}
+                {% if m.body %}{{ m.body | collapse_blank_lines }}{% endif %}<span class="chat-time">{{ m.created_at | format_lead_datetime }}</span>
+            </div>
+            {% endfor %}
+        </div>
+
+        <form method="post" action="{{ url_for('bot_conversations.reply', phone=active_phone) }}"
+              class="chat-reply-form" enctype="multipart/form-data">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <label class="chat-attach-btn" title="צירוף קובץ/תמונה">
+                📎
+                <input type="file" name="attachment" hidden>
+            </label>
+            <textarea name="body" rows="1" placeholder="כתוב הודעה..."></textarea>
+            <button type="submit" class="btn">שלח</button>
+        </form>
+        {% else %}
+        <div class="chat-app-empty">בחר/י שיחה מהרשימה</div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

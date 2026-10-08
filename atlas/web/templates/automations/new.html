@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block page_title %}אוטומציה מתוזמנת חדשה{% endblock %}
+{% block page_heading %}אוטומציה מתוזמנת חדשה{% endblock %}
+
+{% block content %}
+<form method="post" class="form-card">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <div class="form-group">
+        <label>שם האוטומציה</label>
+        <input type="text" name="name" value="{{ form.get('name', '') }}" required autofocus>
+    </div>
+
+    {% include "automations/_schedule_fields.html" %}
+
+    <div class="form-group">
+        <label>תוכן ההודעה</label>
+        <textarea name="text_template" rows="5" required>{{ form.get('text_template', '') }}</textarea>
+        <p class="hint">
+            אפשר להשתמש ב-{{ '{full_name}' }} - יוחלף בשם הנמען (אם הוזן ברשימת הנמענים).
+        </p>
+    </div>
+
+    <button type="submit" class="btn">יצירה</button>
+    <a href="{{ url_for('automations.list_automations') }}" class="btn">ביטול</a>
+</form>
+{% endblock %}
