@@ -122,3 +122,67 @@ class AutomationRepository:
              datetime.datetime.now().isoformat(timespec="seconds")),
         )
         self.conn.commit()
+
+    # --- קריאה/עריכה לממשק הניהול (עמוד "אוטומציות") ---
+
+    def get_all(self, tenant_id=1):
+        rows = self.conn.execute(
+            "SELECT id, name, trigger_type, enabled, created_at FROM automations "
+            "WHERE tenant_id = ? ORDER BY id",
+            (tenant_id,),
+        ).fetchall()
+        automations = []
+        for row in rows:
+            automation_id = row[0]
+            success_count, failed_count = self.conn.execute(
+                "SELECT "
+                "SUM(CASE WHEN status = 'success' THEN 1 ELSE 0 END), "
+                "SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) "
+                "FROM automation_executions WHERE automation_id = ?",
+                (automation_id,),
+            ).fetchone()
+            automations.append({
+                "id": automation_id,
+                "name": row[1],
+                "trigger_type": row[2],
+                "enabled": bool(row[3]),
+                "created_at": row[4],
+                "success_count": success_count or 0,
+                "failed_count": failed_count or 0,
+            })
+        return automations
+
+    def get_by_id(self, automation_id, tenant_id=1):
+        row = self.conn.execute(
+            "SELECT id, name, trigger_type, enabled, created_at FROM automations "
+            "WHERE id = ? AND tenant_id = ?",
+            (automation_id, tenant_id),
+        ).fetchone()
+        if row is None:
+            return None
+        return {
+            "id": row[0], "name": row[1], "trigger_type": row[2],
+            "enabled": bool(row[3]), "created_at": row[4],
+        }
+
+    def toggle_enabled(self, automation_id):
+        now = datetime.datetime.now().isoformat(timespec="seconds")
+        self.conn.execute(
+            "UPDATE automations SET enabled = 1 - enabled, updated_at = ? WHERE id = ?",
+            (now, automation_id),
+        )
+        self.conn.commit()
+
+    def get_recent_executions(self, automation_id, limit=50):
+        rows = self.conn.execute(
+            "SELECT id, target_phone, status, channel, detail, created_at FROM automation_executions "
+            "WHERE automation_id = ? ORDER BY id DESC LIMIT ?",
+            (automation_id, limit),
+        ).fetchall()
+        return [
+            {
+                "id": row[0], "target_phone": row[1], "status": row[2],
+                "channel": row[3], "detail": row[4], "created_at": row[5],
+            }
+            for row in rows
+        ]

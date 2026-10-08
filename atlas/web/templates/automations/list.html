@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block page_title %}אוטומציות - מנהל תורים{% endblock %}
+{% block page_heading %}אוטומציות{% endblock %}
+
+{% block content %}
+{% if automations %}
+<table>
+    <thead>
+        <tr>
+            <th>שם</th>
+            <th>טריגר</th>
+            <th>סטטוס</th>
+            <th>הצלחות</th>
+            <th>כשלונות</th>
+            <th>פעולות</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for a in automations %}
+        <tr>
+            <td><a href="{{ url_for('automations.view_automation', automation_id=a.id) }}">{{ a.name }}</a></td>
+            <td>{{ a.trigger_type }}</td>
+            <td><span class="badge {{ 'badge-green' if a.enabled else 'badge-gray' }}">{{ 'פעילה' if a.enabled else 'כבויה' }}</span></td>
+            <td>{{ a.success_count }}</td>
+            <td>{{ a.failed_count }}</td>
+            <td>
+                <a href="{{ url_for('automations.view_automation', automation_id=a.id) }}" class="btn">צפייה</a>
+                <form method="post" action="{{ url_for('automations.toggle_automation', automation_id=a.id) }}" style="display:inline;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <button type="submit" class="btn">{{ 'כבה' if a.enabled else 'הפעל' }}</button>
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p class="empty-state">אין עדיין אוטומציות.</p>
+{% endif %}
+{% endblock %}

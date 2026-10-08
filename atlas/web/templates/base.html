@@ -38,6 +38,8 @@
                    class="{{ 'active' if request.path.startswith('/users') else '' }}">👤 משתמשים</a>
                 <a href="{{ url_for('bot_conversations.list_conversations') }}"
                    class="{{ 'active' if request.path.startswith('/bot-conversations') else '' }}">💬 שיחות בוט הלקוחות</a>
+                <a href="{{ url_for('automations.list_automations') }}"
+                   class="{{ 'active' if request.path.startswith('/automations') else '' }}">⚡ אוטומציות</a>
                 {% endif %}
             </div>
 

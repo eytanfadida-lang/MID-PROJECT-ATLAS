@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block page_title %}{{ automation.name }} - אוטומציות{% endblock %}
+{% block page_heading %}{{ automation.name }}{% endblock %}
+
+{% block content %}
+<div class="toolbar">
+    <a href="{{ url_for('automations.list_automations') }}" class="btn">חזרה לרשימה</a>
+    <span class="badge {{ 'badge-green' if automation.enabled else 'badge-gray' }}">{{ 'פעילה' if automation.enabled else 'כבויה' }}</span>
+    <form method="post" action="{{ url_for('automations.toggle_automation', automation_id=automation.id) }}" style="display:inline;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button type="submit" class="btn">{{ 'כבה' if automation.enabled else 'הפעל' }}</button>
+    </form>
+</div>
+
+<p>טריגר: <strong>{{ automation.trigger_type }}</strong></p>
+
+<h3>שלבים</h3>
+{% if steps %}
+<table>
+    <thead>
+        <tr><th>סדר</th><th>השהייה (דקות)</th><th>סוג פעולה</th><th>תוכן</th></tr>
+    </thead>
+    <tbody>
+        {% for s in steps %}
+        <tr>
+            <td>{{ s.step_order }}</td>
+            <td>{{ s.delay_minutes }}</td>
+            <td>{{ s.action_type }}</td>
+            <td>{{ s.action_config.text_template or '' }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p class="empty-state">אין שלבים.</p>
+{% endif %}
+
+<h3>הרצות אחרונות</h3>
+{% if executions %}
+<table>
+    <thead>
+        <tr><th>תאריך</th><th>טלפון</th><th>סטטוס</th><th>ערוץ</th><th>פרטים</th></tr>
+    </thead>
+    <tbody>
+        {% for e in executions %}
+        <tr>
+            <td>{{ e.created_at | format_lead_datetime }}</td>
+            <td>{{ e.target_phone }}</td>
+            <td><span class="badge {{ 'badge-green' if e.status == 'success' else 'badge-red' }}">{{ 'הצלחה' if e.status == 'success' else 'כישלון' }}</span></td>
+            <td>{{ e.channel }}</td>
+            <td>{{ e.detail }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p class="empty-state">עדיין אין הרצות.</p>
+{% endif %}
+{% endblock %}
