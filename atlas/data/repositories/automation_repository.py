@@ -40,6 +40,17 @@ class AutomationRepository:
             "action_config": json.loads(row[5]) if row[5] else {},
         }
 
+    def update_step(self, step_id, text_template, delay_minutes):
+        step = self.get_step(step_id)
+        action_config = dict(step["action_config"]) if step else {}
+        action_config["mode"] = "text"
+        action_config["text_template"] = text_template
+        self.conn.execute(
+            "UPDATE automation_steps SET delay_minutes = ?, action_config = ? WHERE id = ?",
+            (delay_minutes, json.dumps(action_config, ensure_ascii=False), step_id),
+        )
+        self.conn.commit()
+
     def get_steps(self, automation_id):
         rows = self.conn.execute(
             "SELECT id, step_order, delay_minutes, action_type, action_config FROM automation_steps "
@@ -113,6 +124,40 @@ class AutomationRepository:
             (due_action_id,),
         )
         self.conn.commit()
+
+    # נסרקת ע"י /tasks/automations-run (poller) - פעולות שהגיע זמנן ועדיין pending
+    def get_due(self, limit=50):
+        now = datetime.datetime.now().isoformat(timespec="seconds")
+        rows = self.conn.execute(
+            "SELECT id, tenant_id, automation_id, step_id, target_phone, target_lead_id, "
+            "context, run_after, status, attempts FROM due_actions "
+            "WHERE status = 'pending' AND run_after <= ? ORDER BY run_after LIMIT ?",
+            (now, limit),
+        ).fetchall()
+        return [
+            {
+                "id": row[0], "tenant_id": row[1], "automation_id": row[2], "step_id": row[3],
+                "target_phone": row[4], "target_lead_id": row[5],
+                "context": json.loads(row[6]) if row[6] else {},
+                "run_after": row[7], "status": row[8], "attempts": row[9],
+            }
+            for row in rows
+        ]
+
+    # שורות שנתפסו (claimed) ע"י הרצה שככל הנראה לא סיימה (תהליך נפל וכו') - במקום לנסות
+    # שוב לנצח בלי בקרה, מסמנים כנכשל במפורש בהרצה הבאה (ראו §4 בתוכנית)
+    def reclaim_stale_claims(self, stale_after_minutes=10):
+        threshold = (
+            datetime.datetime.now() - datetime.timedelta(minutes=stale_after_minutes)
+        ).isoformat(timespec="seconds")
+        rows = self.conn.execute(
+            "SELECT id, automation_id, target_phone FROM due_actions "
+            "WHERE status = 'claimed' AND claimed_at < ?",
+            (threshold,),
+        ).fetchall()
+        for row in rows:
+            self.mark_failed(row[0])
+        return [{"id": row[0], "automation_id": row[1], "target_phone": row[2]} for row in rows]
 
     def log_execution(self, automation_id, target_phone, status, channel, detail, due_action_id=None):
         self.conn.execute(

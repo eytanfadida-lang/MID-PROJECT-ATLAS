@@ -18,7 +18,7 @@
 {% if steps %}
 <table>
     <thead>
-        <tr><th>סדר</th><th>השהייה (דקות)</th><th>סוג פעולה</th><th>תוכן</th></tr>
+        <tr><th>סדר</th><th>השהייה (דקות)</th><th>סוג פעולה</th><th>תוכן</th><th>פעולות</th></tr>
     </thead>
     <tbody>
         {% for s in steps %}
@@ -27,6 +27,7 @@
             <td>{{ s.delay_minutes }}</td>
             <td>{{ s.action_type }}</td>
             <td>{{ s.action_config.text_template or '' }}</td>
+            <td><a href="{{ url_for('automations.edit_step', automation_id=automation.id, step_id=s.id) }}" class="btn">עריכה</a></td>
         </tr>
         {% endfor %}
     </tbody>

@@ -224,6 +224,9 @@ arbox_location_map.json
 
 # PythonAnywhere API token (לקריאת לוגים/ניהול מרחוק - ראו atlas/integrations/pythonanywhere)
 .pythonanywhere_api_token
+
+# Automations engine poller token (ראו atlas/web/webhooks.py /tasks/automations-run)
+.automations_run_token
 .google_leads_webhook_key
 .landing_page_token
 .last_landing_page_payload.json

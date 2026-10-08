@@ -84,3 +84,23 @@ def process_due_action(repos, due_action):
         CHANNEL_WHATSAPP_CLOUD_API, body, due_action_id=due_action["id"],
     )
     repos.customer_bot_messages.log(due_action["target_phone"], "out", body)
+
+
+# נקראת מ-/tasks/automations-run (cron חיצוני, GitHub Actions - אין thread רקע בפרודקשן,
+# ראו atlas/factory.py). קודם מאפסת claimed שנתקעו (תהליך קודם שלא סיים), ואז מבצעת את כל
+# הפעולות שהגיע זמנן. claim_due_action הוא UPDATE מותנה (WHERE status='pending') - אם שתי
+# הרצות חופפות, השנייה פשוט לא תצליח לתפוס את מה שהראשונה כבר תפסה (idempotent)
+def process_due_actions(repos, limit=50):
+    stale = repos.automations.reclaim_stale_claims()
+    for row in stale:
+        repos.automations.log_execution(
+            row["automation_id"], row["target_phone"], "failed",
+            CHANNEL_WHATSAPP_CLOUD_API, "נתקע במצב 'claimed' יותר מדי זמן - סומן כנכשל",
+        )
+
+    due_actions = repos.automations.get_due(limit=limit)
+    processed = 0
+    for due_action in due_actions:
+        process_due_action(repos, due_action)
+        processed += 1
+    return {"processed": processed, "reclaimed_stale": len(stale)}

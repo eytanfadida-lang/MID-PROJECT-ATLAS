@@ -18,6 +18,7 @@ from atlas.integrations.whatsapp import bot as whatsapp_bot
 from atlas.integrations.whatsapp import admin_assistant as crm_assistant
 from atlas.integrations.whatsapp import customer_assistant
 from atlas.integrations.whatsapp.customer_assistant import OWNER_WHATSAPP_NUMBER, OWNER_ALERT_TEMPLATE_NAME
+from atlas.automations import engine as automation_engine
 from atlas.services.phone_utils import normalize_phone
 from atlas.settings import CHANNELS
 from atlas.web.blueprints.bot_conversations import UPLOADS_DIR
@@ -73,6 +74,18 @@ def load_arbox_sync_token():
     return token or None
 
 
+# טוקן להפעלת ה-poller של מנוע האוטומציות (atlas/automations/engine.py) - אותו דפוס בדיוק
+# כמו arbox-sync: אין thread רקע בפרודקשן, אז cron חיצוני (GitHub Actions) קורא לזה תדיר
+AUTOMATIONS_RUN_TOKEN_FILE = secret(".automations_run_token")
+
+
+def load_automations_run_token():
+    if not AUTOMATIONS_RUN_TOKEN_FILE.exists():
+        return None
+    token = AUTOMATIONS_RUN_TOKEN_FILE.read_text().strip()
+    return token or None
+
+
 # מפעילה סנכרון Arbox דרך HTTP, מאובטחת בטוקן סודי (לא session/login) - מיועדת לשירות
 # cron חיצוני שקורא לכתובת הזו על בסיס קבוע, בסביבות אירוח בלי background thread משלנו
 @bp.route("/arbox-sync")
@@ -83,6 +96,19 @@ def trigger_arbox_sync():
         abort(403)
 
     result = sync_arbox_clients(db_context.get_repos())
+    return jsonify(result)
+
+
+# מפעילה את ה-poller של מנוע האוטומציות (ביצוע פעולות מושהות שהגיע זמנן) - אותה הגנת
+# טוקן בדיוק כמו arbox-sync
+@bp.route("/automations-run")
+def trigger_automations_run():
+    expected_token = load_automations_run_token()
+    provided_token = request.args.get("token", "")
+    if not expected_token or not secrets.compare_digest(provided_token, expected_token):
+        abort(403)
+
+    result = automation_engine.process_due_actions(db_context.get_repos())
     return jsonify(result)
 
 
