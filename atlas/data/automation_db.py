@@ -99,19 +99,22 @@ class AutomationDB:
             "CREATE INDEX IF NOT EXISTS idx_automation_recipients_automation "
             "ON automation_recipients(automation_id)"
         )
-        # רשימת החרגה ידנית פר-אוטומציה - מספרים שלעולם לא יקבלו אותה, גם אם הם ברשימת
-        # הנמענים (automation_recipients) - נבדקת ב-process_scheduled_automations בזמן השליחה
+        # רשימת החרגה גלובלית (לא פר-אוטומציה - אותה רשימה משותפת לכל האוטומציות המתוזמנות
+        # בחשבון, בהתאם לדפוס שראינו ב-Upgrade360) - מספרים שלעולם לא יקבלו שום הודעה
+        # מתוזמנת, גם אם הם ברשימת הנמענים (automation_recipients) של אוטומציה כלשהי -
+        # נבדקת ב-process_scheduled_automations בזמן ה"הורדה"/שליחה
         conn.execute("""
-            CREATE TABLE IF NOT EXISTS automation_blacklist (
+            CREATE TABLE IF NOT EXISTS global_blacklist (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                automation_id INTEGER NOT NULL,
+                tenant_id INTEGER NOT NULL DEFAULT 1,
                 phone TEXT NOT NULL,
+                full_name TEXT,
                 created_at TEXT NOT NULL
             )
         """)
         conn.execute(
-            "CREATE UNIQUE INDEX IF NOT EXISTS idx_automation_blacklist_unique "
-            "ON automation_blacklist(automation_id, phone)"
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_global_blacklist_unique "
+            "ON global_blacklist(tenant_id, phone)"
         )
         self._seed_default_automation(conn)
         return conn

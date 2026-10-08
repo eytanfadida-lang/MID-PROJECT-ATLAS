@@ -5,35 +5,145 @@
 {% block content %}
 <div class="toolbar">
     <a href="{{ url_for('automations.new_automation') }}" class="btn">אוטומציה מתוזמנת חדשה</a>
+    <a href="{{ url_for('automations.blacklist') }}" class="btn">בלאקליסט גלובלי</a>
 </div>
+
 {% if automations %}
-<table>
+<table class="automations-table">
     <thead>
         <tr>
             <th>שם</th>
-            <th>טריגר</th>
+            <th>תזמון / טריגר</th>
+            <th>הודעה</th>
             <th>נמענים צפויים</th>
             <th>סטטוס</th>
             <th>הצלחות</th>
             <th>כשלונות</th>
-            <th>פעולות</th>
+            <th></th>
         </tr>
     </thead>
     <tbody>
         {% for a in automations %}
-        <tr>
-            <td><a href="{{ url_for('automations.view_automation', automation_id=a.id) }}">{{ a.name }}</a></td>
-            <td>{{ 'מתוזמן' if a.trigger_type == 'scheduled' else a.trigger_type }}</td>
+        <tr id="automation-{{ a.id }}">
+            <td>{{ a.name }}</td>
+            <td>
+                {% if a.trigger_type == 'scheduled' %}
+                    {% set tc = a.trigger_config %}
+                    {% if tc.schedule_type == 'once' %}
+                        חד-פעמי ב-{{ tc.run_at }}
+                    {% elif tc.schedule_type == 'daily' %}
+                        יומי, {{ tc.time_of_day }}
+                    {% elif tc.schedule_type == 'weekly' %}
+                        {% set wdays = tc.weekdays if tc.weekdays is defined and tc.weekdays else [tc.get('weekday', 0)] %}
+                        {% for w in wdays %}{{ weekday_labels[w] }}{% if not loop.last %}, {% endif %}{% endfor %}
+                        , {{ tc.time_of_day }}
+                    {% elif tc.schedule_type == 'monthly' %}
+                        {{ tc.day_of_month }} לחודש, {{ tc.time_of_day }}
+                    {% endif %}
+                {% else %}
+                    {{ 'הרשמה לשיעור ניסיון' if a.trigger_type == 'trial_booked' else a.trigger_type }}
+                {% endif %}
+            </td>
+            <td class="automations-message-preview">{{ (a.steps[0].action_config.text_template or '')[:60] if a.steps else '' }}</td>
             <td>{{ a.expected_recipient_count if a.expected_recipient_count is not none else '-' }}</td>
             <td><span class="badge {{ 'badge-green' if a.enabled else 'badge-gray' }}">{{ 'פעילה' if a.enabled else 'כבויה' }}</span></td>
             <td>{{ a.success_count }}</td>
             <td>{{ a.failed_count }}</td>
             <td>
-                <a href="{{ url_for('automations.view_automation', automation_id=a.id) }}" class="btn">צפייה</a>
                 <form method="post" action="{{ url_for('automations.toggle_automation', automation_id=a.id) }}" style="display:inline;">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                     <button type="submit" class="btn">{{ 'כבה' if a.enabled else 'הפעל' }}</button>
                 </form>
+                <button type="button" class="btn" onclick="document.getElementById('details-{{ a.id }}').hidden = !document.getElementById('details-{{ a.id }}').hidden;">עריכה</button>
+            </td>
+        </tr>
+        <tr id="details-{{ a.id }}" class="automations-details-row" hidden>
+            <td colspan="8">
+                <div class="automations-details">
+                    <h4>תוכן ההודעה</h4>
+                    {% if a.steps %}
+                    <form method="post" action="{{ url_for('automations.edit_step', automation_id=a.id, step_id=a.steps[0].id) }}" class="form-card">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                        <div class="form-group">
+                            <textarea name="text_template" rows="4" required>{{ a.steps[0].action_config.text_template or '' }}</textarea>
+                            <p class="hint">משתנים זמינים: {{ '{full_name}' }} (ולאוטומציית שיעור ניסיון גם {{ '{session_name} {date} {start_time} {location_name}' }})</p>
+                        </div>
+                        <div class="form-group">
+                            <label>השהייה לפני שליחה (בדקות, 0 = מיידי)</label>
+                            <input type="number" name="delay_minutes" min="0" value="{{ a.steps[0].delay_minutes }}">
+                        </div>
+                        <button type="submit" class="btn">שמירת הודעה</button>
+                    </form>
+                    {% endif %}
+
+                    {% if a.trigger_type == 'scheduled' %}
+                    <h4>תזמון</h4>
+                    <form method="post" action="{{ url_for('automations.edit_schedule', automation_id=a.id) }}" class="form-card">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                        {% set form = a.trigger_config %}
+                        {% set selected_weekdays = a.trigger_config.weekdays if a.trigger_config.weekdays is defined and a.trigger_config.weekdays else ([a.trigger_config.get('weekday', 0)] if a.trigger_config.get('schedule_type') == 'weekly' else []) %}
+                        {% include "automations/_schedule_fields.html" %}
+                        <button type="submit" class="btn">שמירת תזמון</button>
+                    </form>
+                    {% if a.last_run_at %}
+                    <p class="hint">הופעלה לאחרונה: {{ a.last_run_at | format_lead_datetime }}</p>
+                    {% endif %}
+
+                    <h4>נמענים</h4>
+                    <form method="post" action="{{ url_for('automations.add_recipient', automation_id=a.id) }}" class="form-card">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                        <div class="form-group">
+                            <label>טלפון</label>
+                            <input type="text" name="phone" placeholder="0501234567" required>
+                        </div>
+                        <div class="form-group">
+                            <label>שם (אופציונלי)</label>
+                            <input type="text" name="full_name">
+                        </div>
+                        <button type="submit" class="btn">הוספת נמען</button>
+                    </form>
+                    {% if a.recipients %}
+                    <table>
+                        <thead><tr><th>טלפון</th><th>שם</th><th></th></tr></thead>
+                        <tbody>
+                            {% for r in a.recipients %}
+                            <tr>
+                                <td>{{ r.phone }}</td>
+                                <td>{{ r.full_name or '' }}</td>
+                                <td>
+                                    <form method="post" action="{{ url_for('automations.remove_recipient', automation_id=a.id, recipient_id=r.id) }}" style="display:inline;">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                        <button type="submit" class="btn" onclick="return confirm('להסיר נמען זה?');">הסרה</button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    {% else %}
+                    <p class="empty-state">אין עדיין נמענים.</p>
+                    {% endif %}
+                    {% endif %}
+
+                    <h4>הרצות אחרונות</h4>
+                    {% if a.executions %}
+                    <table>
+                        <thead><tr><th>תאריך</th><th>טלפון</th><th>סטטוס</th><th>פרטים</th></tr></thead>
+                        <tbody>
+                            {% for e in a.executions %}
+                            <tr>
+                                <td>{{ e.created_at | format_lead_datetime }}</td>
+                                <td>{{ e.target_phone }}</td>
+                                <td><span class="badge {{ 'badge-green' if e.status == 'success' else 'badge-red' }}">{{ 'הצלחה' if e.status == 'success' else 'כישלון' }}</span></td>
+                                <td>{{ e.detail }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    {% else %}
+                    <p class="empty-state">עדיין אין הרצות.</p>
+                    {% endif %}
+                </div>
             </td>
         </tr>
         {% endfor %}
@@ -42,4 +152,14 @@
 {% else %}
 <p class="empty-state">אין עדיין אוטומציות.</p>
 {% endif %}
+
+<script>
+// פותחת אוטומטית את שורת הפירוט של האוטומציה שחזרנו אליה אחרי שמירה (ראו _back_to_list בבלופרינט)
+if (window.location.hash && window.location.hash.startsWith('#automation-')) {
+    var detailsRow = document.getElementById('details-' + window.location.hash.replace('#automation-', ''));
+    if (detailsRow) {
+        detailsRow.hidden = false;
+    }
+}
+</script>
 {% endblock %}

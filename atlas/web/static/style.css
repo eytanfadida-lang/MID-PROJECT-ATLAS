@@ -793,6 +793,31 @@ label {
     max-width: 480px;
 }
 
+/* עמוד אוטומציות מאוחד (רשימה + עריכה inline, בלי עמוד פרטים נפרד) - ראו
+   atlas/web/templates/automations/list.html */
+.automations-message-preview {
+    white-space: normal;
+    max-width: 280px;
+}
+
+.automations-details-row td {
+    white-space: normal;
+    background: var(--surface-2);
+    padding: 16px;
+}
+
+.automations-details h4 {
+    margin: 18px 0 8px;
+}
+
+.automations-details h4:first-child {
+    margin-top: 0;
+}
+
+.automations-details table {
+    white-space: normal;
+}
+
 .day-list, .hour-list {
     display: flex;
     flex-wrap: wrap;

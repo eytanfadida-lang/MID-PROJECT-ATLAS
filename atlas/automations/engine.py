@@ -183,11 +183,13 @@ def _compute_schedule_instants(trigger_config, now):
 # נקראת מ-process_due_actions (אותו poller, אותה תדירות) - סורקת אוטומציות מתוזמנות
 # (trigger_type='scheduled'), ולכל אחת שהגיע זמן ה"הורדה" (נעילת רשימת הנמענים) שלה ועוד לא
 # רצה להזדמנות הזו, יוצרת due_actions לכל הנמענים שברשימה הידנית (automation_recipients)
-# שאינם ברשימת ההחרגה (automation_blacklist), עם זמן שליחה = send_instant (לא בהכרח מייד -
-# ראו _fire_automation_steps). לא קשורות ל-fire_trigger/אירוע בודד
+# שאינם ברשימת ההחרגה הגלובלית (global_blacklist - משותפת לכל האוטומציות, לא פר-אוטומציה),
+# עם זמן שליחה = send_instant (לא בהכרח מייד - ראו _fire_automation_steps). לא קשורות
+# ל-fire_trigger/אירוע בודד
 def process_scheduled_automations(repos, tenant_id=1):
     now = datetime.datetime.now()
     fired = 0
+    blacklisted_phones = {row["phone"] for row in repos.automations.get_global_blacklist(tenant_id=tenant_id)}
     for automation in repos.automations.get_scheduled_automations(tenant_id=tenant_id):
         stage_instant, send_instant = _compute_schedule_instants(automation["trigger_config"], now)
         if stage_instant is None or now < stage_instant:
@@ -201,7 +203,6 @@ def process_scheduled_automations(repos, tenant_id=1):
             except ValueError:
                 pass
 
-        blacklisted_phones = {row["phone"] for row in repos.automations.get_blacklist(automation["id"])}
         recipients = repos.automations.get_recipients(automation["id"])
         send_after = send_instant.isoformat(timespec="seconds")
         for recipient in recipients:

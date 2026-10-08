@@ -193,9 +193,9 @@ class AutomationRepository:
                     "SELECT "
                     "(SELECT COUNT(*) FROM automation_recipients WHERE automation_id = ?), "
                     "(SELECT COUNT(*) FROM automation_recipients r "
-                    " JOIN automation_blacklist b ON b.automation_id = r.automation_id "
-                    " AND b.phone = r.phone WHERE r.automation_id = ?)",
-                    (automation_id, automation_id),
+                    " JOIN global_blacklist b ON b.phone = r.phone "
+                    " WHERE r.automation_id = ? AND b.tenant_id = ?)",
+                    (automation_id, automation_id, tenant_id),
                 ).fetchone()
                 expected_recipient_count = (recipients_count or 0) - (blacklist_count or 0)
             automations.append({
@@ -296,27 +296,27 @@ class AutomationRepository:
         ).fetchall()
         return [{"id": row[0], "phone": row[1], "full_name": row[2]} for row in rows]
 
-    # --- רשימת החרגה ידנית (בלאקליסט, לאוטומציות מתוזמנות בלבד) ---
+    # --- בלאקליסט גלובלי (משותף לכל האוטומציות המתוזמנות, לא פר-אוטומציה - ראו automation_db.py) ---
 
-    def add_to_blacklist(self, automation_id, phone):
+    def add_to_global_blacklist(self, phone, full_name=None, tenant_id=1):
         now = datetime.datetime.now().isoformat(timespec="seconds")
         self.conn.execute(
-            "INSERT OR IGNORE INTO automation_blacklist (automation_id, phone, created_at) "
-            "VALUES (?, ?, ?)",
-            (automation_id, phone, now),
+            "INSERT OR IGNORE INTO global_blacklist (tenant_id, phone, full_name, created_at) "
+            "VALUES (?, ?, ?, ?)",
+            (tenant_id, phone, full_name, now),
         )
         self.conn.commit()
 
-    def remove_from_blacklist(self, blacklist_id):
-        self.conn.execute("DELETE FROM automation_blacklist WHERE id = ?", (blacklist_id,))
+    def remove_from_global_blacklist(self, blacklist_id):
+        self.conn.execute("DELETE FROM global_blacklist WHERE id = ?", (blacklist_id,))
         self.conn.commit()
 
-    def get_blacklist(self, automation_id):
+    def get_global_blacklist(self, tenant_id=1):
         rows = self.conn.execute(
-            "SELECT id, phone FROM automation_blacklist WHERE automation_id = ? ORDER BY id",
-            (automation_id,),
+            "SELECT id, phone, full_name FROM global_blacklist WHERE tenant_id = ? ORDER BY id",
+            (tenant_id,),
         ).fetchall()
-        return [{"id": row[0], "phone": row[1]} for row in rows]
+        return [{"id": row[0], "phone": row[1], "full_name": row[2]} for row in rows]
 
     def toggle_enabled(self, automation_id):
         now = datetime.datetime.now().isoformat(timespec="seconds")

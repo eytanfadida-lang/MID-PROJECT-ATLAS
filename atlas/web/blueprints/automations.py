@@ -4,11 +4,12 @@ from atlas.data.context import get_repos
 from atlas.core.auth import admin_required
 from atlas.automations.engine import SCHEDULE_TYPES
 
-# עמוד ניהול למנוע האוטומציות (ראו atlas/automations/engine.py) - רשימה, הפעלה/כיבוי,
-# עריכת תוכן/תזמון, ויומן הרצות אחרונות. אוטומציות מבוססות-אירוע (כמו "הרשמה לשיעור ניסיון")
-# עדיין מוגדרות בקוד בלבד (seed ב-atlas/data/automation_db.py) - אין להן נקודת חיבור גנרית
-# בממשק כי הן תלויות בקוד שמזהה את האירוע. אוטומציות מתוזמנות (trigger_type="scheduled",
-# למשל סקר/תזכורת לרשימה נבחרת) כן נוצרות ונערכות לגמרי דרך הממשק - ראו new_automation/edit_schedule
+# עמוד ניהול למנוע האוטומציות (ראו atlas/automations/engine.py) - טבלה אחת מאוחדת (לא
+# רשימה+עמוד פרטים נפרד): כל שורה כוללת עריכת תוכן/תזמון/נמענים inline (מורחבת/מוסתרת
+# ב-<details>, בלי JS מעבר לפעלה/כיבוי שדות התזמון בטופס היצירה/עריכה - ראו list.html).
+# אוטומציות מבוססות-אירוע (כמו "הרשמה לשיעור ניסיון") עדיין מוגדרות בקוד בלבד (seed ב-
+# atlas/data/automation_db.py). אוטומציות מתוזמנות (trigger_type="scheduled") נוצרות ונערכות
+# לגמרי דרך הממשק. בלאקליסט הוא גלובלי (משותף לכל האוטומציות) - עמוד נפרד, לא פר-שורה
 bp = Blueprint("automations", __name__, url_prefix="/automations")
 
 _WEEKDAY_LABELS = ["שני", "שלישי", "רביעי", "חמישי", "שישי", "שבת", "ראשון"]
@@ -76,28 +77,25 @@ def _parse_schedule_form(form):
     return trigger_config, None
 
 
+# עמוד יחיד מאוחד - לכל אוטומציה נטענים גם השלבים וגם (לאוטומציות מתוזמנות) הנמענים
+# וההרצות האחרונות, כדי שהכל יוצג inline באותה טבלה בלי ניווט לעמוד נפרד
 @bp.route("/")
 @admin_required
 def list_automations():
-    automations = get_repos().automations.get_all()
-    return render_template("automations/list.html", automations=automations)
-
-
-@bp.route("/<int:automation_id>")
-@admin_required
-def view_automation(automation_id):
     repos = get_repos()
-    automation = repos.automations.get_by_id(automation_id)
-    if automation is None:
-        abort(404)
-    steps = repos.automations.get_steps(automation_id)
-    executions = repos.automations.get_recent_executions(automation_id)
-    is_scheduled = automation["trigger_type"] == "scheduled"
-    recipients = repos.automations.get_recipients(automation_id) if is_scheduled else None
-    blacklist = repos.automations.get_blacklist(automation_id) if is_scheduled else None
+    automations = repos.automations.get_all()
+    for automation in automations:
+        automation["steps"] = repos.automations.get_steps(automation["id"])
+        full = repos.automations.get_by_id(automation["id"])
+        automation["trigger_config"] = full["trigger_config"]
+        automation["last_run_at"] = full["last_run_at"]
+        if automation["trigger_type"] == "scheduled":
+            automation["recipients"] = repos.automations.get_recipients(automation["id"])
+        else:
+            automation["recipients"] = None
+        automation["executions"] = repos.automations.get_recent_executions(automation["id"], limit=10)
     return render_template(
-        "automations/detail.html", automation=automation, steps=steps, executions=executions,
-        recipients=recipients, blacklist=blacklist, weekday_labels=_WEEKDAY_LABELS,
+        "automations/list.html", automations=automations, weekday_labels=_WEEKDAY_LABELS,
     )
 
 
@@ -125,14 +123,18 @@ def new_automation():
             action_config={"mode": "text", "text_template": text_template},
         )
         flash(f"האוטומציה '{name}' נוצרה בהצלחה. עכשיו אפשר להוסיף נמענים.", "success")
-        return redirect(url_for("automations.view_automation", automation_id=automation_id))
+        return redirect(url_for("automations.list_automations", _anchor=f"automation-{automation_id}"))
 
     return render_template(
         "automations/new.html", weekday_labels=_WEEKDAY_LABELS, form={}, selected_weekdays=[],
     )
 
 
-@bp.route("/<int:automation_id>/schedule/edit", methods=["GET", "POST"])
+def _back_to_list(automation_id):
+    return redirect(url_for("automations.list_automations", _anchor=f"automation-{automation_id}"))
+
+
+@bp.route("/<int:automation_id>/schedule/edit", methods=["POST"])
 @admin_required
 def edit_schedule(automation_id):
     repos = get_repos()
@@ -140,24 +142,13 @@ def edit_schedule(automation_id):
     if automation is None or automation["trigger_type"] != "scheduled":
         abort(404)
 
-    if request.method == "POST":
-        trigger_config, error = _parse_schedule_form(request.form)
-        if error:
-            flash(error, "error")
-            return render_template(
-                "automations/edit_schedule.html", automation=automation,
-                weekday_labels=_WEEKDAY_LABELS, form=request.form,
-                selected_weekdays=_extract_weekdays(request.form),
-            )
-        repos.automations.update_schedule(automation_id, trigger_config)
-        flash("התזמון עודכן בהצלחה.", "success")
-        return redirect(url_for("automations.view_automation", automation_id=automation_id))
-
-    return render_template(
-        "automations/edit_schedule.html", automation=automation,
-        weekday_labels=_WEEKDAY_LABELS, form=automation["trigger_config"],
-        selected_weekdays=_extract_weekdays(automation["trigger_config"]),
-    )
+    trigger_config, error = _parse_schedule_form(request.form)
+    if error:
+        flash(error, "error")
+        return _back_to_list(automation_id)
+    repos.automations.update_schedule(automation_id, trigger_config)
+    flash("התזמון עודכן בהצלחה.", "success")
+    return _back_to_list(automation_id)
 
 
 @bp.route("/<int:automation_id>/recipients/add", methods=["POST"])
@@ -172,11 +163,11 @@ def add_recipient(automation_id):
     full_name = request.form.get("full_name", "").strip()
     if not phone:
         flash("יש להזין מספר טלפון.", "error")
-        return redirect(url_for("automations.view_automation", automation_id=automation_id))
+        return _back_to_list(automation_id)
 
     repos.automations.add_recipient(automation_id, phone, full_name)
     flash("הנמען נוסף בהצלחה.", "success")
-    return redirect(url_for("automations.view_automation", automation_id=automation_id))
+    return _back_to_list(automation_id)
 
 
 @bp.route("/<int:automation_id>/recipients/<int:recipient_id>/delete", methods=["POST"])
@@ -188,40 +179,39 @@ def remove_recipient(automation_id, recipient_id):
         abort(404)
     repos.automations.remove_recipient(recipient_id)
     flash("הנמען הוסר.", "success")
-    return redirect(url_for("automations.view_automation", automation_id=automation_id))
+    return _back_to_list(automation_id)
 
 
-@bp.route("/<int:automation_id>/blacklist/add", methods=["POST"])
+# בלאקליסט גלובלי - עמוד נפרד (לא פר-אוטומציה), ראו atlas/data/automation_db.py
+@bp.route("/blacklist")
 @admin_required
-def add_to_blacklist(automation_id):
-    repos = get_repos()
-    automation = repos.automations.get_by_id(automation_id)
-    if automation is None or automation["trigger_type"] != "scheduled":
-        abort(404)
+def blacklist():
+    entries = get_repos().automations.get_global_blacklist()
+    return render_template("automations/blacklist.html", entries=entries)
 
+
+@bp.route("/blacklist/add", methods=["POST"])
+@admin_required
+def add_to_blacklist():
     phone = request.form.get("phone", "").strip()
+    full_name = request.form.get("full_name", "").strip()
     if not phone:
         flash("יש להזין מספר טלפון.", "error")
-        return redirect(url_for("automations.view_automation", automation_id=automation_id))
-
-    repos.automations.add_to_blacklist(automation_id, phone)
+        return redirect(url_for("automations.blacklist"))
+    get_repos().automations.add_to_global_blacklist(phone, full_name)
     flash("המספר נוסף לבלאקליסט.", "success")
-    return redirect(url_for("automations.view_automation", automation_id=automation_id))
+    return redirect(url_for("automations.blacklist"))
 
 
-@bp.route("/<int:automation_id>/blacklist/<int:blacklist_id>/delete", methods=["POST"])
+@bp.route("/blacklist/<int:blacklist_id>/delete", methods=["POST"])
 @admin_required
-def remove_from_blacklist(automation_id, blacklist_id):
-    repos = get_repos()
-    automation = repos.automations.get_by_id(automation_id)
-    if automation is None or automation["trigger_type"] != "scheduled":
-        abort(404)
-    repos.automations.remove_from_blacklist(blacklist_id)
+def remove_from_blacklist(blacklist_id):
+    get_repos().automations.remove_from_global_blacklist(blacklist_id)
     flash("המספר הוסר מהבלאקליסט.", "success")
-    return redirect(url_for("automations.view_automation", automation_id=automation_id))
+    return redirect(url_for("automations.blacklist"))
 
 
-@bp.route("/<int:automation_id>/steps/<int:step_id>/edit", methods=["GET", "POST"])
+@bp.route("/<int:automation_id>/steps/<int:step_id>/edit", methods=["POST"])
 @admin_required
 def edit_step(automation_id, step_id):
     repos = get_repos()
@@ -232,30 +222,20 @@ def edit_step(automation_id, step_id):
     if step is None or step["automation_id"] != automation_id:
         abort(404)
 
-    if request.method == "POST":
-        text_template = request.form.get("text_template", "").strip()
-        try:
-            delay_minutes = int(request.form.get("delay_minutes", "0"))
-        except ValueError:
-            delay_minutes = 0
-        delay_minutes = max(0, delay_minutes)
+    text_template = request.form.get("text_template", "").strip()
+    try:
+        delay_minutes = int(request.form.get("delay_minutes", "0"))
+    except ValueError:
+        delay_minutes = 0
+    delay_minutes = max(0, delay_minutes)
 
-        if not text_template:
-            flash("לא ניתן לשמור הודעה ריקה.", "error")
-            return render_template(
-                "automations/edit_step.html", automation=automation, step=step,
-                text_template=text_template, delay_minutes=delay_minutes,
-            )
+    if not text_template:
+        flash("לא ניתן לשמור הודעה ריקה.", "error")
+        return _back_to_list(automation_id)
 
-        repos.automations.update_step(step_id, text_template, delay_minutes)
-        flash("השלב עודכן בהצלחה.", "success")
-        return redirect(url_for("automations.view_automation", automation_id=automation_id))
-
-    return render_template(
-        "automations/edit_step.html", automation=automation, step=step,
-        text_template=step["action_config"].get("text_template", ""),
-        delay_minutes=step["delay_minutes"],
-    )
+    repos.automations.update_step(step_id, text_template, delay_minutes)
+    flash("השלב עודכן בהצלחה.", "success")
+    return _back_to_list(automation_id)
 
 
 @bp.route("/<int:automation_id>/toggle", methods=["POST"])
@@ -268,4 +248,4 @@ def toggle_automation(automation_id):
     repos.automations.toggle_enabled(automation_id)
     new_state = "כבויה" if automation["enabled"] else "פעילה"
     flash(f"האוטומציה '{automation['name']}' עכשיו {new_state}.", "success")
-    return redirect(url_for("automations.list_automations"))
+    return _back_to_list(automation_id)
