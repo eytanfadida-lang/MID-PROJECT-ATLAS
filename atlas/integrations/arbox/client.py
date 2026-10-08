@@ -51,6 +51,29 @@ def fetch_arbox_users(api_key, **filters):
     return users
 
 
+# מושכת את "דוח ימי הולדת" (endpoint ייעודי, לא /users הרגיל - ראו /v3/reports/{reportName}
+# בתיעוד ה-API) בין שני תאריכים. חשוב: ההתאמה היא לפי יום-בחודש בלבד (כמו אירוע שנתי חוזר) -
+# fromDate/toDate=אותו תאריך מחזירה את כל מי שנולד באותו יום-בחודש, בלי קשר לשנת הלידה
+# (מאומת ישירות מול ה-API). מחזירה user_id/full_name/birthday/age/status(active/inactive)/phone
+def fetch_arbox_birthdays(api_key, from_date, to_date):
+    people = []
+    page = 1
+    while True:
+        response = requests.get(
+            f"{API_BASE_URL}/reports/birthdayReport",
+            headers={"Accept": "application/json", "api-key": api_key},
+            params={"fromDate": from_date, "toDate": to_date, "limit": PAGE_LIMIT, "page": page},
+            timeout=30,
+        )
+        response.raise_for_status()
+        page_people = response.json().get("data", []) or []
+        people.extend(page_people)
+        if len(page_people) < PAGE_LIMIT:
+            break
+        page += 1
+    return people
+
+
 # מושכת את לוח השיעורים האמיתי מ-Arbox (עם pagination) בין שני תאריכים - שם שיעור,
 # תאריך/שעה, סניף, מדריך, מקסימום משתתפים. אין ב-Arbox endpoint שחושף כמה מקומות
 # נותרו בפועל (רק את המקסימום) - ראה ה"שאלה פתוחה ל-Arbox support" בתוכנית

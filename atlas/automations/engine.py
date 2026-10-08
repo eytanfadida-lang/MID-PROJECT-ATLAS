@@ -1,7 +1,8 @@
 import datetime
 
+from atlas.integrations.arbox import client as arbox_client
 from atlas.integrations.whatsapp import bot as whatsapp_bot
-from atlas.services.phone_utils import to_whatsapp_format
+from atlas.services.phone_utils import normalize_phone, to_whatsapp_format
 
 CHANNEL_WHATSAPP_CLOUD_API = "whatsapp_cloud_api"
 
@@ -180,12 +181,43 @@ def _compute_schedule_instants(trigger_config, now):
     return stage_instant, send_instant
 
 
+# שולפת את מי שיום ההולדת שלו/שלה חל היום (לפי יום-בחודש, לא שנה - ראו fetch_arbox_birthdays),
+# ישירות מ-Arbox בכל הרצה (לא רשימה סטטית כמו הנמענים הידניים). מחזירה (recipients, error) -
+# error לא None אם שליפת Arbox נכשלה (כדי לתעד כישלון במקום לדלג בשקט)
+def _resolve_birthday_recipients(automation, now):
+    trigger_config = automation["trigger_config"]
+    api_key = arbox_client.load_arbox_api_key()
+    if not api_key:
+        return [], "שגיאה טכנית בגישה ל-Arbox (אין מפתח API)"
+
+    today = now.date().isoformat()
+    try:
+        people = arbox_client.fetch_arbox_birthdays(api_key, today, today)
+    except Exception as exc:
+        return [], f"שליפת ימי הולדת מ-Arbox נכשלה: {exc}"
+
+    audience_status = trigger_config.get("audience_status", "all")
+    recipients = []
+    for person in people:
+        if audience_status != "all" and person.get("status") != audience_status:
+            continue
+        phone = normalize_phone(person.get("phone"))
+        if not phone:
+            continue
+        recipients.append({
+            "phone": phone,
+            "full_name": person.get("full_name") or person.get("first_name") or "",
+            "age": person.get("age"),
+        })
+    return recipients, None
+
+
 # נקראת מ-process_due_actions (אותו poller, אותה תדירות) - סורקת אוטומציות מתוזמנות
 # (trigger_type='scheduled'), ולכל אחת שהגיע זמן ה"הורדה" (נעילת רשימת הנמענים) שלה ועוד לא
-# רצה להזדמנות הזו, יוצרת due_actions לכל הנמענים שברשימה הידנית (automation_recipients)
-# שאינם ברשימת ההחרגה הגלובלית (global_blacklist - משותפת לכל האוטומציות, לא פר-אוטומציה),
-# עם זמן שליחה = send_instant (לא בהכרח מייד - ראו _fire_automation_steps). לא קשורות
-# ל-fire_trigger/אירוע בודד
+# רצה להזדמנות הזו, יוצרת due_actions לכל הנמענים (מרשימה ידנית או מ-Arbox - ראו
+# _resolve_recipients) שאינם ברשימת ההחרגה הגלובלית (global_blacklist - משותפת לכל
+# האוטומציות, לא פר-אוטומציה), עם זמן שליחה = send_instant (לא בהכרח מייד - ראו
+# _fire_automation_steps). לא קשורות ל-fire_trigger/אירוע בודד
 def process_scheduled_automations(repos, tenant_id=1):
     now = datetime.datetime.now()
     fired = 0
@@ -203,12 +235,23 @@ def process_scheduled_automations(repos, tenant_id=1):
             except ValueError:
                 pass
 
-        recipients = repos.automations.get_recipients(automation["id"])
+        if automation["trigger_config"].get("audience_source") == "arbox_birthday":
+            recipients, error = _resolve_birthday_recipients(automation, now)
+            if error:
+                repos.automations.log_execution(
+                    automation["id"], "-", "failed", CHANNEL_WHATSAPP_CLOUD_API, error,
+                )
+                continue  # לא מעדכנים last_run_at - ננסה שוב בהרצה הבאה של ה-poller
+        else:
+            recipients = repos.automations.get_recipients(automation["id"])
+
         send_after = send_instant.isoformat(timespec="seconds")
         for recipient in recipients:
             if recipient["phone"] in blacklisted_phones:
                 continue
             context = {"full_name": recipient["full_name"] or ""}
+            if "age" in recipient:
+                context["age"] = recipient["age"]
             _fire_automation_steps(
                 repos, automation["id"], context, recipient["phone"], tenant_id=tenant_id,
                 run_after=send_after,

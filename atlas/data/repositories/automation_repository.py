@@ -172,7 +172,7 @@ class AutomationRepository:
 
     def get_all(self, tenant_id=1):
         rows = self.conn.execute(
-            "SELECT id, name, trigger_type, enabled, created_at FROM automations "
+            "SELECT id, name, trigger_type, enabled, created_at, trigger_config FROM automations "
             "WHERE tenant_id = ? ORDER BY id",
             (tenant_id,),
         ).fetchall()
@@ -187,8 +187,14 @@ class AutomationRepository:
                 (automation_id,),
             ).fetchone()
             trigger_type = row[2]
+            trigger_config = json.loads(row[5]) if row[5] else {}
+            # ל-arbox_birthday הקהל נגזר חי כל יום מ-Arbox, אין "רשימה" קבועה לספור -
+            # מוצג "-" (None) בדיוק כמו אוטומציה מבוססת-אירוע
+            is_manual_audience = (
+                trigger_type == "scheduled" and trigger_config.get("audience_source") != "arbox_birthday"
+            )
             expected_recipient_count = None
-            if trigger_type == "scheduled":
+            if is_manual_audience:
                 recipients_count, blacklist_count = self.conn.execute(
                     "SELECT "
                     "(SELECT COUNT(*) FROM automation_recipients WHERE automation_id = ?), "
@@ -204,6 +210,7 @@ class AutomationRepository:
                 "trigger_type": trigger_type,
                 "enabled": bool(row[3]),
                 "created_at": row[4],
+                "trigger_config": trigger_config,
                 "success_count": success_count or 0,
                 "failed_count": failed_count or 0,
                 "expected_recipient_count": expected_recipient_count,

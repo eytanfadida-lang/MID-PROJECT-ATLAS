@@ -30,6 +30,18 @@ def _extract_weekdays(form):
 # בפועל קורית בזמן המאוחר יותר - ראו atlas/automations/engine.py §_compute_schedule_instants.
 # כשלא מוגדרת, הורדה=שליחה (ברירת המחדל, שליחה מיידית בלי שלב ביניים)
 def _parse_schedule_form(form):
+    # "יום הולדת (Arbox)" הוא תמיד תזמון יומי (בודקים כל יום מי חוגג/ת) - לא מציגים את
+    # בורר schedule_type הרגיל בטופס, רק שעה + סינון קהל (פעילים/לא פעילים/הכל)
+    if form.get("audience_source") == "arbox_birthday":
+        time_of_day = form.get("time_of_day", "").strip() or "09:00"
+        audience_status = form.get("audience_status", "all")
+        if audience_status not in ("all", "active", "inactive"):
+            audience_status = "all"
+        return {
+            "schedule_type": "daily", "time_of_day": time_of_day,
+            "audience_source": "arbox_birthday", "audience_status": audience_status,
+        }, None
+
     schedule_type = form.get("schedule_type", "")
     if schedule_type not in SCHEDULE_TYPES:
         return None, "סוג תזמון לא תקין."
@@ -89,10 +101,13 @@ def list_automations():
         full = repos.automations.get_by_id(automation["id"])
         automation["trigger_config"] = full["trigger_config"]
         automation["last_run_at"] = full["last_run_at"]
-        if automation["trigger_type"] == "scheduled":
-            automation["recipients"] = repos.automations.get_recipients(automation["id"])
-        else:
-            automation["recipients"] = None
+        is_manual_audience = (
+            automation["trigger_type"] == "scheduled"
+            and automation["trigger_config"].get("audience_source") != "arbox_birthday"
+        )
+        automation["recipients"] = (
+            repos.automations.get_recipients(automation["id"]) if is_manual_audience else None
+        )
         automation["executions"] = repos.automations.get_recent_executions(automation["id"], limit=10)
     return render_template(
         "automations/list.html", automations=automations, weekday_labels=_WEEKDAY_LABELS,

@@ -1,54 +1,98 @@
-{# פרטיאל משותף לטופס הגדרת תזמון - בשימוש גם ב-new.html וגם ב-edit_schedule.html.
+{# פרטיאל משותף לטופס הגדרת תזמון - כלול פעם אחת בטופס היצירה (new.html), ופעם אחת
+   לכל שורת אוטומציה בטבלה המאוחדת (list.html, בתוך {% for %}) - לכן אסור להשתמש ב-id
+   גלובלי (getElementById) בג'אווהסקריפט, כל הטוגלים מוגבלים ל-closest('form') כדי שלא
+   יתנגשו בין מופעים שונים של הפרטיאל הזה באותו עמוד.
    מצפה למשתנים: form (dict/request.form עם ערכים קיימים, או {} ליצירה חדשה),
    weekday_labels, selected_weekdays (רשימת int - ראו _extract_weekdays בבלופרינט) #}
 <div class="form-group">
-    <label>סוג תזמון</label>
-    <select name="schedule_type" id="schedule_type" onchange="toggleScheduleFields()">
-        <option value="once" {{ 'selected' if form.get('schedule_type') == 'once' else '' }}>חד-פעמי</option>
-        <option value="daily" {{ 'selected' if form.get('schedule_type') == 'daily' else '' }}>יומי</option>
-        <option value="weekly" {{ 'selected' if form.get('schedule_type') == 'weekly' else '' }}>שבועי</option>
-        <option value="monthly" {{ 'selected' if form.get('schedule_type') == 'monthly' else '' }}>חודשי</option>
+    <label>מקור קהל</label>
+    <select name="audience_source" class="automations-audience-select" onchange="automationsToggleAudience(this)">
+        <option value="manual" {{ 'selected' if form.get('audience_source', 'manual') == 'manual' else '' }}>רשימה ידנית</option>
+        <option value="arbox_birthday" {{ 'selected' if form.get('audience_source') == 'arbox_birthday' else '' }}>יום הולדת (מתוך Arbox, אוטומטי)</option>
     </select>
 </div>
 
-<div class="form-group schedule-field" data-for="once">
-    <label>תאריך ושעת שליחה</label>
-    <input type="datetime-local" name="run_at" value="{{ form.get('run_at', '') }}">
-</div>
-<div class="form-group schedule-field" data-for="once">
-    <label>תאריך ושעת "הורדה" (אופציונלי - הכנת רשימת נמענים מראש, לפני השליחה)</label>
-    <input type="datetime-local" name="stage_at" value="{{ form.get('stage_at', '') }}">
-</div>
-
-<div class="form-group schedule-field" data-for="daily weekly monthly">
-    <label>שעת שליחה</label>
-    <input type="time" name="time_of_day" value="{{ form.get('time_of_day', '09:00') }}">
-</div>
-<div class="form-group schedule-field" data-for="daily weekly monthly">
-    <label>שעת "הורדה" (אופציונלי - הכנת רשימת נמענים מראש, לפני השליחה)</label>
-    <input type="time" name="stage_time" value="{{ form.get('stage_time', '') }}">
-</div>
-
-<div class="form-group schedule-field" data-for="weekly">
-    <label>ימים בשבוע</label>
-    <div>
-        {% for i in range(7) %}
-        <label><input type="checkbox" name="weekdays" value="{{ i }}" {{ 'checked' if i in selected_weekdays else '' }}> {{ weekday_labels[i] }}</label>
-        {% endfor %}
+<div class="automations-audience-field" data-for="arbox_birthday">
+    <div class="form-group">
+        <label>שעת שליחה</label>
+        <input type="time" name="time_of_day" value="{{ form.get('time_of_day', '09:00') }}">
+    </div>
+    <div class="form-group">
+        <label>סינון קהל</label>
+        <select name="audience_status">
+            <option value="all" {{ 'selected' if form.get('audience_status', 'all') == 'all' else '' }}>הכל</option>
+            <option value="active" {{ 'selected' if form.get('audience_status') == 'active' else '' }}>מנויות פעילות בלבד</option>
+            <option value="inactive" {{ 'selected' if form.get('audience_status') == 'inactive' else '' }}>לא פעילות בלבד</option>
+        </select>
+        <p class="hint">נבדק אוטומטית כל יום - מי שיום ההולדת שלה חל היום נשלפת ישירות מ-Arbox,
+            בלי רשימת נמענים ידנית. אפשר להשתמש ב-{{ '{full_name}' }} וגם ב-{{ '{age}' }} בהודעה.</p>
     </div>
 </div>
 
-<div class="form-group schedule-field" data-for="monthly">
-    <label>יום בחודש (1-31)</label>
-    <input type="number" name="day_of_month" min="1" max="31" value="{{ form.get('day_of_month', 1) }}">
+<div class="automations-audience-field" data-for="manual">
+    <div class="form-group">
+        <label>סוג תזמון</label>
+        <select name="schedule_type" class="automations-schedule-type-select" onchange="automationsToggleSchedule(this)">
+            <option value="once" {{ 'selected' if form.get('schedule_type') == 'once' else '' }}>חד-פעמי</option>
+            <option value="daily" {{ 'selected' if form.get('schedule_type') == 'daily' else '' }}>יומי</option>
+            <option value="weekly" {{ 'selected' if form.get('schedule_type') == 'weekly' else '' }}>שבועי</option>
+            <option value="monthly" {{ 'selected' if form.get('schedule_type') == 'monthly' else '' }}>חודשי</option>
+        </select>
+    </div>
+
+    <div class="form-group schedule-field" data-for="once">
+        <label>תאריך ושעת שליחה</label>
+        <input type="datetime-local" name="run_at" value="{{ form.get('run_at', '') }}">
+    </div>
+    <div class="form-group schedule-field" data-for="once">
+        <label>תאריך ושעת "הורדה" (אופציונלי - הכנת רשימת נמענים מראש, לפני השליחה)</label>
+        <input type="datetime-local" name="stage_at" value="{{ form.get('stage_at', '') }}">
+    </div>
+
+    <div class="form-group schedule-field" data-for="daily weekly monthly">
+        <label>שעת שליחה</label>
+        <input type="time" name="time_of_day" value="{{ form.get('time_of_day', '09:00') }}">
+    </div>
+    <div class="form-group schedule-field" data-for="daily weekly monthly">
+        <label>שעת "הורדה" (אופציונלי - הכנת רשימת נמענים מראש, לפני השליחה)</label>
+        <input type="time" name="stage_time" value="{{ form.get('stage_time', '') }}">
+    </div>
+
+    <div class="form-group schedule-field" data-for="weekly">
+        <label>ימים בשבוע</label>
+        <div>
+            {% for i in range(7) %}
+            <label><input type="checkbox" name="weekdays" value="{{ i }}" {{ 'checked' if i in selected_weekdays else '' }}> {{ weekday_labels[i] }}</label>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="form-group schedule-field" data-for="monthly">
+        <label>יום בחודש (1-31)</label>
+        <input type="number" name="day_of_month" min="1" max="31" value="{{ form.get('day_of_month', 1) }}">
+    </div>
 </div>
 
 <script>
-function toggleScheduleFields() {
-    var selected = document.getElementById('schedule_type').value;
-    document.querySelectorAll('.schedule-field').forEach(function (el) {
+function automationsToggleSchedule(select) {
+    var form = select.closest('form');
+    var selected = select.value;
+    form.querySelectorAll('.schedule-field').forEach(function (el) {
         el.hidden = el.dataset.for.split(' ').indexOf(selected) === -1;
     });
 }
-toggleScheduleFields();
+function automationsToggleAudience(select) {
+    var form = select.closest('form');
+    var selected = select.value;
+    form.querySelectorAll('.automations-audience-field').forEach(function (el) {
+        el.hidden = el.dataset.for !== selected;
+    });
+}
+(function () {
+    var scripts = document.getElementsByTagName('script');
+    var thisForm = scripts[scripts.length - 1].closest('form');
+    if (!thisForm) return;
+    automationsToggleAudience(thisForm.querySelector('.automations-audience-select'));
+    automationsToggleSchedule(thisForm.querySelector('.automations-schedule-type-select'));
+})();
 </script>

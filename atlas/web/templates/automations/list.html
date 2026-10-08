@@ -29,7 +29,11 @@
             <td>
                 {% if a.trigger_type == 'scheduled' %}
                     {% set tc = a.trigger_config %}
-                    {% if tc.schedule_type == 'once' %}
+                    {% if tc.audience_source == 'arbox_birthday' %}
+                        🎂 יום הולדת (Arbox) -
+                        {{ {'all': 'הכל', 'active': 'פעילות', 'inactive': 'לא פעילות'}[tc.get('audience_status', 'all')] }},
+                        {{ tc.time_of_day }}
+                    {% elif tc.schedule_type == 'once' %}
                         חד-פעמי ב-{{ tc.run_at }}
                     {% elif tc.schedule_type == 'daily' %}
                         יומי, {{ tc.time_of_day }}
@@ -89,6 +93,7 @@
                     <p class="hint">הופעלה לאחרונה: {{ a.last_run_at | format_lead_datetime }}</p>
                     {% endif %}
 
+                    {% if a.recipients is not none %}
                     <h4>נמענים</h4>
                     <form method="post" action="{{ url_for('automations.add_recipient', automation_id=a.id) }}" class="form-card">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
@@ -122,6 +127,9 @@
                     </table>
                     {% else %}
                     <p class="empty-state">אין עדיין נמענים.</p>
+                    {% endif %}
+                    {% else %}
+                    <p class="hint">🎂 הקהל נשלף אוטומטית מ-Arbox בכל הרצה לפי יום ההולדת - אין רשימת נמענים ידנית לנהל.</p>
                     {% endif %}
                     {% endif %}
 
