@@ -6,6 +6,7 @@ import llm_client
 from atlas.paths import PROJECT_ROOT, secret
 from atlas.integrations.whatsapp import bot as whatsapp_bot
 from atlas.integrations.arbox import client as arbox_client
+from atlas.automations import engine as automation_engine
 
 CONVERSATIONS_FILE = secret(".whatsapp_customer_conversations.json")
 BUSINESS_INFO_FILE = PROJECT_ROOT / "bot_content" / "business_info.md"
@@ -352,6 +353,20 @@ def _build_tool_executors(repos, caller_phone, last_user_text):
         user_id = _resolve_or_create_trial_user_id(api_key, full_name, location_id)
         response = arbox_client.book_arbox_trial(api_key, user_id, schedule_id)
         if response.status_code == 200:
+            try:
+                automation_engine.fire_trigger(
+                    repos, "trial_booked",
+                    context={
+                        "full_name": full_name,
+                        "session_name": schedule.get("session_name"),
+                        "date": schedule.get("date"),
+                        "start_time": schedule.get("start_time"),
+                        "location_name": schedule.get("location_name"),
+                    },
+                    phone=caller_phone,
+                )
+            except Exception as exc:
+                print(f"[customer_assistant] trial_booked automation failed: {exc}", flush=True)
             return {"success": True}
         return {"success": False, "reason": f"Arbox החזירה שגיאה ({response.status_code}) - כנראה השיעור מלא"}
 

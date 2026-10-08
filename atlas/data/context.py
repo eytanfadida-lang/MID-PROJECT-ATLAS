@@ -25,6 +25,8 @@ from atlas.data.arbox_class_cache_db import ArboxClassCacheDB
 from atlas.data.repositories.arbox_class_cache_repository import ArboxClassCacheRepository
 from atlas.data.customer_bot_message_db import CustomerBotMessageDB
 from atlas.data.repositories.customer_bot_message_repository import CustomerBotMessageRepository
+from atlas.data.automation_db import AutomationDB
+from atlas.data.repositories.automation_repository import AutomationRepository
 
 
 # מריצה חד-פעמית באתחול (import-time של app.py): יוצרת/ממגרת את כל הטבלאות,
@@ -33,7 +35,7 @@ from atlas.data.repositories.customer_bot_message_repository import CustomerBotM
 def bootstrap_databases():
     for db_class in (
         AppointmentDB, CustomerDB, LeadDB, UserDB, WhatsAppStateDB, BotContentGapDB,
-        ArboxMemberCacheDB, ArboxClassCacheDB, CustomerBotMessageDB,
+        ArboxMemberCacheDB, ArboxClassCacheDB, CustomerBotMessageDB, AutomationDB,
     ):
         instance = db_class()
         instance.close()
@@ -70,6 +72,7 @@ def get_repos():
             arbox_member_cache=ArboxMemberCacheRepository(conn),
             arbox_class_cache=ArboxClassCacheRepository(conn),
             customer_bot_messages=CustomerBotMessageRepository(conn),
+            automations=AutomationRepository(conn),
         )
     return g.repos
 
