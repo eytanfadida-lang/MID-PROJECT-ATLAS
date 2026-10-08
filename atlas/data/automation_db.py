@@ -38,6 +38,7 @@ class AutomationDB:
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_automations_trigger ON automations(trigger_type, enabled)"
         )
+        self._ensure_automations_columns(conn)
         conn.execute("""
             CREATE TABLE IF NOT EXISTS automation_steps (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -82,8 +83,33 @@ class AutomationDB:
                 created_at TEXT NOT NULL
             )
         """)
+        # רשימת נמענים ידנית - לאוטומציות מתוזמנות (trigger_type='scheduled', למשל סקר/תזכורת
+        # תקופתית) שלא קשורות לאירוע ספציפי של לקוח/ליד בודד, ולכן אין להן "phone" שמגיע
+        # מנקודת חיבור כמו trial_booked - מי שמקבל אותן נבחר ידנית מראש דרך הממשק
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS automation_recipients (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                automation_id INTEGER NOT NULL,
+                phone TEXT NOT NULL,
+                full_name TEXT,
+                created_at TEXT NOT NULL
+            )
+        """)
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_automation_recipients_automation "
+            "ON automation_recipients(automation_id)"
+        )
         self._seed_default_automation(conn)
         return conn
+
+    # מיגרציה קלה: מוסיפה את last_run_at אם עוד לא קיימת - מתי לאחרונה אוטומציה מתוזמנת
+    # (trigger_type='scheduled') הופעלה בפועל, כדי שלא תופעל פעמיים לאותה הזדמנות (ראו
+    # atlas/automations/engine.py, process_scheduled_automations)
+    @staticmethod
+    def _ensure_automations_columns(conn):
+        columns = {row[1] for row in conn.execute("PRAGMA table_info(automations)").fetchall()}
+        if "last_run_at" not in columns:
+            conn.execute("ALTER TABLE automations ADD COLUMN last_run_at TEXT")
 
     # זורעת אוטומציה ברירת-מחדל אחת (אישור שיעור ניסיון) רק אם טבלת automations ריקה -
     # אותו אידיום בדיוק כמו DEFAULT_STATUSES ב-atlas/data/lead_db.py

@@ -1,0 +1,45 @@
+{# פרטיאל משותף לטופס הגדרת תזמון - בשימוש גם ב-new.html וגם ב-edit_schedule.html.
+   מצפה למשתנים: form (dict/request.form עם ערכים קיימים, או {} ליצירה חדשה), weekday_labels #}
+<div class="form-group">
+    <label>סוג תזמון</label>
+    <select name="schedule_type" id="schedule_type" onchange="toggleScheduleFields()">
+        <option value="once" {{ 'selected' if form.get('schedule_type') == 'once' else '' }}>חד-פעמי</option>
+        <option value="daily" {{ 'selected' if form.get('schedule_type') == 'daily' else '' }}>יומי</option>
+        <option value="weekly" {{ 'selected' if form.get('schedule_type') == 'weekly' else '' }}>שבועי</option>
+        <option value="monthly" {{ 'selected' if form.get('schedule_type') == 'monthly' else '' }}>חודשי</option>
+    </select>
+</div>
+
+<div class="form-group schedule-field" data-for="once">
+    <label>תאריך ושעה</label>
+    <input type="datetime-local" name="run_at" value="{{ form.get('run_at', '') }}">
+</div>
+
+<div class="form-group schedule-field" data-for="daily weekly monthly">
+    <label>שעה</label>
+    <input type="time" name="time_of_day" value="{{ form.get('time_of_day', '09:00') }}">
+</div>
+
+<div class="form-group schedule-field" data-for="weekly">
+    <label>יום בשבוע</label>
+    <select name="weekday">
+        {% for i in range(7) %}
+        <option value="{{ i }}" {{ 'selected' if form.get('weekday')|string == i|string else '' }}>{{ weekday_labels[i] }}</option>
+        {% endfor %}
+    </select>
+</div>
+
+<div class="form-group schedule-field" data-for="monthly">
+    <label>יום בחודש (1-31)</label>
+    <input type="number" name="day_of_month" min="1" max="31" value="{{ form.get('day_of_month', 1) }}">
+</div>
+
+<script>
+function toggleScheduleFields() {
+    var selected = document.getElementById('schedule_type').value;
+    document.querySelectorAll('.schedule-field').forEach(function (el) {
+        el.hidden = el.dataset.for.split(' ').indexOf(selected) === -1;
+    });
+}
+toggleScheduleFields();
+</script>

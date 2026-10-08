@@ -199,8 +199,8 @@ class AutomationRepository:
 
     def get_by_id(self, automation_id, tenant_id=1):
         row = self.conn.execute(
-            "SELECT id, name, trigger_type, enabled, created_at FROM automations "
-            "WHERE id = ? AND tenant_id = ?",
+            "SELECT id, name, trigger_type, enabled, created_at, trigger_config, last_run_at "
+            "FROM automations WHERE id = ? AND tenant_id = ?",
             (automation_id, tenant_id),
         ).fetchone()
         if row is None:
@@ -208,7 +208,80 @@ class AutomationRepository:
         return {
             "id": row[0], "name": row[1], "trigger_type": row[2],
             "enabled": bool(row[3]), "created_at": row[4],
+            "trigger_config": json.loads(row[5]) if row[5] else {},
+            "last_run_at": row[6],
         }
+
+    # --- יצירה/עריכה של אוטומציות מתוזמנות (trigger_type='scheduled') דרך הממשק ---
+
+    def create_automation(self, name, trigger_type, trigger_config, tenant_id=1):
+        now = datetime.datetime.now().isoformat(timespec="seconds")
+        cursor = self.conn.execute(
+            "INSERT INTO automations (tenant_id, name, trigger_type, trigger_config, enabled, "
+            "created_at, updated_at) VALUES (?, ?, ?, ?, 1, ?, ?)",
+            (tenant_id, name, trigger_type, json.dumps(trigger_config, ensure_ascii=False), now, now),
+        )
+        self.conn.commit()
+        return cursor.lastrowid
+
+    def add_step(self, automation_id, step_order, delay_minutes, action_type, action_config):
+        self.conn.execute(
+            "INSERT INTO automation_steps (automation_id, step_order, delay_minutes, action_type, "
+            "action_config) VALUES (?, ?, ?, ?, ?)",
+            (automation_id, step_order, delay_minutes, action_type,
+             json.dumps(action_config, ensure_ascii=False)),
+        )
+        self.conn.commit()
+
+    def update_schedule(self, automation_id, trigger_config):
+        now = datetime.datetime.now().isoformat(timespec="seconds")
+        self.conn.execute(
+            "UPDATE automations SET trigger_config = ?, updated_at = ? WHERE id = ?",
+            (json.dumps(trigger_config, ensure_ascii=False), now, automation_id),
+        )
+        self.conn.commit()
+
+    # אוטומציות מתוזמנות מופעלות (לא מבוססות-אירוע) - נסרקות ע"י process_scheduled_automations
+    def get_scheduled_automations(self, tenant_id=1):
+        rows = self.conn.execute(
+            "SELECT id, name, trigger_config, last_run_at FROM automations "
+            "WHERE trigger_type = 'scheduled' AND tenant_id = ? AND enabled = 1",
+            (tenant_id,),
+        ).fetchall()
+        return [
+            {
+                "id": row[0], "name": row[1],
+                "trigger_config": json.loads(row[2]) if row[2] else {},
+                "last_run_at": row[3],
+            }
+            for row in rows
+        ]
+
+    def update_last_run(self, automation_id, when):
+        self.conn.execute("UPDATE automations SET last_run_at = ? WHERE id = ?", (when, automation_id))
+        self.conn.commit()
+
+    # --- רשימת נמענים ידנית (לאוטומציות מתוזמנות בלבד) ---
+
+    def add_recipient(self, automation_id, phone, full_name):
+        now = datetime.datetime.now().isoformat(timespec="seconds")
+        self.conn.execute(
+            "INSERT INTO automation_recipients (automation_id, phone, full_name, created_at) "
+            "VALUES (?, ?, ?, ?)",
+            (automation_id, phone, full_name, now),
+        )
+        self.conn.commit()
+
+    def remove_recipient(self, recipient_id):
+        self.conn.execute("DELETE FROM automation_recipients WHERE id = ?", (recipient_id,))
+        self.conn.commit()
+
+    def get_recipients(self, automation_id):
+        rows = self.conn.execute(
+            "SELECT id, phone, full_name FROM automation_recipients WHERE automation_id = ? ORDER BY id",
+            (automation_id,),
+        ).fetchall()
+        return [{"id": row[0], "phone": row[1], "full_name": row[2]} for row in rows]
 
     def toggle_enabled(self, automation_id):
         now = datetime.datetime.now().isoformat(timespec="seconds")

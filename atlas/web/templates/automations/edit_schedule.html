@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block page_title %}עריכת תזמון - {{ automation.name }}{% endblock %}
+{% block page_heading %}עריכת תזמון - {{ automation.name }}{% endblock %}
+
+{% block content %}
+<form method="post" class="form-card">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+    {% include "automations/_schedule_fields.html" %}
+
+    <button type="submit" class="btn">שמירה</button>
+    <a href="{{ url_for('automations.view_automation', automation_id=automation.id) }}" class="btn">ביטול</a>
+</form>
+{% endblock %}
