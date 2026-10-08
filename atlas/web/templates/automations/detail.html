@@ -22,13 +22,18 @@
         {% elif tc.schedule_type == 'daily' %}
             כל יום בשעה {{ tc.time_of_day }}
         {% elif tc.schedule_type == 'weekly' %}
-            כל יום {{ weekday_labels[tc.weekday] }} בשעה {{ tc.time_of_day }}
+            {% set wdays = tc.weekdays if tc.weekdays is defined and tc.weekdays else [tc.get('weekday', 0)] %}
+            כל יום {% for w in wdays %}{{ weekday_labels[w] }}{% if not loop.last %}, {% endif %}{% endfor %}
+            בשעה {{ tc.time_of_day }}
         {% elif tc.schedule_type == 'monthly' %}
             כל {{ tc.day_of_month }} לחודש בשעה {{ tc.time_of_day }}
         {% else %}
             לא מוגדר
         {% endif %}
     </strong>
+    {% if tc.stage_time or tc.stage_at %}
+    <span class="hint">(רשימת הנמענים ננעלת ב-{{ tc.stage_time or tc.stage_at }})</span>
+    {% endif %}
     <a href="{{ url_for('automations.edit_schedule', automation_id=automation.id) }}" class="btn">עריכת תזמון</a>
     {% if automation.last_run_at %}
     <span class="hint">הופעלה לאחרונה: {{ automation.last_run_at | format_lead_datetime }}</span>
@@ -96,6 +101,38 @@
 </table>
 {% else %}
 <p class="empty-state">אין עדיין נמענים - האוטומציה לא תשלח לאף אחד עד שיתווספו.</p>
+{% endif %}
+
+<h3>בלאקליסט (מספרים מוחרגים)</h3>
+<form method="post" action="{{ url_for('automations.add_to_blacklist', automation_id=automation.id) }}" class="form-card">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <div class="form-group">
+        <label>טלפון</label>
+        <input type="text" name="phone" placeholder="0501234567" required>
+    </div>
+    <button type="submit" class="btn">הוספה לבלאקליסט</button>
+</form>
+{% if blacklist %}
+<table>
+    <thead>
+        <tr><th>טלפון</th><th>פעולות</th></tr>
+    </thead>
+    <tbody>
+        {% for b in blacklist %}
+        <tr>
+            <td>{{ b.phone }}</td>
+            <td>
+                <form method="post" action="{{ url_for('automations.remove_from_blacklist', automation_id=automation.id, blacklist_id=b.id) }}" style="display:inline;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <button type="submit" class="btn">הסרה</button>
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p class="empty-state">אין מספרים מוחרגים.</p>
 {% endif %}
 {% endif %}
 

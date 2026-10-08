@@ -1,5 +1,6 @@
 {# פרטיאל משותף לטופס הגדרת תזמון - בשימוש גם ב-new.html וגם ב-edit_schedule.html.
-   מצפה למשתנים: form (dict/request.form עם ערכים קיימים, או {} ליצירה חדשה), weekday_labels #}
+   מצפה למשתנים: form (dict/request.form עם ערכים קיימים, או {} ליצירה חדשה),
+   weekday_labels, selected_weekdays (רשימת int - ראו _extract_weekdays בבלופרינט) #}
 <div class="form-group">
     <label>סוג תזמון</label>
     <select name="schedule_type" id="schedule_type" onchange="toggleScheduleFields()">
@@ -11,22 +12,30 @@
 </div>
 
 <div class="form-group schedule-field" data-for="once">
-    <label>תאריך ושעה</label>
+    <label>תאריך ושעת שליחה</label>
     <input type="datetime-local" name="run_at" value="{{ form.get('run_at', '') }}">
+</div>
+<div class="form-group schedule-field" data-for="once">
+    <label>תאריך ושעת "הורדה" (אופציונלי - הכנת רשימת נמענים מראש, לפני השליחה)</label>
+    <input type="datetime-local" name="stage_at" value="{{ form.get('stage_at', '') }}">
 </div>
 
 <div class="form-group schedule-field" data-for="daily weekly monthly">
-    <label>שעה</label>
+    <label>שעת שליחה</label>
     <input type="time" name="time_of_day" value="{{ form.get('time_of_day', '09:00') }}">
+</div>
+<div class="form-group schedule-field" data-for="daily weekly monthly">
+    <label>שעת "הורדה" (אופציונלי - הכנת רשימת נמענים מראש, לפני השליחה)</label>
+    <input type="time" name="stage_time" value="{{ form.get('stage_time', '') }}">
 </div>
 
 <div class="form-group schedule-field" data-for="weekly">
-    <label>יום בשבוע</label>
-    <select name="weekday">
+    <label>ימים בשבוע</label>
+    <div>
         {% for i in range(7) %}
-        <option value="{{ i }}" {{ 'selected' if form.get('weekday')|string == i|string else '' }}>{{ weekday_labels[i] }}</option>
+        <label><input type="checkbox" name="weekdays" value="{{ i }}" {{ 'checked' if i in selected_weekdays else '' }}> {{ weekday_labels[i] }}</label>
         {% endfor %}
-    </select>
+    </div>
 </div>
 
 <div class="form-group schedule-field" data-for="monthly">

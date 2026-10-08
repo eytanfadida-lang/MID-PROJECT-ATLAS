@@ -14,8 +14,20 @@ bp = Blueprint("automations", __name__, url_prefix="/automations")
 _WEEKDAY_LABELS = ["שני", "שלישי", "רביעי", "חמישי", "שישי", "שבת", "ראשון"]
 
 
+# מחלצת את ימי השבוע הנבחרים הן מ-request.form (MultiDict, כמה ערכים תחת אותו שם שדה -
+# "weekdays") והן מ-trigger_config שכבר נשמר ב-DB (dict רגיל, כבר שמור כרשימת int) - כדי
+# שתיבות הסימון בטופס יוצגו נכון גם בשגיאת ולידציה (מ-request.form) וגם בעריכה (מה-DB)
+def _extract_weekdays(form):
+    if hasattr(form, "getlist"):
+        return [int(value) for value in form.getlist("weekdays") if value.isdigit()]
+    return form.get("weekdays") or []
+
+
 # בונה trigger_config מתוך טופס לפי schedule_type שנבחר - בשימוש גם ביצירה וגם בעריכה.
-# מחזירה (trigger_config, error) - error לא None אם משהו חסר/לא תקין
+# מחזירה (trigger_config, error) - error לא None אם משהו חסר/לא תקין. "הורדה" (stage) היא
+# אופציונלית - שלב מוקדם שבו "נועלים" את רשימת הנמענים (אחרי סינון בלאקליסט), לפני שהשליחה
+# בפועל קורית בזמן המאוחר יותר - ראו atlas/automations/engine.py §_compute_schedule_instants.
+# כשלא מוגדרת, הורדה=שליחה (ברירת המחדל, שליחה מיידית בלי שלב ביניים)
 def _parse_schedule_form(form):
     schedule_type = form.get("schedule_type", "")
     if schedule_type not in SCHEDULE_TYPES:
@@ -24,32 +36,44 @@ def _parse_schedule_form(form):
     if schedule_type == "once":
         run_at = form.get("run_at", "").strip()
         if not run_at:
-            return None, "יש לבחור תאריך ושעה."
-        return {"schedule_type": "once", "run_at": run_at}, None
+            return None, "יש לבחור תאריך ושעה לשליחה."
+        trigger_config = {"schedule_type": "once", "run_at": run_at}
+        stage_at = form.get("stage_at", "").strip()
+        if stage_at:
+            if stage_at >= run_at:
+                return None, "זמן ה'הורדה' (שלב הכנת הרשימה) חייב להיות לפני זמן השליחה."
+            trigger_config["stage_at"] = stage_at
+        return trigger_config, None
 
     time_of_day = form.get("time_of_day", "").strip() or "09:00"
+    stage_time = form.get("stage_time", "").strip()
+    if stage_time and stage_time >= time_of_day:
+        return None, "זמן ה'הורדה' (שלב הכנת הרשימה) חייב להיות לפני זמן השליחה."
 
     if schedule_type == "daily":
-        return {"schedule_type": "daily", "time_of_day": time_of_day}, None
+        trigger_config = {"schedule_type": "daily", "time_of_day": time_of_day}
 
-    if schedule_type == "weekly":
-        try:
-            weekday = int(form.get("weekday", "0"))
-        except ValueError:
-            weekday = 0
-        return {"schedule_type": "weekly", "time_of_day": time_of_day, "weekday": weekday}, None
+    elif schedule_type == "weekly":
+        weekdays = [int(value) for value in form.getlist("weekdays") if value.isdigit()]
+        if not weekdays:
+            return None, "יש לבחור לפחות יום אחד בשבוע."
+        trigger_config = {"schedule_type": "weekly", "time_of_day": time_of_day, "weekdays": weekdays}
 
-    if schedule_type == "monthly":
+    elif schedule_type == "monthly":
         try:
             day_of_month = int(form.get("day_of_month", "1"))
         except ValueError:
             day_of_month = 1
         day_of_month = min(max(day_of_month, 1), 31)
-        return {
+        trigger_config = {
             "schedule_type": "monthly", "time_of_day": time_of_day, "day_of_month": day_of_month,
-        }, None
+        }
+    else:
+        return None, "סוג תזמון לא תקין."
 
-    return None, "סוג תזמון לא תקין."
+    if stage_time:
+        trigger_config["stage_time"] = stage_time
+    return trigger_config, None
 
 
 @bp.route("/")
@@ -68,13 +92,12 @@ def view_automation(automation_id):
         abort(404)
     steps = repos.automations.get_steps(automation_id)
     executions = repos.automations.get_recent_executions(automation_id)
-    recipients = (
-        repos.automations.get_recipients(automation_id)
-        if automation["trigger_type"] == "scheduled" else None
-    )
+    is_scheduled = automation["trigger_type"] == "scheduled"
+    recipients = repos.automations.get_recipients(automation_id) if is_scheduled else None
+    blacklist = repos.automations.get_blacklist(automation_id) if is_scheduled else None
     return render_template(
         "automations/detail.html", automation=automation, steps=steps, executions=executions,
-        recipients=recipients, weekday_labels=_WEEKDAY_LABELS,
+        recipients=recipients, blacklist=blacklist, weekday_labels=_WEEKDAY_LABELS,
     )
 
 
@@ -92,6 +115,7 @@ def new_automation():
             flash(error, "error")
             return render_template(
                 "automations/new.html", weekday_labels=_WEEKDAY_LABELS, form=request.form,
+                selected_weekdays=_extract_weekdays(request.form),
             )
 
         repos = get_repos()
@@ -103,7 +127,9 @@ def new_automation():
         flash(f"האוטומציה '{name}' נוצרה בהצלחה. עכשיו אפשר להוסיף נמענים.", "success")
         return redirect(url_for("automations.view_automation", automation_id=automation_id))
 
-    return render_template("automations/new.html", weekday_labels=_WEEKDAY_LABELS, form={})
+    return render_template(
+        "automations/new.html", weekday_labels=_WEEKDAY_LABELS, form={}, selected_weekdays=[],
+    )
 
 
 @bp.route("/<int:automation_id>/schedule/edit", methods=["GET", "POST"])
@@ -121,6 +147,7 @@ def edit_schedule(automation_id):
             return render_template(
                 "automations/edit_schedule.html", automation=automation,
                 weekday_labels=_WEEKDAY_LABELS, form=request.form,
+                selected_weekdays=_extract_weekdays(request.form),
             )
         repos.automations.update_schedule(automation_id, trigger_config)
         flash("התזמון עודכן בהצלחה.", "success")
@@ -129,6 +156,7 @@ def edit_schedule(automation_id):
     return render_template(
         "automations/edit_schedule.html", automation=automation,
         weekday_labels=_WEEKDAY_LABELS, form=automation["trigger_config"],
+        selected_weekdays=_extract_weekdays(automation["trigger_config"]),
     )
 
 
@@ -160,6 +188,36 @@ def remove_recipient(automation_id, recipient_id):
         abort(404)
     repos.automations.remove_recipient(recipient_id)
     flash("הנמען הוסר.", "success")
+    return redirect(url_for("automations.view_automation", automation_id=automation_id))
+
+
+@bp.route("/<int:automation_id>/blacklist/add", methods=["POST"])
+@admin_required
+def add_to_blacklist(automation_id):
+    repos = get_repos()
+    automation = repos.automations.get_by_id(automation_id)
+    if automation is None or automation["trigger_type"] != "scheduled":
+        abort(404)
+
+    phone = request.form.get("phone", "").strip()
+    if not phone:
+        flash("יש להזין מספר טלפון.", "error")
+        return redirect(url_for("automations.view_automation", automation_id=automation_id))
+
+    repos.automations.add_to_blacklist(automation_id, phone)
+    flash("המספר נוסף לבלאקליסט.", "success")
+    return redirect(url_for("automations.view_automation", automation_id=automation_id))
+
+
+@bp.route("/<int:automation_id>/blacklist/<int:blacklist_id>/delete", methods=["POST"])
+@admin_required
+def remove_from_blacklist(automation_id, blacklist_id):
+    repos = get_repos()
+    automation = repos.automations.get_by_id(automation_id)
+    if automation is None or automation["trigger_type"] != "scheduled":
+        abort(404)
+    repos.automations.remove_from_blacklist(blacklist_id)
+    flash("המספר הוסר מהבלאקליסט.", "success")
     return redirect(url_for("automations.view_automation", automation_id=automation_id))
 
 

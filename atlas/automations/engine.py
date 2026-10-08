@@ -17,10 +17,14 @@ def fire_trigger(repos, trigger_type, context, phone, lead_id=None, tenant_id=1)
 
 # משותפת לשני המקורות האפשריים ליצירת due_actions: אירוע חד-פעמי (fire_trigger, נמען יחיד
 # מנקודת חיבור כמו book_trial_class) ואוטומציה מתוזמנת (process_scheduled_automations, כמה
-# נמענים מרשימה ידנית) - שתיהן בסופו של דבר "לכל step של האוטומציה הזו, ליצור due_action אחד"
-def _fire_automation_steps(repos, automation_id, context, phone, lead_id=None, tenant_id=1):
+# נמענים מרשימה ידנית) - שתיהן בסופו של דבר "לכל step של האוטומציה הזו, ליצור due_action אחד".
+# run_after אופציונלי: דריסה למועד שליחה מדויק (למשל שלב "הורדה" מוקדם מה"שליחה" בפועל
+# באוטומציה מתוזמנת - ראו process_scheduled_automations) - כשלא מסופק, מחושב מ-delay_minutes
+# של ה-step כרגיל (ברירת המחדל, בשימוש ע"י fire_trigger)
+def _fire_automation_steps(repos, automation_id, context, phone, lead_id=None, tenant_id=1,
+                            run_after=None):
     for step in repos.automations.get_steps(automation_id):
-        run_after = (
+        step_run_after = run_after or (
             datetime.datetime.now() + datetime.timedelta(minutes=step["delay_minutes"])
         ).isoformat(timespec="seconds")
         due_action = repos.automations.insert_due_action(
@@ -29,12 +33,13 @@ def _fire_automation_steps(repos, automation_id, context, phone, lead_id=None, t
             step_id=step["id"],
             target_phone=phone,
             context=context,
-            run_after=run_after,
+            run_after=step_run_after,
             target_lead_id=lead_id,
         )
-        # delay=0 מבוצע מייד, סינכרונית, באותה בקשה - בלי ממתין ל-poller. פעולה מושהית
-        # נשארת 'pending' בטבלה ל-/tasks/automations-run (process_due_actions)
-        if step["delay_minutes"] == 0:
+        # אם הגיע הזמן כבר עכשיו (המקרה הרגיל: run_after=now+0) - מבוצע מייד, סינכרונית, באותה
+        # בקשה, בלי לחכות ל-poller. אם run_after בעתיד (השהייה, או שלב "שליחה" מאוחר יותר
+        # מ"הורדה") - נשאר 'pending' בטבלה ל-/tasks/automations-run (process_due_actions)
+        if datetime.datetime.fromisoformat(due_action["run_after"]) <= datetime.datetime.now():
             process_due_action(repos, due_action)
 
 
@@ -117,66 +122,95 @@ def process_due_actions(repos, limit=50):
 SCHEDULE_TYPES = ("once", "daily", "weekly", "monthly")
 
 
-# מחשבת את מועד ההפעלה "של היום" (או היחיד, ל-once) לפי trigger_config - או None אם
-# האוטומציה הזו בכלל לא אמורה לרוץ היום (יום בשבוע/חודש לא תואם). לא בודקת עדיין מול
-# last_run_at - זה בבדיקה נפרדת ב-process_scheduled_automations, כדי להבחין בין "עוד לא הגיע
-# הזמן היום" לבין "כבר רץ היום" (שתי סיבות שונות לא להפעיל עכשיו)
-def _compute_due_instant(trigger_config, now):
+def _parse_time_of_day(value, default_hour=9, default_minute=0):
+    try:
+        hour, minute = (int(part) for part in value.split(":", 1))
+        return hour, minute
+    except (ValueError, AttributeError, TypeError):
+        return default_hour, default_minute
+
+
+# מחשבת שני מועדים ל"היום" (או ליחיד, ל-once) לפי trigger_config: stage_instant (מתי "נועלים"
+# את רשימת הנמענים - שלב "הורדה", תמיד <= send) ו-send_instant (מתי בפועל נשלחת ההודעה).
+# אם אין stage_time מוגדר, שני המועדים זהים (שליחה מיידית בלי שלב הורדה נפרד - ברירת המחדל).
+# מחזירה (None, None) אם האוטומציה הזו בכלל לא אמורה לרוץ היום (יום בשבוע/חודש לא תואם)
+def _compute_schedule_instants(trigger_config, now):
     schedule_type = trigger_config.get("schedule_type")
+
     if schedule_type == "once":
         run_at = trigger_config.get("run_at")
         if not run_at:
-            return None
+            return None, None
         try:
-            return datetime.datetime.fromisoformat(run_at)
+            send_instant = datetime.datetime.fromisoformat(run_at)
         except ValueError:
-            return None
+            return None, None
+        stage_at = trigger_config.get("stage_at")
+        if stage_at:
+            try:
+                return datetime.datetime.fromisoformat(stage_at), send_instant
+            except ValueError:
+                pass
+        return send_instant, send_instant
 
-    time_of_day = trigger_config.get("time_of_day") or "09:00"
-    try:
-        hour, minute = (int(part) for part in time_of_day.split(":", 1))
-    except (ValueError, AttributeError):
-        hour, minute = 9, 0
-    today_instant = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
-
-    if schedule_type == "daily":
-        return today_instant
     if schedule_type == "weekly":
-        # weekday: 0=שני ... 6=ראשון, תואם datetime.weekday() של פייתון
-        if now.weekday() != trigger_config.get("weekday", 0):
-            return None
-        return today_instant
-    if schedule_type == "monthly":
+        # weekdays: רשימת ימים (0=שני...6=ראשון, תואם datetime.weekday()) - weekday יחיד
+        # (ישן, לפני שדרוג לבחירה מרובה) עדיין נתמך לתאימות לאחור
+        weekdays = trigger_config.get("weekdays")
+        if weekdays is None:
+            weekdays = [trigger_config.get("weekday", 0)]
+        if now.weekday() not in weekdays:
+            return None, None
+    elif schedule_type == "monthly":
         if now.day != trigger_config.get("day_of_month", 1):
-            return None
-        return today_instant
-    return None
+            return None, None
+    elif schedule_type != "daily":
+        return None, None
+
+    hour, minute = _parse_time_of_day(trigger_config.get("time_of_day"))
+    send_instant = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
+
+    stage_time = trigger_config.get("stage_time")
+    if stage_time:
+        s_hour, s_minute = _parse_time_of_day(stage_time, default_hour=hour, default_minute=minute)
+        stage_instant = now.replace(hour=s_hour, minute=s_minute, second=0, microsecond=0)
+    else:
+        stage_instant = send_instant
+
+    return stage_instant, send_instant
 
 
 # נקראת מ-process_due_actions (אותו poller, אותה תדירות) - סורקת אוטומציות מתוזמנות
-# (trigger_type='scheduled'), ולכל אחת שהגיע זמנה ועוד לא רצה להזדמנות הזו, שולחת לכל
-# הנמענים שברשימה הידנית שלה (automation_recipients) - לא קשורות ל-fire_trigger/אירוע בודד
+# (trigger_type='scheduled'), ולכל אחת שהגיע זמן ה"הורדה" (נעילת רשימת הנמענים) שלה ועוד לא
+# רצה להזדמנות הזו, יוצרת due_actions לכל הנמענים שברשימה הידנית (automation_recipients)
+# שאינם ברשימת ההחרגה (automation_blacklist), עם זמן שליחה = send_instant (לא בהכרח מייד -
+# ראו _fire_automation_steps). לא קשורות ל-fire_trigger/אירוע בודד
 def process_scheduled_automations(repos, tenant_id=1):
     now = datetime.datetime.now()
     fired = 0
     for automation in repos.automations.get_scheduled_automations(tenant_id=tenant_id):
-        instant = _compute_due_instant(automation["trigger_config"], now)
-        if instant is None or now < instant:
+        stage_instant, send_instant = _compute_schedule_instants(automation["trigger_config"], now)
+        if stage_instant is None or now < stage_instant:
             continue
 
         last_run_at = automation.get("last_run_at")
         if last_run_at:
             try:
-                if datetime.datetime.fromisoformat(last_run_at) >= instant:
+                if datetime.datetime.fromisoformat(last_run_at) >= stage_instant:
                     continue  # כבר רץ להזדמנות הזו (לא יוצרים כפילות)
             except ValueError:
                 pass
 
+        blacklisted_phones = {row["phone"] for row in repos.automations.get_blacklist(automation["id"])}
         recipients = repos.automations.get_recipients(automation["id"])
+        send_after = send_instant.isoformat(timespec="seconds")
         for recipient in recipients:
+            if recipient["phone"] in blacklisted_phones:
+                continue
             context = {"full_name": recipient["full_name"] or ""}
             _fire_automation_steps(
-                repos, automation["id"], context, recipient["phone"], tenant_id=tenant_id
+                repos, automation["id"], context, recipient["phone"], tenant_id=tenant_id,
+                run_after=send_after,
             )
 
         repos.automations.update_last_run(automation["id"], now.isoformat(timespec="seconds"))

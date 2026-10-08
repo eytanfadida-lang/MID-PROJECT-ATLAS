@@ -12,6 +12,7 @@
         <tr>
             <th>שם</th>
             <th>טריגר</th>
+            <th>נמענים צפויים</th>
             <th>סטטוס</th>
             <th>הצלחות</th>
             <th>כשלונות</th>
@@ -23,6 +24,7 @@
         <tr>
             <td><a href="{{ url_for('automations.view_automation', automation_id=a.id) }}">{{ a.name }}</a></td>
             <td>{{ 'מתוזמן' if a.trigger_type == 'scheduled' else a.trigger_type }}</td>
+            <td>{{ a.expected_recipient_count if a.expected_recipient_count is not none else '-' }}</td>
             <td><span class="badge {{ 'badge-green' if a.enabled else 'badge-gray' }}">{{ 'פעילה' if a.enabled else 'כבויה' }}</span></td>
             <td>{{ a.success_count }}</td>
             <td>{{ a.failed_count }}</td>

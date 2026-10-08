@@ -99,6 +99,20 @@ class AutomationDB:
             "CREATE INDEX IF NOT EXISTS idx_automation_recipients_automation "
             "ON automation_recipients(automation_id)"
         )
+        # רשימת החרגה ידנית פר-אוטומציה - מספרים שלעולם לא יקבלו אותה, גם אם הם ברשימת
+        # הנמענים (automation_recipients) - נבדקת ב-process_scheduled_automations בזמן השליחה
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS automation_blacklist (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                automation_id INTEGER NOT NULL,
+                phone TEXT NOT NULL,
+                created_at TEXT NOT NULL
+            )
+        """)
+        conn.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_automation_blacklist_unique "
+            "ON automation_blacklist(automation_id, phone)"
+        )
         self._seed_default_automation(conn)
         return conn
 
