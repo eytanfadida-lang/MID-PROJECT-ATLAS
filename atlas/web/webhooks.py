@@ -524,8 +524,9 @@ def arbox_webhook_catch():
     payload = request.get_json(silent=True)
     if payload is None:
         payload = {"_raw_body": request.get_data(as_text=True), "_args": dict(request.args)}
-    print(f"[Arbox webhook catch] {payload}", flush=True)
+    capture = {"headers": dict(request.headers), "args": dict(request.args), "body": payload}
+    print(f"[Arbox webhook catch] {capture}", flush=True)
     secret(".last_arbox_webhook_payload.json").write_text(
-        json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8"
+        json.dumps(capture, ensure_ascii=False, indent=2), encoding="utf-8"
     )
     return jsonify({"status": "ok"})
