@@ -126,6 +126,13 @@ def fetch_arbox_expired_memberships(api_key, from_date, to_date):
     return _fetch_arbox_report(api_key, "expiredMembershipsReport", from_date, to_date)
 
 
+# "דוח לידים אבודים" - ראו _fetch_arbox_report. ההתאמה היא לפי lost_date (תאריך שהליד סומן
+# "אבוד"), לא created_at (תאריך יצירת הליד) - מאומת מול ה-API עם דוגמה אמיתית. מוגבל ל-31
+# יום בטווח (כמו דוחות לידים אחרים) - לא רלוונטי כאן כי שולחים fromDate=toDate=יום בודד
+def fetch_arbox_lost_leads(api_key, from_date, to_date):
+    return _fetch_arbox_report(api_key, "lostLeadsReport", from_date, to_date)
+
+
 # מושכת את לוח השיעורים האמיתי מ-Arbox (עם pagination) בין שני תאריכים - שם שיעור,
 # תאריך/שעה, סניף, מדריך, מקסימום משתתפים. אין ב-Arbox endpoint שחושף כמה מקומות
 # נותרו בפועל (רק את המקסימום) - ראה ה"שאלה פתוחה ל-Arbox support" בתוכנית
