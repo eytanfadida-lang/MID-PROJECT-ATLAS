@@ -29,15 +29,19 @@ def _with_number_labels(conversations):
     return conversations
 
 
-# מעשירה כל שיחה בשם הלקוחה מהקאש המקומי של Arbox (arbox_member_cache, ראו
+# מעשירה כל שיחה בפרטי הלקוחה מהקאש המקומי של Arbox (arbox_member_cache, ראו
 # atlas/data/repositories/arbox_member_cache_repository.py - מתעדכן תדיר ע"י /tasks/arbox-sync,
-# אין כאן קריאה חיה ל-Arbox בטעינת העמוד). full_name=None אם המספר לא נמצא בקאש (למשל ליד
-# שעוד לא הפך ללקוחה ב-Arbox, או מספר שגוי) - הטמפלט נופל חזרה למספר הטלפון בעצמו
+# אין כאן קריאה חיה ל-Arbox בטעינת העמוד). כל השדות None אם המספר לא נמצא בקאש (למשל ליד
+# שעוד לא הפך ללקוחה ב-Arbox, או מספר שגוי) - הטמפלט נופל חזרה למספר הטלפון/מסתיר את השדות
 def _with_names(conversations, repos):
     for conversation in conversations:
         member = repos.arbox_member_cache.get_by_phone(conversation["phone"])
         full_name = f"{member['first_name']} {member['last_name']}".strip() if member else ""
         conversation["full_name"] = full_name or None
+        conversation["membership_type_name"] = (member or {}).get("membership_type_name") or None
+        conversation["membership_end_date"] = (member or {}).get("membership_end_date") or None
+        conversation["debt"] = (member or {}).get("debt") or None
+        conversation["cancelled"] = bool((member or {}).get("cancelled")) if member else False
     return conversations
 
 
@@ -49,7 +53,8 @@ def list_conversations():
         _with_number_labels(repos.customer_bot_messages.get_conversation_summaries()), repos
     )
     return render_template(
-        "bot_conversations/index.html", conversations=conversations, active_phone=None, messages=None
+        "bot_conversations/index.html", conversations=conversations, active_phone=None, messages=None,
+        active_conversation=None,
     )
 
 
@@ -66,14 +71,14 @@ def view_conversation(phone):
     active_bot_label = whatsapp_bot.describe_phone_number_id(
         repos.customer_bot_messages.get_latest_bot_phone_number_id(phone)
     )
-    active_full_name = next((c["full_name"] for c in conversations if c["phone"] == phone), None)
+    active_conversation = next((c for c in conversations if c["phone"] == phone), None)
     return render_template(
         "bot_conversations/index.html",
         conversations=conversations,
         active_phone=phone,
         messages=messages,
         active_bot_label=active_bot_label,
-        active_full_name=active_full_name,
+        active_conversation=active_conversation,
     )
 
 
