@@ -39,7 +39,7 @@
                         🎫 נותרו {{ tc.sessions_left }} ניקובים (Arbox), {{ tc.time_of_day }}
                     {% else %}
                         {% if tc.audience_source == 'arbox_active_members' %}
-                            📋 לקוחות פעילים (Arbox{% if tc.membership_type %}, סוג מנוי: {{ tc.membership_type }}{% endif %}{% if tc.location %}, סניף: {{ tc.location }}{% endif %}) -
+                            📋 לקוחות פעילים (Arbox{% if tc.membership_types %}, {{ tc.membership_types|length }} סוגי מנוי נבחרים{% endif %}{% if tc.locations %}, סניפים: {{ tc.locations|join(', ') }}{% endif %}) -
                         {% endif %}
                         {% if tc.schedule_type == 'once' %}
                             חד-פעמי ב-{{ tc.run_at }}
@@ -114,6 +114,8 @@
                         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                         {% set form = a.trigger_config %}
                         {% set selected_weekdays = a.trigger_config.weekdays if a.trigger_config.weekdays is defined and a.trigger_config.weekdays else ([a.trigger_config.get('weekday', 0)] if a.trigger_config.get('schedule_type') == 'weekly' else []) %}
+                        {% set selected_membership_types = a.trigger_config.get('membership_types', []) %}
+                        {% set selected_locations = a.trigger_config.get('locations', []) %}
                         {% include "automations/_schedule_fields.html" %}
                         <button type="submit" class="btn">שמירת תזמון</button>
                     </form>

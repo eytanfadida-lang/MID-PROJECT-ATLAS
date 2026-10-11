@@ -818,6 +818,56 @@ label {
     white-space: normal;
 }
 
+/* בחירה מרובה של סוגי מנוי (אוטומציית "לקוחות פעילים") - תיבת חיפוש + רשימת checkbox-ים
+   גוללת, ראו _schedule_fields.html data-for="arbox_active_members" */
+.automations-membership-types {
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    padding: 8px;
+    background: #fff;
+}
+
+.automations-membership-search {
+    width: 100%;
+    margin-bottom: 8px;
+    box-sizing: border-box;
+}
+
+.automations-membership-select-all {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 6px;
+}
+
+.automations-membership-list {
+    max-height: 220px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.automations-membership-option {
+    display: block;
+    padding: 2px 0;
+}
+
+.automations-message-history ul {
+    list-style: none;
+    padding: 0;
+    margin: 8px 0 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.automations-message-history li {
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    padding: 10px;
+    background: #fff;
+}
+
 .day-list, .hour-list {
     display: flex;
     flex-wrap: wrap;

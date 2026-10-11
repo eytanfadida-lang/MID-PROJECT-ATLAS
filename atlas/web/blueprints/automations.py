@@ -14,6 +14,12 @@ bp = Blueprint("automations", __name__, url_prefix="/automations")
 
 _WEEKDAY_LABELS = ["שני", "שלישי", "רביעי", "חמישי", "שישי", "שבת", "ראשון"]
 
+# שני הסניפים הפיזיים היחידים של העסק (מאומת מול location_name בכל קריאות Arbox לאורך הפרויקט -
+# אין endpoint ב-Arbox שמחזיר "רשימת סניפים" בפני עצמה, אז קבוע כאן בקוד). בשימוש לבחירה מרובה
+# בטופס "לקוחות פעילים" (ראו _parse_schedule_form) - ואם תתווסף אוטומציה נוספת שצריכה סינון
+# לפי סניף, ראוי לשלוף מכאן ולא לשכפל את הרשימה
+LOCATIONS = ["קרית מוצקין", "טירת הכרמל"]
+
 
 # מחלצת את ימי השבוע הנבחרים הן מ-request.form (MultiDict, כמה ערכים תחת אותו שם שדה -
 # "weekdays") והן מ-trigger_config שכבר נשמר ב-DB (dict רגיל, כבר שמור כרשימת int) - כדי
@@ -22,6 +28,20 @@ def _extract_weekdays(form):
     if hasattr(form, "getlist"):
         return [int(value) for value in form.getlist("weekdays") if value.isdigit()]
     return form.get("weekdays") or []
+
+
+# אותו אידיום בדיוק כמו _extract_weekdays - נחוצה כי request.form (MultiDict, מכמה checkbox-ים
+# תחת אותו name) ו-trigger_config שכבר נשמר (dict רגיל, רשימה פשוטה) נקראים אחרת
+def _extract_membership_types(form):
+    if hasattr(form, "getlist"):
+        return form.getlist("membership_types")
+    return form.get("membership_types") or []
+
+
+def _extract_locations(form):
+    if hasattr(form, "getlist"):
+        return form.getlist("locations")
+    return form.get("locations") or []
 
 
 # בונה trigger_config מתוך טופס לפי schedule_type שנבחר - בשימוש גם ביצירה וגם בעריכה.
@@ -87,8 +107,8 @@ def _parse_schedule_form(form):
     # אופציונלי לפי סוג מנוי/סניף. ראו _resolve_active_members_recipients ב-engine.py
     if form.get("audience_source") == "arbox_active_members":
         trigger_config["audience_source"] = "arbox_active_members"
-        trigger_config["membership_type"] = form.get("membership_type", "").strip()
-        trigger_config["location"] = form.get("location", "").strip()
+        trigger_config["membership_types"] = form.getlist("membership_types")
+        trigger_config["locations"] = form.getlist("locations")
 
     return trigger_config, None
 
@@ -168,12 +188,14 @@ def list_automations():
         )
     return render_template(
         "automations/list.html", automations=automations, weekday_labels=_WEEKDAY_LABELS,
+        membership_types=repos.arbox_member_cache.get_distinct_membership_types(), locations=LOCATIONS,
     )
 
 
 @bp.route("/new", methods=["GET", "POST"])
 @admin_required
 def new_automation():
+    repos = get_repos()
     if request.method == "POST":
         name = request.form.get("name", "").strip()
         text_template = request.form.get("text_template", "").strip()
@@ -186,9 +208,11 @@ def new_automation():
             return render_template(
                 "automations/new.html", weekday_labels=_WEEKDAY_LABELS, form=request.form,
                 selected_weekdays=_extract_weekdays(request.form),
+                selected_membership_types=_extract_membership_types(request.form),
+                selected_locations=_extract_locations(request.form),
+                membership_types=repos.arbox_member_cache.get_distinct_membership_types(), locations=LOCATIONS,
             )
 
-        repos = get_repos()
         automation_id = repos.automations.create_automation(name, "scheduled", trigger_config)
         repos.automations.add_step(
             automation_id, step_order=1, delay_minutes=0, action_type="send_whatsapp_message",
@@ -199,6 +223,8 @@ def new_automation():
 
     return render_template(
         "automations/new.html", weekday_labels=_WEEKDAY_LABELS, form={}, selected_weekdays=[],
+        selected_membership_types=[], selected_locations=[],
+        membership_types=repos.arbox_member_cache.get_distinct_membership_types(), locations=LOCATIONS,
     )
 
 

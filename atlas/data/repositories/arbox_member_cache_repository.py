@@ -63,6 +63,17 @@ class ArboxMemberCacheRepository:
         self.conn.commit()
         return len(rows)
 
+    # רשימת כל סוגי המנוי הידועים (מהקאש המקומי, לא קריאה חיה ל-Arbox) - לאכלוס בחירה
+    # מרובה בטופס "לקוחות פעילים" (ראו atlas/web/templates/automations/_schedule_fields.html,
+    # data-for="arbox_active_members") בלי לחכות לקריאת API איטית בכל טעינת עמוד. הקאש
+    # מתעדכן תדיר ע"י /tasks/arbox-sync (cron חיצוני) - "טרי מספיק", לא בזמן אמת
+    def get_distinct_membership_types(self):
+        rows = self.conn.execute(
+            f"SELECT DISTINCT membership_type_name FROM {TABLE_NAME} "
+            "WHERE membership_type_name != '' ORDER BY membership_type_name"
+        ).fetchall()
+        return [row[0] for row in rows]
+
     def get_by_phone(self, phone):
         row = self.conn.execute(
             f"SELECT phone, first_name, last_name, active, membership_start_date, membership_end_date, "

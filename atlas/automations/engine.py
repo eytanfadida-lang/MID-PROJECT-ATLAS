@@ -296,10 +296,12 @@ def _resolve_expiring_sessions_recipients(repos, automation, now):
 # "רשימת תפוצה כללית" ללקוחות פעילים - בניגוד לשלושת הקודמים (שתמיד תזמון יומי, בודקים תנאי
 # עסקי יומיומי), זו משתמשת בתזמון הרגיל/גמיש שהמשתמש בוחר (חד-פעמי/יומי/שבועי/חודשי, בדיוק
 # כמו "רשימה ידנית" - ראו _parse_schedule_form) כי היא מיועדת לשידור כללי מתוזמן (למשל כל יום
-# רביעי), לא לבדיקת תנאי. סינון אופציונלי לפי סוג מנוי ו/או סניף (substring, לא exact match -
-# membership_type שבפועל מכיל גם את שם הסניף, ראו activeMembershipsReport). בניגוד
-# ל-Upgrade360 (שם אפשר לערוך את תוכן ההודעה אד-הוק בכל הרצה, ראו צילום מסך) - כאן יש תבנית
-# קבועה לאוטומציה (כמו כל אוטומציה אחרת), ניתנת לעריכה בכל עת לפני ההרצה הבאה, לא פר-הרצה
+# רביעי), לא לבדיקת תנאי. סינון אופציונלי לפי סוג מנוי ו/או סניף (membership_types/locations -
+# שתיהן רשימות שמות מדויקים שנבחרו בתיבת סימון מרובה בטופס, ראו _schedule_fields.html - לא
+# substring, exact match על ערכי enum ידועים מראש - LOCATIONS בבלופרינט/הקאש המקומי בהתאמה).
+# בניגוד ל-Upgrade360 (שם אפשר
+# אוטומציה אחרת), ניתנת לעריכה בכל עת לפני ההרצה הבאה (וגם לשחזור מהיסטוריה - ראו
+# automation_message_history), לא פר-הרצה
 def _resolve_active_members_recipients(repos, automation, now):
     trigger_config = automation["trigger_config"]
     api_key = arbox_client.load_arbox_api_key()
@@ -312,15 +314,15 @@ def _resolve_active_members_recipients(repos, automation, now):
     except Exception as exc:
         return [], f"שליפת לקוחות פעילים מ-Arbox נכשלה: {exc}"
 
-    membership_type_filter = (trigger_config.get("membership_type") or "").strip()
-    location_filter = (trigger_config.get("location") or "").strip()
+    membership_types_filter = set(trigger_config.get("membership_types") or [])
+    locations_filter = set(trigger_config.get("locations") or [])
 
     seen_phones = set()
     recipients = []
     for membership in memberships:
-        if membership_type_filter and membership_type_filter not in (membership.get("membership_type_name") or ""):
+        if membership_types_filter and (membership.get("membership_type_name") or "") not in membership_types_filter:
             continue
-        if location_filter and location_filter not in (membership.get("location_name") or ""):
+        if locations_filter and (membership.get("location_name") or "") not in locations_filter:
             continue
         phone = normalize_phone(membership.get("phone"))
         if not phone or phone in seen_phones:

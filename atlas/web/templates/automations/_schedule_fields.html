@@ -67,17 +67,42 @@
 
 <div class="automations-audience-field" data-for="arbox_active_members">
     <div class="form-group">
-        <label>סינון לפי סוג מנוי (אופציונלי)</label>
-        <input type="text" name="membership_type" placeholder="למשל: VIP, פיטנס גולד" value="{{ form.get('membership_type', '') }}">
+        <label>סינון לפי סוג מנוי (אופציונלי - בחר/י אחד או יותר, ריק = כל הסוגים)</label>
+        <div class="automations-membership-types">
+            <input type="text" class="automations-membership-search" placeholder="חיפוש בין סוגי המנוי..." oninput="automationsFilterMembershipTypes(this)">
+            <label class="automations-membership-select-all">
+                <input type="checkbox" onchange="automationsToggleAllMembershipTypes(this)"> בחר/י הכל (מהמוצגים)
+            </label>
+            <div class="automations-membership-list">
+                {% for mt in membership_types %}
+                <label class="automations-membership-option">
+                    <input type="checkbox" name="membership_types" value="{{ mt }}" {{ 'checked' if mt in selected_membership_types else '' }}>
+                    {{ mt }}
+                </label>
+                {% endfor %}
+                {% if not membership_types %}
+                <p class="hint">עדיין לא התקבלו סוגי מנוי מ-Arbox - ירוץ `/tasks/arbox-sync` ברקע.</p>
+                {% endif %}
+            </div>
+        </div>
     </div>
     <div class="form-group">
-        <label>סינון לפי סניף (אופציונלי)</label>
-        <input type="text" name="location" placeholder="למשל: קרית מוצקין, טירת הכרמל" value="{{ form.get('location', '') }}">
+        <label>סינון לפי סניף (אופציונלי - בחר/י אחד או יותר, ריק = כל הסניפים)</label>
+        <div class="automations-membership-types">
+            <div class="automations-membership-list">
+                {% for loc in locations %}
+                <label class="automations-membership-option">
+                    <input type="checkbox" name="locations" value="{{ loc }}" {{ 'checked' if loc in selected_locations else '' }}>
+                    {{ loc }}
+                </label>
+                {% endfor %}
+            </div>
+        </div>
         <p class="hint">נשלף ישירות מ-Arbox בכל הרצה - כל הלקוחות עם מנוי פעיל, או רק מי שתואמת
-            את הסינון שלמעלה (התאמה חלקית בטקסט, לא צריך להקליד במדויק). את התזמון (פעם בשבוע,
-            כל יום וכו') בוחרים למטה, בדיוק כמו ברשימה ידנית. בניגוד לאפגרייד 360 - אין כאן עריכת
-            תוכן ההודעה בכל הרצה בנפרד, אלא תבנית קבועה (ניתנת לעריכה בכל עת מתחת). אפשר להשתמש
-            ב-{{ '{full_name}' }}, {{ '{membership_type_name}' }} ו-{{ '{location_name}' }} בהודעה.</p>
+            את הסינון שלמעלה. את התזמון (פעם בשבוע, כל יום וכו') בוחרים למטה, בדיוק כמו ברשימה
+            ידנית. בניגוד לאפגרייד 360 - אין כאן עריכת תוכן ההודעה בכל הרצה בנפרד, אלא תבנית
+            קבועה (ניתנת לעריכה בכל עת מתחת, כולל חזרה לנוסח קודם דרך היסטוריית ההודעות). אפשר
+            להשתמש ב-{{ '{full_name}' }}, {{ '{membership_type_name}' }} ו-{{ '{location_name}' }} בהודעה.</p>
     </div>
 </div>
 
@@ -138,6 +163,23 @@ function automationsToggleAudience(select) {
     var selected = select.value;
     form.querySelectorAll('.automations-audience-field').forEach(function (el) {
         el.hidden = el.dataset.for.split(' ').indexOf(selected) === -1;
+    });
+}
+function automationsFilterMembershipTypes(input) {
+    var container = input.closest('.automations-membership-types');
+    var query = input.value.trim().toLowerCase();
+    container.querySelectorAll('.automations-membership-option').forEach(function (label) {
+        var text = label.textContent.trim().toLowerCase();
+        label.hidden = query !== '' && text.indexOf(query) === -1;
+    });
+}
+function automationsToggleAllMembershipTypes(checkbox) {
+    var container = checkbox.closest('.automations-membership-types');
+    var checked = checkbox.checked;
+    container.querySelectorAll('.automations-membership-option').forEach(function (label) {
+        if (!label.hidden) {
+            label.querySelector('input').checked = checked;
+        }
     });
 }
 (function () {
