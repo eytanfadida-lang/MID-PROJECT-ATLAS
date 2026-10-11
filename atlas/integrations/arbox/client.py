@@ -51,27 +51,43 @@ def fetch_arbox_users(api_key, **filters):
     return users
 
 
-# מושכת את "דוח ימי הולדת" (endpoint ייעודי, לא /users הרגיל - ראו /v3/reports/{reportName}
-# בתיעוד ה-API) בין שני תאריכים. חשוב: ההתאמה היא לפי יום-בחודש בלבד (כמו אירוע שנתי חוזר) -
-# fromDate/toDate=אותו תאריך מחזירה את כל מי שנולד באותו יום-בחודש, בלי קשר לשנת הלידה
-# (מאומת ישירות מול ה-API). מחזירה user_id/full_name/birthday/age/status(active/inactive)/phone
-def fetch_arbox_birthdays(api_key, from_date, to_date):
-    people = []
+# מושכת דוח כלשהו מתוך /v3/reports/{reportName} (עם pagination) בין שני תאריכים - משותפת
+# לכל ה-fetch_arbox_* report-specific functions למטה, כדי לא לשכפל את לוגיקת ה-pagination.
+# שימו לב: המשמעות של fromDate/toDate שונה בין דוחות - ב-birthdayReport זו התאמה לפי
+# יום-בחודש (אירוע שנתי חוזר, בלי קשר לשנה), ואילו ב-expiringMembershipsReport זו התאמה
+# לפי תאריך ממשי (end_date בפועל) - מאומת ישירות מול ה-API לכל דוח בנפרד, לא להניח
+def _fetch_arbox_report(api_key, report_name, from_date, to_date):
+    rows = []
     page = 1
     while True:
         response = requests.get(
-            f"{API_BASE_URL}/reports/birthdayReport",
+            f"{API_BASE_URL}/reports/{report_name}",
             headers={"Accept": "application/json", "api-key": api_key},
             params={"fromDate": from_date, "toDate": to_date, "limit": PAGE_LIMIT, "page": page},
             timeout=30,
         )
         response.raise_for_status()
-        page_people = response.json().get("data", []) or []
-        people.extend(page_people)
-        if len(page_people) < PAGE_LIMIT:
+        page_rows = response.json().get("data", []) or []
+        rows.extend(page_rows)
+        if len(page_rows) < PAGE_LIMIT:
             break
         page += 1
-    return people
+    return rows
+
+
+# "דוח ימי הולדת" - ראו _fetch_arbox_report. חשוב: ההתאמה היא לפי יום-בחודש בלבד (כמו אירוע
+# שנתי חוזר) - fromDate/toDate=אותו תאריך מחזירה את כל מי שנולד באותו יום-בחודש, בלי קשר
+# לשנת הלידה (מאומת ישירות מול ה-API). מחזירה user_id/full_name/birthday/age/
+# status(active/inactive)/phone
+def fetch_arbox_birthdays(api_key, from_date, to_date):
+    return _fetch_arbox_report(api_key, "birthdayReport", from_date, to_date)
+
+
+# "דוח מנויים שעומדים להסתיים" - ראו _fetch_arbox_report. בניגוד ל-birthdayReport, ההתאמה
+# כאן היא לפי תאריך סיום ממשי (end_date), לא יום-בחודש חוזר - מאומת ישירות מול ה-API.
+# מחזירה user_id/full_name/phone/membership_type_name/end_date/cancelled ועוד
+def fetch_arbox_expiring_memberships(api_key, from_date, to_date):
+    return _fetch_arbox_report(api_key, "expiringMembershipsReport", from_date, to_date)
 
 
 # מושכת את לוח השיעורים האמיתי מ-Arbox (עם pagination) בין שני תאריכים - שם שיעור,

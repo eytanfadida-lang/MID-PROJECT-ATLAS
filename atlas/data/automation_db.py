@@ -10,6 +10,15 @@ _DEFAULT_TRIAL_TEXT_TEMPLATE = (
     "{date} בשעה {start_time}, {location_name}. מחכים לך!"
 )
 
+# אוטומציית webhook אמיתית מ-Arbox (ראו atlas/web/webhooks.py, arbox_webhook) - יורה על *כל*
+# הזמנת שיעור ניסיון ב-Arbox בלי קשר למקור (כולל הזמנה ידנית של הצוות, לא רק מהבוט שלנו -
+# בניגוד ל-trial_booked). שמות המשתנים תואמים בדיוק ל-payload האמיתי שנלכד ואומת מול Arbox:
+# name, event_name, date (DD/MM/YYYY!), time, location_name, coach
+_DEFAULT_ARBOX_TRIAL_CLASS_TEXT_TEMPLATE = (
+    "היי {name}! 🌸 שיעור הניסיון שלך ב{event_name} אושר - "
+    "{date} בשעה {time}, {location_name}. מחכים לך!"
+)
+
 
 # אחראית על החיבור למסד הנתונים ועל יצירת טבלאות מנוע האוטומציות - automations (הגדרת "מתי
 # לעשות מה"), automation_steps (הפעולות המסודרות של כל אוטומציה, עם השהייה אופציונלית),
@@ -117,6 +126,7 @@ class AutomationDB:
             "ON global_blacklist(tenant_id, phone)"
         )
         self._seed_default_automation(conn)
+        self._seed_arbox_trial_class_automation(conn)
         return conn
 
     # מיגרציה קלה: מוסיפה את last_run_at אם עוד לא קיימת - מתי לאחרונה אוטומציה מתוזמנת
@@ -148,6 +158,35 @@ class AutomationDB:
             "INSERT INTO automation_steps (automation_id, step_order, delay_minutes, action_type, "
             "action_config) VALUES (?, 1, 0, 'send_whatsapp_message', ?)",
             (automation_id, json.dumps({"mode": "text", "text_template": _DEFAULT_TRIAL_TEXT_TEMPLATE})),
+        )
+        conn.commit()
+
+    # זורעת את אוטומציית ה-webhook arbox_trial_class אם עוד לא קיימת (בדיקה לפי trigger_type
+    # ספציפי, לא "הטבלה ריקה" כמו _seed_default_automation - כי trial_booked כבר קיימת אצל
+    # רוב המשתמשים, אז הטבלה כבר לא ריקה). נזרעת **כבויה** (enabled=0) בכוונה - פעילה יחד
+    # עם trial_booked תגרום לשתי הודעות אישור כשההזמנה דרך הבוט (ראו התוכנית/השיחה עם אפרת
+    # לגבי ההחלטה אם לכבות את trial_booked הישנה) - המשתמש צריך להפעיל ידנית אחרי שמחליטים
+    @staticmethod
+    def _seed_arbox_trial_class_automation(conn):
+        import datetime
+
+        exists = conn.execute(
+            "SELECT 1 FROM automations WHERE trigger_type = 'arbox_trial_class'"
+        ).fetchone()
+        if exists:
+            return
+        now = datetime.datetime.now().isoformat(timespec="seconds")
+        cursor = conn.execute(
+            "INSERT INTO automations (tenant_id, name, trigger_type, trigger_config, enabled, "
+            "created_at, updated_at) VALUES (1, ?, ?, NULL, 0, ?, ?)",
+            ("אישור שיעור ניסיון (Arbox webhook)", "arbox_trial_class", now, now),
+        )
+        automation_id = cursor.lastrowid
+        conn.execute(
+            "INSERT INTO automation_steps (automation_id, step_order, delay_minutes, action_type, "
+            "action_config) VALUES (?, 1, 0, 'send_whatsapp_message', ?)",
+            (automation_id,
+             json.dumps({"mode": "text", "text_template": _DEFAULT_ARBOX_TRIAL_CLASS_TEXT_TEMPLATE})),
         )
         conn.commit()
 

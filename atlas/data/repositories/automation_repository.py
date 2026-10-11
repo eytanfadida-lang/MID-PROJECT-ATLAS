@@ -188,10 +188,13 @@ class AutomationRepository:
             ).fetchone()
             trigger_type = row[2]
             trigger_config = json.loads(row[5]) if row[5] else {}
-            # ל-arbox_birthday הקהל נגזר חי כל יום מ-Arbox, אין "רשימה" קבועה לספור -
-            # מוצג "-" (None) בדיוק כמו אוטומציה מבוססת-אירוע
+            # ל-audience_source דינמי (נגזר חי מ-Arbox בכל הרצה - ראו DYNAMIC_AUDIENCE_SOURCES
+            # ב-atlas/automations/engine.py, מקור האמת לרשימה הזו) אין "רשימה" קבועה לספור -
+            # מוצג "-" (None) בדיוק כמו אוטומציה מבוססת-אירוע. מוכפל כאן במתכוון (לא מייבאים
+            # את engine.py לשכבת ה-repository) - אם מוסיפים audience_source דינמי חדש, לעדכן גם כאן
             is_manual_audience = (
-                trigger_type == "scheduled" and trigger_config.get("audience_source") != "arbox_birthday"
+                trigger_type == "scheduled"
+                and trigger_config.get("audience_source") not in ("arbox_birthday", "arbox_membership_expiring")
             )
             expected_recipient_count = None
             if is_manual_audience:

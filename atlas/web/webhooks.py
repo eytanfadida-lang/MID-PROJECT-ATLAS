@@ -86,6 +86,19 @@ def load_automations_run_token():
     return token or None
 
 
+# טוקן להגנה על נקודת הקליטה מ-webhooks של Arbox (ראו arbox_webhook) - ל-Arbox עצמה אין
+# שום מנגנון חתימה/אימות (ראו הממצא ב-/tasks/arbox-webhook-catch), אז ההגנה היחידה היא
+# טוקן סודי בכתובת ה-URL, אותו דפוס בדיוק כמו arbox-sync/automations-run
+ARBOX_WEBHOOK_TOKEN_FILE = secret(".arbox_webhook_token")
+
+
+def load_arbox_webhook_token():
+    if not ARBOX_WEBHOOK_TOKEN_FILE.exists():
+        return None
+    token = ARBOX_WEBHOOK_TOKEN_FILE.read_text().strip()
+    return token or None
+
+
 # מפעילה סנכרון Arbox דרך HTTP, מאובטחת בטוקן סודי (לא session/login) - מיועדת לשירות
 # cron חיצוני שקורא לכתובת הזו על בסיס קבוע, בסביבות אירוח בלי background thread משלנו
 @bp.route("/arbox-sync")
@@ -529,4 +542,39 @@ def arbox_webhook_catch():
     secret(".last_arbox_webhook_payload.json").write_text(
         json.dumps(capture, ensure_ascii=False, indent=2), encoding="utf-8"
     )
+    return jsonify({"status": "ok"})
+
+
+# נקודת קליטה אמיתית ל-webhooks מ-Arbox - גנרית לכל סוגי האירועים (purchase, trial_class,
+# cancelled_membership וכו', ראו ממשק האינטגרציות של Arbox). event_name מגיע מה-URL עצמו
+# (לא מה-payload - הוא לא מזהה את סוג האירוע בתוכו, ראו ממצאי הלכידה), כי כל webhook
+# שנרשם ב-Arbox מצביע לכתובת ייחודית אצלנו. ממפה ישירות ל-trigger_type="arbox_<event_name>"
+# דרך automation_engine.fire_trigger הקיים - בלי שום שינוי במנוע/במודל הנתונים
+@bp.route("/arbox-webhook/<event_name>", methods=["POST"])
+def arbox_webhook(event_name):
+    expected_token = load_arbox_webhook_token()
+    provided_token = request.args.get("token", "")
+    if not expected_token or not secrets.compare_digest(provided_token, expected_token):
+        abort(403)
+
+    payload = request.get_json(silent=True) or {}
+    repos = db_context.get_repos()
+
+    # Arbox לא מבטיחה משלוח פעם-אחת-בלבד - דה-דופליקציה עם whatsapp_processed_messages
+    # הקיים (מפתח סינתטי "arbox:<event>:<id>", לא wamid אמיתי - אותו מנגנון, שימוש חוזר)
+    event_id = payload.get("id")
+    dedup_key = f"arbox:{event_name}:{event_id}" if event_id else None
+    if dedup_key and repos.whatsapp_state.has_processed(dedup_key):
+        return jsonify({"status": "ignored", "reason": "duplicate"})
+    if dedup_key:
+        repos.whatsapp_state.mark_processed(dedup_key)
+
+    phone = normalize_phone(payload.get("phone") or payload.get("client_phone") or "")
+    if not phone:
+        return jsonify({"status": "ignored", "reason": "no_phone"})
+
+    try:
+        automation_engine.fire_trigger(repos, f"arbox_{event_name}", context=payload, phone=phone)
+    except Exception as exc:
+        print(f"[Arbox webhook] {event_name} automation failed: {exc}", flush=True)
     return jsonify({"status": "ok"})

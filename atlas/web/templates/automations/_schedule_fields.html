@@ -9,6 +9,7 @@
     <select name="audience_source" class="automations-audience-select" onchange="automationsToggleAudience(this)">
         <option value="manual" {{ 'selected' if form.get('audience_source', 'manual') == 'manual' else '' }}>רשימה ידנית</option>
         <option value="arbox_birthday" {{ 'selected' if form.get('audience_source') == 'arbox_birthday' else '' }}>יום הולדת (מתוך Arbox, אוטומטי)</option>
+        <option value="arbox_membership_expiring" {{ 'selected' if form.get('audience_source') == 'arbox_membership_expiring' else '' }}>סיום מנוי מתקרב (מתוך Arbox, אוטומטי)</option>
     </select>
 </div>
 
@@ -26,6 +27,20 @@
         </select>
         <p class="hint">נבדק אוטומטית כל יום - מי שיום ההולדת שלה חל היום נשלפת ישירות מ-Arbox,
             בלי רשימת נמענים ידנית. אפשר להשתמש ב-{{ '{full_name}' }} וגם ב-{{ '{age}' }} בהודעה.</p>
+    </div>
+</div>
+
+<div class="automations-audience-field" data-for="arbox_membership_expiring">
+    <div class="form-group">
+        <label>שעת שליחה</label>
+        <input type="time" name="time_of_day" value="{{ form.get('time_of_day', '09:00') }}">
+    </div>
+    <div class="form-group">
+        <label>כמה ימים לפני סיום המנוי</label>
+        <input type="number" name="days_before" min="0" max="90" value="{{ form.get('days_before', 5) }}">
+        <p class="hint">נבדק אוטומטית כל יום - מי שהמנוי שלה מסתיים בדיוק בעוד כמות הימים הזו
+            נשלפת ישירות מ-Arbox, בלי רשימת נמענים ידנית. אפשר להשתמש ב-{{ '{full_name}' }},
+            {{ '{membership_type_name}' }}, {{ '{end_date}' }} ו-{{ '{days_left}' }} בהודעה.</p>
     </div>
 </div>
 

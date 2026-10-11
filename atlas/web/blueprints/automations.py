@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, redirect, url_for, flash, abort, r
 
 from atlas.data.context import get_repos
 from atlas.core.auth import admin_required
-from atlas.automations.engine import SCHEDULE_TYPES
+from atlas.automations.engine import SCHEDULE_TYPES, DYNAMIC_AUDIENCE_SOURCES
 
 # עמוד ניהול למנוע האוטומציות (ראו atlas/automations/engine.py) - טבלה אחת מאוחדת (לא
 # רשימה+עמוד פרטים נפרד): כל שורה כוללת עריכת תוכן/תזמון/נמענים inline (מורחבת/מוסתרת
@@ -40,6 +40,20 @@ def _parse_schedule_form(form):
         return {
             "schedule_type": "daily", "time_of_day": time_of_day,
             "audience_source": "arbox_birthday", "audience_status": audience_status,
+        }, None
+
+    # "סיום מנוי מתקרב (Arbox)" - גם היא תמיד תזמון יומי (בודקים כל יום מי המנוי שלה
+    # מסתיים עוד X ימים), עם שעה + מספר ימים מראש במקום סינון קהל
+    if form.get("audience_source") == "arbox_membership_expiring":
+        time_of_day = form.get("time_of_day", "").strip() or "09:00"
+        try:
+            days_before = int(form.get("days_before", "5"))
+        except ValueError:
+            days_before = 5
+        days_before = min(max(days_before, 0), 90)
+        return {
+            "schedule_type": "daily", "time_of_day": time_of_day,
+            "audience_source": "arbox_membership_expiring", "days_before": days_before,
         }, None
 
     schedule_type = form.get("schedule_type", "")
@@ -103,7 +117,7 @@ def list_automations():
         automation["last_run_at"] = full["last_run_at"]
         is_manual_audience = (
             automation["trigger_type"] == "scheduled"
-            and automation["trigger_config"].get("audience_source") != "arbox_birthday"
+            and automation["trigger_config"].get("audience_source") not in DYNAMIC_AUDIENCE_SOURCES
         )
         automation["recipients"] = (
             repos.automations.get_recipients(automation["id"]) if is_manual_audience else None

@@ -212,6 +212,53 @@ def _resolve_birthday_recipients(automation, now):
     return recipients, None
 
 
+# שולפת מי שהמנוי שלה עומד להסתיים בעוד trigger_config["days_before"] ימים (ברירת מחדל 5,
+# תואם "הגדר שליחה עבור X ימים לפני סיום המנוי" ב-Upgrade360) - ישירות מ-Arbox בכל הרצה.
+# בניגוד ל-birthdayReport, ההתאמה כאן היא לפי תאריך סיום ממשי (end_date), לא יום-בחודש חוזר.
+# מדלגת על מנויים שכבר בוטלו (cancelled=yes) - אין טעם להזכיר לחדש מנוי שכבר מבוטל
+def _resolve_membership_expiring_recipients(automation, now):
+    trigger_config = automation["trigger_config"]
+    api_key = arbox_client.load_arbox_api_key()
+    if not api_key:
+        return [], "שגיאה טכנית בגישה ל-Arbox (אין מפתח API)"
+
+    days_before = trigger_config.get("days_before", 5)
+    target_date = (now.date() + datetime.timedelta(days=days_before)).isoformat()
+    try:
+        memberships = arbox_client.fetch_arbox_expiring_memberships(api_key, target_date, target_date)
+    except Exception as exc:
+        return [], f"שליפת מנויים שעומדים להסתיים מ-Arbox נכשלה: {exc}"
+
+    recipients = []
+    for membership in memberships:
+        if membership.get("cancelled") == "yes":
+            continue
+        phone = normalize_phone(membership.get("phone"))
+        if not phone:
+            continue
+        recipients.append({
+            "phone": phone,
+            "full_name": membership.get("full_name") or membership.get("first_name") or "",
+            "membership_type_name": membership.get("membership_type_name") or "",
+            "end_date": membership.get("end_date") or "",
+            "days_left": days_before,
+        })
+    return recipients, None
+
+
+# מיפוי audience_source -> פונקציית שליפה - כל פונקציה מחזירה (recipients, error) כמו
+# _resolve_birthday_recipients/_resolve_membership_expiring_recipients למעלה. audience_source
+# שלא מופיע כאן (כולל ברירת המחדל "manual") נופל לרשימת הנמענים הידנית (automation_recipients)
+_AUDIENCE_RESOLVERS = {
+    "arbox_birthday": _resolve_birthday_recipients,
+    "arbox_membership_expiring": _resolve_membership_expiring_recipients,
+}
+
+# נחשף כדי שקוד אחר (הבלופרינט, ה-repository) יוכל לבדוק "האם זו אוטומציה עם קהל דינמי
+# מ-Arbox" בלי לשכפל את רשימת ה-audience_source הידועים בכמה מקומות - מקור אמת יחיד
+DYNAMIC_AUDIENCE_SOURCES = frozenset(_AUDIENCE_RESOLVERS.keys())
+
+
 # נקראת מ-process_due_actions (אותו poller, אותה תדירות) - סורקת אוטומציות מתוזמנות
 # (trigger_type='scheduled'), ולכל אחת שהגיע זמן ה"הורדה" (נעילת רשימת הנמענים) שלה ועוד לא
 # רצה להזדמנות הזו, יוצרת due_actions לכל הנמענים (מרשימה ידנית או מ-Arbox - ראו
@@ -235,8 +282,10 @@ def process_scheduled_automations(repos, tenant_id=1):
             except ValueError:
                 pass
 
-        if automation["trigger_config"].get("audience_source") == "arbox_birthday":
-            recipients, error = _resolve_birthday_recipients(automation, now)
+        audience_source = automation["trigger_config"].get("audience_source")
+        resolver = _AUDIENCE_RESOLVERS.get(audience_source)
+        if resolver:
+            recipients, error = resolver(automation, now)
             if error:
                 repos.automations.log_execution(
                     automation["id"], "-", "failed", CHANNEL_WHATSAPP_CLOUD_API, error,
@@ -249,9 +298,11 @@ def process_scheduled_automations(repos, tenant_id=1):
         for recipient in recipients:
             if recipient["phone"] in blacklisted_phones:
                 continue
-            context = {"full_name": recipient["full_name"] or ""}
-            if "age" in recipient:
-                context["age"] = recipient["age"]
+            # כל שדה חוץ מ-phone/id הופך אוטומטית לחלק מה-context (שם מלא, גיל, תאריך סיום
+            # מנוי וכו' - לפי מה שהרזולבר הרלוונטי מחזיר, בלי רשימת שדות קשיחה כאן). "id" מוחרג
+            # כי ב-get_recipients הוא רק המזהה הפנימי של שורת automation_recipients - לא מידע
+            # רלוונטי להודעה
+            context = {key: value for key, value in recipient.items() if key not in ("phone", "id")}
             _fire_automation_steps(
                 repos, automation["id"], context, recipient["phone"], tenant_id=tenant_id,
                 run_after=send_after,

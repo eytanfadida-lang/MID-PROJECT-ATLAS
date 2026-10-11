@@ -33,6 +33,8 @@
                         🎂 יום הולדת (Arbox) -
                         {{ {'all': 'הכל', 'active': 'פעילות', 'inactive': 'לא פעילות'}[tc.get('audience_status', 'all')] }},
                         {{ tc.time_of_day }}
+                    {% elif tc.audience_source == 'arbox_membership_expiring' %}
+                        ⏳ סיום מנוי בעוד {{ tc.days_before }} ימים (Arbox), {{ tc.time_of_day }}
                     {% elif tc.schedule_type == 'once' %}
                         חד-פעמי ב-{{ tc.run_at }}
                     {% elif tc.schedule_type == 'daily' %}

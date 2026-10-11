@@ -227,6 +227,9 @@ arbox_location_map.json
 
 # Automations engine poller token (ראו atlas/web/webhooks.py /tasks/automations-run)
 .automations_run_token
+
+# Arbox webhook receiver token (ראו atlas/web/webhooks.py /tasks/arbox-webhook/<event>)
+.arbox_webhook_token
 .google_leads_webhook_key
 .landing_page_token
 .last_landing_page_payload.json
