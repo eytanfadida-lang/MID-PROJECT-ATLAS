@@ -514,3 +514,18 @@ def whatsapp_customer_webhook():
     repos.customer_bot_messages.log(caller_phone, "out", reply_text, reply_phone_number_id)
     whatsapp_bot.send_text_message(bot_config, from_number, reply_text, phone_number_id=reply_phone_number_id)
     return jsonify({"status": "ok"})
+
+
+# כלי אבחון זמני - לוכד את הפיילואד האמיתי של webhook מ-Arbox (ראו ממשק הניהול של Arbox,
+# אינטגרציות → Webhooks - לא מתועד ב-API הציבורי) כדי לתכנן נכון את הנקודת קצה האמיתית
+# לפני שבונים אותה. לא מבצע שום פעולה חוץ משמירת הפיילואד - בטוח להפעיל בלי טוקן
+@bp.route("/arbox-webhook-catch", methods=["POST", "GET"])
+def arbox_webhook_catch():
+    payload = request.get_json(silent=True)
+    if payload is None:
+        payload = {"_raw_body": request.get_data(as_text=True), "_args": dict(request.args)}
+    print(f"[Arbox webhook catch] {payload}", flush=True)
+    secret(".last_arbox_webhook_payload.json").write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+    return jsonify({"status": "ok"})

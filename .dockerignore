@@ -30,6 +30,7 @@ arbox_location_map.json
 .whatsapp_customer_2fa_pin
 .last_whatsapp_customer_payload.json
 .whatsapp_customer_conversations.json
+.last_arbox_webhook_payload.json
 appointments.db
 appointments_backup_*.db
 
