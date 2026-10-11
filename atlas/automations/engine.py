@@ -183,8 +183,10 @@ def _compute_schedule_instants(trigger_config, now):
 
 # שולפת את מי שיום ההולדת שלו/שלה חל היום (לפי יום-בחודש, לא שנה - ראו fetch_arbox_birthdays),
 # ישירות מ-Arbox בכל הרצה (לא רשימה סטטית כמו הנמענים הידניים). מחזירה (recipients, error) -
-# error לא None אם שליפת Arbox נכשלה (כדי לתעד כישלון במקום לדלג בשקט)
-def _resolve_birthday_recipients(automation, now):
+# error לא None אם שליפת Arbox נכשלה (כדי לתעד כישלון במקום לדלג בשקט). חתימה אחידה
+# (repos, automation, now) לכל פונקציות ה-resolver - ראו _AUDIENCE_RESOLVERS - גם כשלא כולן
+# צריכות בפועל את repos (כאן ו-ב-_resolve_membership_expiring_recipients לא בשימוש)
+def _resolve_birthday_recipients(repos, automation, now):
     trigger_config = automation["trigger_config"]
     api_key = arbox_client.load_arbox_api_key()
     if not api_key:
@@ -216,7 +218,7 @@ def _resolve_birthday_recipients(automation, now):
 # תואם "הגדר שליחה עבור X ימים לפני סיום המנוי" ב-Upgrade360) - ישירות מ-Arbox בכל הרצה.
 # בניגוד ל-birthdayReport, ההתאמה כאן היא לפי תאריך סיום ממשי (end_date), לא יום-בחודש חוזר.
 # מדלגת על מנויים שכבר בוטלו (cancelled=yes) - אין טעם להזכיר לחדש מנוי שכבר מבוטל
-def _resolve_membership_expiring_recipients(automation, now):
+def _resolve_membership_expiring_recipients(repos, automation, now):
     trigger_config = automation["trigger_config"]
     api_key = arbox_client.load_arbox_api_key()
     if not api_key:
@@ -246,12 +248,58 @@ def _resolve_membership_expiring_recipients(automation, now):
     return recipients, None
 
 
+# שולפת את מי שנותרו לה X ניקובים בכרטיסייה (ברירת מחדל 1, תואם "הגדר שליחה עבור 1 ניקובים
+# שנותרו" ב-Upgrade360, מזהה "InvalidTicketReport" שם) - ישירות מ-Arbox בכל הרצה.
+# expiringSessionsReport, בניגוד לשני הדוחות למעלה, מחזיר שורות עם *כל* טווח sessions_left
+# (מאומת מול ה-API) - הסינון לסף המדויק נעשה כאן, לא ע"י הדוח עצמו. בניגוד ליום-הולדת/סיום-
+# מנוי (שנפתרים אוטומטית למחרת כי התאריך המתאים עבר), sessions_left יכול להישאר תקוע על 1
+# ימים רבים אם הלקוחה לא מגיעה - בלי הגנה היינו שולחים לה את אותה הודעה כל יום. לכן כאן יש
+# cooldown מפורש (has_recent_execution) שמדלג על מי שכבר קיבלה הודעה מהאוטומציה הזו בטווח
+# הימים האחרון (resend_cooldown_days, ברירת מחדל 14) - זו הסיבה היחידה ש-resolver הזה צריך
+# גם את repos (האחרים לא), ומוגדר ככה (repos, automation, now) לאחידות
+def _resolve_expiring_sessions_recipients(repos, automation, now):
+    trigger_config = automation["trigger_config"]
+    api_key = arbox_client.load_arbox_api_key()
+    if not api_key:
+        return [], "שגיאה טכנית בגישה ל-Arbox (אין מפתח API)"
+
+    sessions_left_threshold = trigger_config.get("sessions_left", 1)
+    cooldown_days = trigger_config.get("resend_cooldown_days", 14)
+    today = now.date().isoformat()
+    try:
+        rows = arbox_client.fetch_arbox_expiring_sessions(api_key, today, today)
+    except Exception as exc:
+        return [], f"שליפת כרטיסיות שעומדות להסתיים מ-Arbox נכשלה: {exc}"
+
+    seen_phones = set()
+    recipients = []
+    for row in rows:
+        if row.get("sessions_left") != sessions_left_threshold:
+            continue
+        if row.get("cancelled") == "yes":
+            continue
+        phone = normalize_phone(row.get("phone"))
+        if not phone or phone in seen_phones:
+            continue  # אותה לקוחה יכולה להופיע כמה פעמים (כמה כרטיסיות נפרדות) - שולחים פעם אחת
+        if repos.automations.has_recent_execution(automation["id"], phone, cooldown_days):
+            continue
+        seen_phones.add(phone)
+        recipients.append({
+            "phone": phone,
+            "full_name": row.get("full_name") or row.get("first_name") or "",
+            "membership_type_name": row.get("membership_type_name") or "",
+            "sessions_left": row.get("sessions_left"),
+        })
+    return recipients, None
+
+
 # מיפוי audience_source -> פונקציית שליפה - כל פונקציה מחזירה (recipients, error) כמו
 # _resolve_birthday_recipients/_resolve_membership_expiring_recipients למעלה. audience_source
 # שלא מופיע כאן (כולל ברירת המחדל "manual") נופל לרשימת הנמענים הידנית (automation_recipients)
 _AUDIENCE_RESOLVERS = {
     "arbox_birthday": _resolve_birthday_recipients,
     "arbox_membership_expiring": _resolve_membership_expiring_recipients,
+    "arbox_expiring_sessions": _resolve_expiring_sessions_recipients,
 }
 
 # נחשף כדי שקוד אחר (הבלופרינט, ה-repository) יוכל לבדוק "האם זו אוטומציה עם קהל דינמי
@@ -285,7 +333,7 @@ def process_scheduled_automations(repos, tenant_id=1):
         audience_source = automation["trigger_config"].get("audience_source")
         resolver = _AUDIENCE_RESOLVERS.get(audience_source)
         if resolver:
-            recipients, error = resolver(automation, now)
+            recipients, error = resolver(repos, automation, now)
             if error:
                 repos.automations.log_execution(
                     automation["id"], "-", "failed", CHANNEL_WHATSAPP_CLOUD_API, error,

@@ -10,6 +10,7 @@
         <option value="manual" {{ 'selected' if form.get('audience_source', 'manual') == 'manual' else '' }}>רשימה ידנית</option>
         <option value="arbox_birthday" {{ 'selected' if form.get('audience_source') == 'arbox_birthday' else '' }}>יום הולדת (מתוך Arbox, אוטומטי)</option>
         <option value="arbox_membership_expiring" {{ 'selected' if form.get('audience_source') == 'arbox_membership_expiring' else '' }}>סיום מנוי מתקרב (מתוך Arbox, אוטומטי)</option>
+        <option value="arbox_expiring_sessions" {{ 'selected' if form.get('audience_source') == 'arbox_expiring_sessions' else '' }}>נגמרת הכרטיסייה (מתוך Arbox, אוטומטי)</option>
     </select>
 </div>
 
@@ -41,6 +42,25 @@
         <p class="hint">נבדק אוטומטית כל יום - מי שהמנוי שלה מסתיים בדיוק בעוד כמות הימים הזו
             נשלפת ישירות מ-Arbox, בלי רשימת נמענים ידנית. אפשר להשתמש ב-{{ '{full_name}' }},
             {{ '{membership_type_name}' }}, {{ '{end_date}' }} ו-{{ '{days_left}' }} בהודעה.</p>
+    </div>
+</div>
+
+<div class="automations-audience-field" data-for="arbox_expiring_sessions">
+    <div class="form-group">
+        <label>שעת שליחה</label>
+        <input type="time" name="time_of_day" value="{{ form.get('time_of_day', '09:00') }}">
+    </div>
+    <div class="form-group">
+        <label>כמה ניקובים נותרו בכרטיסייה</label>
+        <input type="number" name="sessions_left" min="0" max="20" value="{{ form.get('sessions_left', 1) }}">
+    </div>
+    <div class="form-group">
+        <label>לא לשלוח שוב לאותה לקוחה למשך (ימים)</label>
+        <input type="number" name="resend_cooldown_days" min="1" max="90" value="{{ form.get('resend_cooldown_days', 14) }}">
+        <p class="hint">נבדק אוטומטית כל יום - מי שבכרטיסייה שלה נותר בדיוק מספר הניקובים הזה
+            נשלפת ישירות מ-Arbox, בלי רשימת נמענים ידנית. כדי לא להציף באותה הודעה כל יום אם
+            הלקוחה לא מגיעה, לא נשלח שוב למי שכבר קיבלה הודעה מהאוטומציה הזו בטווח הימים שלמעלה.
+            אפשר להשתמש ב-{{ '{full_name}' }}, {{ '{membership_type_name}' }} ו-{{ '{sessions_left}' }} בהודעה.</p>
     </div>
 </div>
 

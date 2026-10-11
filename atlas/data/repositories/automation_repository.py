@@ -168,6 +168,18 @@ class AutomationRepository:
         )
         self.conn.commit()
 
+    # בשימוש ע"י resolver-ים דינמיים שצריכים cooldown אנטי-ספאם (כרגע רק
+    # _resolve_expiring_sessions_recipients ב-engine.py - ראו שם למה) - בודקת אם כבר נשלחה
+    # בהצלחה הודעה מהאוטומציה הזו לטלפון הזה בטווח הימים האחרון
+    def has_recent_execution(self, automation_id, phone, since_days, status="success"):
+        cutoff = (datetime.datetime.now() - datetime.timedelta(days=since_days)).isoformat(timespec="seconds")
+        row = self.conn.execute(
+            "SELECT 1 FROM automation_executions WHERE automation_id = ? AND target_phone = ? "
+            "AND status = ? AND created_at >= ? LIMIT 1",
+            (automation_id, phone, status, cutoff),
+        ).fetchone()
+        return row is not None
+
     # --- קריאה/עריכה לממשק הניהול (עמוד "אוטומציות") ---
 
     def get_all(self, tenant_id=1):
@@ -194,7 +206,9 @@ class AutomationRepository:
             # את engine.py לשכבת ה-repository) - אם מוסיפים audience_source דינמי חדש, לעדכן גם כאן
             is_manual_audience = (
                 trigger_type == "scheduled"
-                and trigger_config.get("audience_source") not in ("arbox_birthday", "arbox_membership_expiring")
+                and trigger_config.get("audience_source") not in (
+                    "arbox_birthday", "arbox_membership_expiring", "arbox_expiring_sessions",
+                )
             )
             expected_recipient_count = None
             if is_manual_audience:

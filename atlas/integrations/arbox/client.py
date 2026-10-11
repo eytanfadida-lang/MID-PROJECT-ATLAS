@@ -90,6 +90,16 @@ def fetch_arbox_expiring_memberships(api_key, from_date, to_date):
     return _fetch_arbox_report(api_key, "expiringMembershipsReport", from_date, to_date)
 
 
+# "דוח כרטיסיות שעומדות להסתיים" - ראו _fetch_arbox_report. בניגוד למנויים, אין פה תאריך
+# סיום - ההתאמה היא לפי ספירת ניקובים שנותרו (sessions_left), ומוחזרות שורות עם כל טווח
+# ערכים (לא רק 1) - הסינון לפי הסף הרצוי (בד"כ 1, תואם "הגדר שליחה עבור 1 ניקובים שנותרו"
+# ב-Upgrade360) נעשה ע"י הקורא (ראו _resolve_expiring_sessions_recipients). fromDate/toDate
+# מוגבל ל-31 יום (מאומת מול ה-API, כמו lostLeadsReport) - אין צורך בטווח גדול כי אנחנו
+# שולפים את המצב הנוכחי (fromDate=toDate=היום), לא תחזית לעתיד
+def fetch_arbox_expiring_sessions(api_key, from_date, to_date):
+    return _fetch_arbox_report(api_key, "expiringSessionsReport", from_date, to_date)
+
+
 # מושכת את לוח השיעורים האמיתי מ-Arbox (עם pagination) בין שני תאריכים - שם שיעור,
 # תאריך/שעה, סניף, מדריך, מקסימום משתתפים. אין ב-Arbox endpoint שחושף כמה מקומות
 # נותרו בפועל (רק את המקסימום) - ראה ה"שאלה פתוחה ל-Arbox support" בתוכנית

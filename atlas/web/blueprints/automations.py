@@ -56,6 +56,28 @@ def _parse_schedule_form(form):
             "audience_source": "arbox_membership_expiring", "days_before": days_before,
         }, None
 
+    # "נגמרת הכרטיסייה (Arbox)" - גם תמיד תזמון יומי (בודקים כל יום כמה ניקובים נותרו), עם
+    # שעה + סף ניקובים + תקופת "שקט" (לא לשלוח שוב למי שכבר נשלח לה בטווח הזה - ראו
+    # has_recent_execution/_resolve_expiring_sessions_recipients - sessions_left לא "מתקדם"
+    # אוטומטית מיום ליום כמו תאריך, אז בלי ההגנה הזו היינו שולחים כל יום
+    if form.get("audience_source") == "arbox_expiring_sessions":
+        time_of_day = form.get("time_of_day", "").strip() or "09:00"
+        try:
+            sessions_left = int(form.get("sessions_left", "1"))
+        except ValueError:
+            sessions_left = 1
+        sessions_left = min(max(sessions_left, 0), 20)
+        try:
+            resend_cooldown_days = int(form.get("resend_cooldown_days", "14"))
+        except ValueError:
+            resend_cooldown_days = 14
+        resend_cooldown_days = min(max(resend_cooldown_days, 1), 90)
+        return {
+            "schedule_type": "daily", "time_of_day": time_of_day,
+            "audience_source": "arbox_expiring_sessions",
+            "sessions_left": sessions_left, "resend_cooldown_days": resend_cooldown_days,
+        }, None
+
     schedule_type = form.get("schedule_type", "")
     if schedule_type not in SCHEDULE_TYPES:
         return None, "סוג תזמון לא תקין."
