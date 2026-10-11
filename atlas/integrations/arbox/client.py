@@ -111,6 +111,15 @@ def fetch_arbox_active_memberships_report(api_key, from_date, to_date):
     return _fetch_arbox_report(api_key, "activeMembershipsReport", from_date, to_date)
 
 
+# "דוח שיעורי ניסיון" - ראו _fetch_arbox_report. שורה אחת לכל הזמנת שיעור ניסיון (עבר/עתיד) -
+# date הוא YYYY-MM-ISO רגיל (בניגוד ל-DD/MM/YYYY ב-webhook trial_class, ראו automation_db.py).
+# אין שדה cancelled גלוי - הזמנות שבוטלו כנראה פשוט לא מופיעות (לא מאומת, לא ראינו דוגמה
+# אמיתית). מחזירה גם phone (יכול להיות None - ליד בלי טלפון, ראו _resolve_trial_reminder_
+# recipients) ו-check_in (רלוונטי להיסטוריה, לא לתזכורת לפני השיעור)
+def fetch_arbox_trial_classes(api_key, from_date, to_date):
+    return _fetch_arbox_report(api_key, "trialClassesReport", from_date, to_date)
+
+
 # מושכת את לוח השיעורים האמיתי מ-Arbox (עם pagination) בין שני תאריכים - שם שיעור,
 # תאריך/שעה, סניף, מדריך, מקסימום משתתפים. אין ב-Arbox endpoint שחושף כמה מקומות
 # נותרו בפועל (רק את המקסימום) - ראה ה"שאלה פתוחה ל-Arbox support" בתוכנית

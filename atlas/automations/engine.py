@@ -337,6 +337,57 @@ def _resolve_active_members_recipients(repos, automation, now):
     return recipients, None
 
 
+# תזכורת לשיעור ניסיון שמתוזמן מחר/היום - תואם "תזכורת יום לפני/באותו יום אימוני ניסיון"
+# ב-Upgrade360. reminder_timing קובע את התאריך (day_before=מחר, same_day=היום);
+# time_filter+before_hour קובעים איזה חלק מהיום (before=עד שעה X, after=החל משעה X - תואם
+# "הגדר שליחה עבור אימונים עד/החל מהשעה 12:00" שם). locations אופציונלי (ריק=כל הסניפים) -
+# ב-Upgrade360 כל סניף הוא הודעה נפרדת (כתובת/וויז שונים בטקסט) - כאן זה נפתר ע"י יצירת
+# אוטומציה נפרדת לכל סניף עם locations=[סניף אחד], לא ע"י תמיכה מיוחדת בנוסח רב-סניפי
+def _resolve_trial_reminder_recipients(repos, automation, now):
+    trigger_config = automation["trigger_config"]
+    api_key = arbox_client.load_arbox_api_key()
+    if not api_key:
+        return [], "שגיאה טכנית בגישה ל-Arbox (אין מפתח API)"
+
+    days_ahead = 1 if trigger_config.get("reminder_timing") != "same_day" else 0
+    target_date = (now.date() + datetime.timedelta(days=days_ahead)).isoformat()
+    try:
+        classes = arbox_client.fetch_arbox_trial_classes(api_key, target_date, target_date)
+    except Exception as exc:
+        return [], f"שליפת שיעורי ניסיון מ-Arbox נכשלה: {exc}"
+
+    time_filter = trigger_config.get("time_filter", "before")
+    before_hour = trigger_config.get("before_hour", 12)
+    locations_filter = set(trigger_config.get("locations") or [])
+
+    seen_phones = set()
+    recipients = []
+    for cls in classes:
+        start_time = cls.get("start_time") or ""
+        try:
+            start_hour = int(start_time.split(":", 1)[0])
+        except (ValueError, IndexError):
+            continue
+        if time_filter == "after" and start_hour < before_hour:
+            continue
+        if time_filter != "after" and start_hour >= before_hour:
+            continue
+        if locations_filter and (cls.get("location_name") or "") not in locations_filter:
+            continue
+        phone = normalize_phone(cls.get("phone"))
+        if not phone or phone in seen_phones:
+            continue
+        seen_phones.add(phone)
+        recipients.append({
+            "phone": phone,
+            "full_name": cls.get("full_name") or cls.get("first_name") or "",
+            "class_name": (cls.get("class_name") or "").strip(),
+            "start_time": start_time[:5],
+            "location_name": cls.get("location_name") or "",
+        })
+    return recipients, None
+
+
 # מיפוי audience_source -> פונקציית שליפה - כל פונקציה מחזירה (recipients, error) כמו
 # _resolve_birthday_recipients/_resolve_membership_expiring_recipients למעלה. audience_source
 # שלא מופיע כאן (כולל ברירת המחדל "manual") נופל לרשימת הנמענים הידנית (automation_recipients)
@@ -345,6 +396,7 @@ _AUDIENCE_RESOLVERS = {
     "arbox_membership_expiring": _resolve_membership_expiring_recipients,
     "arbox_expiring_sessions": _resolve_expiring_sessions_recipients,
     "arbox_active_members": _resolve_active_members_recipients,
+    "arbox_trial_reminder": _resolve_trial_reminder_recipients,
 }
 
 # נחשף כדי שקוד אחר (הבלופרינט, ה-repository) יוכל לבדוק "האם זו אוטומציה עם קהל דינמי

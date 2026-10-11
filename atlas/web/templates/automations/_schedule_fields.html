@@ -12,6 +12,7 @@
         <option value="arbox_membership_expiring" {{ 'selected' if form.get('audience_source') == 'arbox_membership_expiring' else '' }}>סיום מנוי מתקרב (מתוך Arbox, אוטומטי)</option>
         <option value="arbox_expiring_sessions" {{ 'selected' if form.get('audience_source') == 'arbox_expiring_sessions' else '' }}>נגמרת הכרטיסייה (מתוך Arbox, אוטומטי)</option>
         <option value="arbox_active_members" {{ 'selected' if form.get('audience_source') == 'arbox_active_members' else '' }}>לקוחות פעילים - רשימת תפוצה כללית (מתוך Arbox)</option>
+        <option value="arbox_trial_reminder" {{ 'selected' if form.get('audience_source') == 'arbox_trial_reminder' else '' }}>תזכורת לשיעור ניסיון (מתוך Arbox, אוטומטי)</option>
     </select>
 </div>
 
@@ -103,6 +104,46 @@
             ידנית. בניגוד לאפגרייד 360 - אין כאן עריכת תוכן ההודעה בכל הרצה בנפרד, אלא תבנית
             קבועה (ניתנת לעריכה בכל עת מתחת, כולל חזרה לנוסח קודם דרך היסטוריית ההודעות). אפשר
             להשתמש ב-{{ '{full_name}' }}, {{ '{membership_type_name}' }} ו-{{ '{location_name}' }} בהודעה.</p>
+    </div>
+</div>
+
+<div class="automations-audience-field" data-for="arbox_trial_reminder">
+    <div class="form-group">
+        <label>שעת בדיקה/שליחה</label>
+        <input type="time" name="time_of_day" value="{{ form.get('time_of_day', '09:00') }}">
+    </div>
+    <div class="form-group">
+        <label>מתי</label>
+        <select name="reminder_timing">
+            <option value="day_before" {{ 'selected' if form.get('reminder_timing', 'day_before') == 'day_before' else '' }}>יום לפני השיעור</option>
+            <option value="same_day" {{ 'selected' if form.get('reminder_timing') == 'same_day' else '' }}>באותו יום השיעור</option>
+        </select>
+    </div>
+    <div class="form-group">
+        <label>איזה שיעורים</label>
+        <select name="time_filter">
+            <option value="before" {{ 'selected' if form.get('time_filter', 'before') == 'before' else '' }}>עד השעה</option>
+            <option value="after" {{ 'selected' if form.get('time_filter') == 'after' else '' }}>החל מהשעה</option>
+        </select>
+        <input type="number" name="before_hour" min="0" max="23" value="{{ form.get('before_hour', 12) }}" style="width:70px;">
+    </div>
+    <div class="form-group">
+        <label>סינון לפי סניף (אופציונלי - ריק = כל הסניפים)</label>
+        <div class="automations-membership-types">
+            <div class="automations-membership-list">
+                {% for loc in locations %}
+                <label class="automations-membership-option">
+                    <input type="checkbox" name="locations" value="{{ loc }}" {{ 'checked' if loc in selected_locations else '' }}>
+                    {{ loc }}
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+        <p class="hint">נבדק אוטומטית כל יום - מי שרשום לשיעור ניסיון במועד ובטווח השעות שנבחרו
+            נשלפת ישירות מ-Arbox, בלי רשימת נמענים ידנית. באפגרייד 360 כל סניף הוא הודעה נפרדת
+            (כתובת/וויז שונים בטקסט) - כאן אפשר להשיג את זה ע"י יצירת אוטומציה נפרדת לכל סניף
+            (לבחור רק אותו בסינון). אפשר להשתמש ב-{{ '{full_name}' }}, {{ '{class_name}' }},
+            {{ '{start_time}' }} ו-{{ '{location_name}' }} בהודעה.</p>
     </div>
 </div>
 

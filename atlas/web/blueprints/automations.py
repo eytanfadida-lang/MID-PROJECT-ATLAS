@@ -98,6 +98,29 @@ def _parse_schedule_form(form):
             "sessions_left": sessions_left, "resend_cooldown_days": resend_cooldown_days,
         }, None
 
+    # "תזכורת שיעור ניסיון (Arbox)" - גם תמיד תזמון יומי (בודקים כל יום את שיעורי הניסיון
+    # שמתוזמנים מחר/היום). locations אופציונלי - ריק = כל הסניפים, אחרת סינון מדויק (אותו
+    # LOCATIONS כמו ב-arbox_active_members, ראו _resolve_trial_reminder_recipients)
+    if form.get("audience_source") == "arbox_trial_reminder":
+        time_of_day = form.get("time_of_day", "").strip() or "09:00"
+        reminder_timing = form.get("reminder_timing", "day_before")
+        if reminder_timing not in ("day_before", "same_day"):
+            reminder_timing = "day_before"
+        time_filter = form.get("time_filter", "before")
+        if time_filter not in ("before", "after"):
+            time_filter = "before"
+        try:
+            before_hour = int(form.get("before_hour", "12"))
+        except ValueError:
+            before_hour = 12
+        before_hour = min(max(before_hour, 0), 23)
+        return {
+            "schedule_type": "daily", "time_of_day": time_of_day,
+            "audience_source": "arbox_trial_reminder", "reminder_timing": reminder_timing,
+            "time_filter": time_filter, "before_hour": before_hour,
+            "locations": form.getlist("locations"),
+        }, None
+
     trigger_config, error = _parse_generic_schedule(form)
     if error:
         return None, error
