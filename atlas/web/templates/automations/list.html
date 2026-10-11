@@ -82,49 +82,11 @@
                 <div class="automations-details">
                     <h4>תוכן ההודעה</h4>
                     {% if a.steps %}
-                    {% set current_mode = a.steps[0].action_config.mode or 'text' %}
                     <form method="post" action="{{ url_for('automations.edit_step', automation_id=a.id, step_id=a.steps[0].id) }}" class="form-card">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                        <div class="form-group">
-                            <label>סוג הודעה</label>
-                            <select name="mode" class="automations-message-mode-select" onchange="automationsToggleMessageMode(this)">
-                                <option value="text" {{ 'selected' if current_mode == 'text' else '' }}>טקסט חופשי (רק אם הלקוחה כתבה לבוט ב-24 השעות האחרונות)</option>
-                                <option value="template" {{ 'selected' if current_mode == 'template' else '' }}>תבנית מאושרת מראש (מגיעה גם מחוץ לחלון 24 השעות)</option>
-                            </select>
-                        </div>
-
-                        <div class="automations-message-mode-field" data-for="text">
-                            <div class="form-group">
-                                <textarea name="text_template" rows="4">{{ a.steps[0].action_config.text_template or '' }}</textarea>
-                                <p class="hint">משתנים זמינים: {{ '{full_name}' }} (ולאוטומציית שיעור ניסיון גם {{ '{session_name} {date} {start_time} {location_name}' }})</p>
-                            </div>
-                        </div>
-
-                        <div class="automations-message-mode-field" data-for="template">
-                            <div class="form-group">
-                                <label>תבנית מאושרת</label>
-                                <select name="template_name">
-                                    <option value="">- בחר/י תבנית -</option>
-                                    {% for t in approved_templates %}
-                                    <option value="{{ t.name }}" data-language="{{ t.language }}"
-                                        {{ 'selected' if a.steps[0].action_config.template_name == t.name else '' }}>
-                                        {{ t.name }} ({{ t.placeholder_count }} משתנים) - {{ t.body_text[:60] }}
-                                    </option>
-                                    {% endfor %}
-                                </select>
-                                <input type="hidden" name="template_language" value="{{ a.steps[0].action_config.template_language or 'he' }}">
-                                {% if not approved_templates %}
-                                <p class="hint">אין עדיין תבניות מאושרות. אפשר ליצור ב"תבניות וואטסאפ" ולחכות לאישור Meta.</p>
-                                {% endif %}
-                            </div>
-                            <div class="form-group">
-                                <label>ערכי הפרמטרים (לפי הסדר - {{ '{{1}}' }} ראשון וכו', אפשר להשתמש בשדות כמו {{ '{full_name}' }})</label>
-                                {% set param_templates = a.steps[0].action_config.param_templates or [] %}
-                                {% for i in range(5) %}
-                                <input type="text" name="param_templates" value="{{ param_templates[i] if i < param_templates|length else '' }}" placeholder="פרמטר {{ i + 1 }}">
-                                {% endfor %}
-                            </div>
-                        </div>
+                        {% set form = a.steps[0].action_config %}
+                        {% set param_templates_list = a.steps[0].action_config.param_templates or [] %}
+                        {% include "automations/_message_fields.html" %}
 
                         <div class="form-group">
                             <label>השהייה לפני שליחה (בדקות, 0 = מיידי)</label>
@@ -244,19 +206,5 @@ if (window.location.hash && window.location.hash.startsWith('#automation-')) {
         detailsRow.hidden = false;
     }
 }
-
-// טוגל טקסט חופשי/תבנית מאושרת בטופס עריכת ההודעה - יש הרבה מופעים של הטופס הזה בעמוד
-// (אחד לכל אוטומציה), אז מאתחלים את כולם כאן במקום ב-IIFE פר-מופע (בניגוד ל-
-// _schedule_fields.html, הסקריפט הזה הוא ברמת העמוד כולו, לא פרטיאל שחוזר על עצמו)
-function automationsToggleMessageMode(select) {
-    var form = select.closest('form');
-    var selected = select.value;
-    form.querySelectorAll('.automations-message-mode-field').forEach(function (el) {
-        el.hidden = el.dataset.for !== selected;
-    });
-}
-document.querySelectorAll('.automations-message-mode-select').forEach(function (select) {
-    automationsToggleMessageMode(select);
-});
 </script>
 {% endblock %}

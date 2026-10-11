@@ -73,6 +73,34 @@ def _extract_locations(form):
     return form.get("locations") or []
 
 
+def _extract_param_templates(form):
+    if hasattr(form, "getlist"):
+        return form.getlist("param_templates")
+    return form.get("param_templates") or []
+
+
+# בונה את action_config של שלב "שליחת הודעה" מהטופס - משותף ליצירה (new_automation) ועריכה
+# (edit_step), כדי לא לשכפל את הלוגיקה. מחזירה (action_config, error). מצב "template" מדלג
+# על ערכים ריקים ב-param_templates (לא כל תבנית משתמשת בכל 5 השדות הקבועים בטופס)
+def _build_message_action_config(form):
+    mode = form.get("mode", "text")
+    if mode == "template":
+        template_name = form.get("template_name", "").strip()
+        if not template_name:
+            return None, "יש לבחור תבנית מאושרת."
+        template_language = form.get("template_language", "he").strip() or "he"
+        param_templates = [value.strip() for value in _extract_param_templates(form) if value.strip()]
+        return {
+            "mode": "template", "template_name": template_name,
+            "template_language": template_language, "param_templates": param_templates,
+        }, None
+
+    text_template = form.get("text_template", "").strip()
+    if not text_template:
+        return None, "לא ניתן לשמור הודעה ריקה."
+    return {"mode": "text", "text_template": text_template}, None
+
+
 # בונה trigger_config מתוך טופס לפי schedule_type שנבחר - בשימוש גם ביצירה וגם בעריכה.
 # מחזירה (trigger_config, error) - error לא None אם משהו חסר/לא תקין. "הורדה" (stage) היא
 # אופציונלית - שלב מוקדם שבו "נועלים" את רשימת הנמענים (אחרי סינון בלאקליסט), לפני שהשליחה
@@ -251,11 +279,12 @@ def new_automation():
     repos = get_repos()
     if request.method == "POST":
         name = request.form.get("name", "").strip()
-        text_template = request.form.get("text_template", "").strip()
         trigger_config, error = _parse_schedule_form(request.form)
+        action_config, msg_error = _build_message_action_config(request.form)
 
-        if not name or not text_template:
-            error = error or "יש למלא שם והודעה."
+        if not name:
+            error = error or "יש למלא שם."
+        error = error or msg_error
         if error:
             flash(error, "error")
             return render_template(
@@ -263,21 +292,24 @@ def new_automation():
                 selected_weekdays=_extract_weekdays(request.form),
                 selected_membership_types=_extract_membership_types(request.form),
                 selected_locations=_extract_locations(request.form),
+                param_templates_list=_extract_param_templates(request.form),
                 membership_types=repos.arbox_member_cache.get_distinct_membership_types(), locations=LOCATIONS,
+                approved_templates=_get_approved_templates(),
             )
 
         automation_id = repos.automations.create_automation(name, "scheduled", trigger_config)
         repos.automations.add_step(
             automation_id, step_order=1, delay_minutes=0, action_type="send_whatsapp_message",
-            action_config={"mode": "text", "text_template": text_template},
+            action_config=action_config,
         )
         flash(f"האוטומציה '{name}' נוצרה בהצלחה. עכשיו אפשר להוסיף נמענים.", "success")
         return redirect(url_for("automations.list_automations", _anchor=f"automation-{automation_id}"))
 
     return render_template(
         "automations/new.html", weekday_labels=_WEEKDAY_LABELS, form={}, selected_weekdays=[],
-        selected_membership_types=[], selected_locations=[],
+        selected_membership_types=[], selected_locations=[], param_templates_list=[],
         membership_types=repos.arbox_member_cache.get_distinct_membership_types(), locations=LOCATIONS,
+        approved_templates=_get_approved_templates(),
     )
 
 
@@ -379,29 +411,20 @@ def edit_step(automation_id, step_id):
         delay_minutes = 0
     delay_minutes = max(0, delay_minutes)
 
-    mode = request.form.get("mode", "text")
-    if mode == "template":
-        template_name = request.form.get("template_name", "").strip()
-        if not template_name:
-            flash("יש לבחור תבנית מאושרת.", "error")
-            return _back_to_list(automation_id)
-        template_language = request.form.get("template_language", "he").strip() or "he"
-        # ריקים מדולגים (לא כל תבנית משתמשת בכל 5 שדות הפרמטר הקבועים בטופס) - ראו
-        # _schedule_fields "param_fields" / whatsapp_templates.py לאותו דפוס
-        param_templates = [
-            value.strip() for value in request.form.getlist("param_templates") if value.strip()
-        ]
-        repos.automations.update_step_template(step_id, template_name, template_language, param_templates, delay_minutes)
+    action_config, error = _build_message_action_config(request.form)
+    if error:
+        flash(error, "error")
+        return _back_to_list(automation_id)
+
+    if action_config["mode"] == "template":
+        repos.automations.update_step_template(
+            step_id, action_config["template_name"], action_config["template_language"],
+            action_config["param_templates"], delay_minutes,
+        )
         flash("השלב עודכן בהצלחה (תבנית מאושרת).", "success")
-        return _back_to_list(automation_id)
-
-    text_template = request.form.get("text_template", "").strip()
-    if not text_template:
-        flash("לא ניתן לשמור הודעה ריקה.", "error")
-        return _back_to_list(automation_id)
-
-    repos.automations.update_step(step_id, text_template, delay_minutes)
-    flash("השלב עודכן בהצלחה.", "success")
+    else:
+        repos.automations.update_step(step_id, action_config["text_template"], delay_minutes)
+        flash("השלב עודכן בהצלחה.", "success")
     return _back_to_list(automation_id)
 
 
