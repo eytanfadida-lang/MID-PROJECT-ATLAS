@@ -39,9 +39,14 @@ def _with_names(conversations, repos):
         full_name = f"{member['first_name']} {member['last_name']}".strip() if member else ""
         conversation["full_name"] = full_name or None
         conversation["membership_type_name"] = (member or {}).get("membership_type_name") or None
+        conversation["membership_start_date"] = (member or {}).get("membership_start_date") or None
         conversation["membership_end_date"] = (member or {}).get("membership_end_date") or None
         conversation["debt"] = (member or {}).get("debt") or None
         conversation["cancelled"] = bool((member or {}).get("cancelled")) if member else False
+        # active=None כשאין בכלל התאמה בקאש (לא "לא פעיל") - כדי שהטמפלט יבדיל בין "לא מופיעה
+        # ב-Arbox" לבין "מופיעה אבל המנוי שלה לא פעיל כרגע"
+        conversation["active"] = bool(member["active"]) if member else None
+        conversation["synced_at"] = (member or {}).get("synced_at") or None
     return conversations
 
 
