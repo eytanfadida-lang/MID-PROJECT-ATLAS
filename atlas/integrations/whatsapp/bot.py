@@ -19,6 +19,10 @@ class WhatsAppBotConfig:
     app_secret_file: Path
     access_token_file: Path
     phone_number_id: str
+    # מזהה ה-WhatsApp Business Account (WABA) - שונה מ-phone_number_id, נדרש רק לניהול
+    # תבניות הודעה (יצירה/רשימה, ראו list_message_templates/create_message_template למטה) -
+    # שליחה רגילה (send_text_message/send_template_message) לא צריכה אותו בכלל
+    waba_id_file: Path = None
 
 
 ADMIN_BOT = WhatsAppBotConfig(
@@ -33,6 +37,7 @@ CUSTOMER_BOT = WhatsAppBotConfig(
     app_secret_file=secret(".whatsapp_customer_app_secret"),
     access_token_file=secret(".whatsapp_customer_access_token"),
     phone_number_id="1220667597806529",
+    waba_id_file=secret(".whatsapp_customer_waba_id"),
 )
 
 # כמה מספרים רשמיים יכולים לחלוק את אותה אפליקציה/WABA (ראו extract_metadata_phone_number_id) -
@@ -65,6 +70,10 @@ def load_app_secret(config):
 
 def load_access_token(config):
     return _read_local_file(config.access_token_file)
+
+
+def load_waba_id(config):
+    return _read_local_file(config.waba_id_file) if config.waba_id_file else None
 
 
 def verify_signature(config, raw_body, signature_header):
@@ -166,6 +175,55 @@ def send_template_message(config, to, template_name, language_code, body_params=
             "type": "template",
             "template": template_payload,
         },
+        timeout=30,
+    )
+    response.raise_for_status()
+    return response.json()
+
+
+# מחזירה את כל תבניות ההודעה של ה-WABA (אושרו/ממתינות/נדחו) - Meta היא מקור האמת היחיד
+# לסטטוס, אין שום שמירה מקומית. status אחד מ-APPROVED/PENDING/REJECTED/...
+def list_message_templates(config):
+    access_token = load_access_token(config)
+    waba_id = load_waba_id(config)
+    if not access_token or not waba_id:
+        return []
+    templates = []
+    url = f"https://graph.facebook.com/{GRAPH_API_VERSION}/{waba_id}/message_templates"
+    params = {"limit": 100}
+    while url:
+        response = requests.get(
+            url, headers={"Authorization": f"Bearer {access_token}"}, params=params, timeout=30
+        )
+        response.raise_for_status()
+        data = response.json()
+        templates.extend(data.get("data", []))
+        url = (data.get("paging") or {}).get("next")
+        params = None  # ה-URL הבא כבר כולל את כל הפרמטרים
+    return templates
+
+
+# יוצרת תבנית הודעה חדשה ושולחת אותה לאישור מטא - חוזרת מיד עם status="PENDING" (או
+# שגיאה אם השם/המבנה לא תקינים), האישור/דחייה בפועל קורה אצל Meta באופן אסינכרוני
+# (בדרך כלל דקות עד יום) - ראו list_message_templates לבדיקת סטטוס מאוחר יותר.
+# body_examples: רשימת מחרוזות לדוגמה, אחת לכל {{1}},{{2}} וכו' בגוף - מטא דורשת דוגמה
+# אמיתית לכל משתנה כדי לבדוק את התבנית, לא רק את התבנית עצמה
+def create_message_template(config, name, category, language_code, body_text, body_examples=None, footer_text=None):
+    access_token = load_access_token(config)
+    waba_id = load_waba_id(config)
+    if not access_token or not waba_id:
+        raise RuntimeError("חסר טוקן גישה או מזהה WABA")
+
+    components = [{"type": "BODY", "text": body_text}]
+    if body_examples:
+        components[0]["example"] = {"body_text": [body_examples]}
+    if footer_text:
+        components.append({"type": "FOOTER", "text": footer_text})
+
+    response = requests.post(
+        f"https://graph.facebook.com/{GRAPH_API_VERSION}/{waba_id}/message_templates",
+        headers={"Authorization": f"Bearer {access_token}"},
+        json={"name": name, "category": category, "language": language_code, "components": components},
         timeout=30,
     )
     response.raise_for_status()

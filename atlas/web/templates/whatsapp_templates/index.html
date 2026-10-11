@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block page_title %}תבניות וואטסאפ{% endblock %}
+{% block page_heading %}תבניות וואטסאפ{% endblock %}
+
+{% block content %}
+<p class="hint">
+    תבנית מאושרת (בניגוד להודעה חופשית) מגיעה ללקוחה גם אם היא לא כתבה לבוט ב-24 השעות
+    האחרונות - זה הפתרון לבעיית "ההודעות לא מגיעות" באוטומציות שידור. כל תבנית נשלחת כאן
+    לאישור מטא (לא מיידי - בדרך כלל דקות עד יום), ואפשר לרענן את העמוד כדי לראות את הסטטוס
+    המעודכן (מטא היא מקור האמת, אין שמירה מקומית).
+</p>
+
+{% if error %}
+<p class="flash flash-error">{{ error }}</p>
+{% endif %}
+
+<h4>תבניות קיימות</h4>
+{% if templates %}
+<table>
+    <thead><tr><th>שם</th><th>קטגוריה</th><th>שפה</th><th>סטטוס</th><th>תוכן</th></tr></thead>
+    <tbody>
+        {% for t in templates %}
+        <tr>
+            <td>{{ t.name }}</td>
+            <td>{{ t.category }}</td>
+            <td>{{ t.language }}</td>
+            <td>
+                <span class="badge {{ 'badge-green' if t.status == 'APPROVED' else ('badge-red' if t.status == 'REJECTED' else 'badge-gray') }}">
+                    {{ status_labels.get(t.status, t.status) }}
+                </span>
+            </td>
+            <td>
+                {% for c in t.components %}
+                    {% if c.type == 'BODY' %}{{ c.text }}{% endif %}
+                {% endfor %}
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p class="empty-state">אין עדיין תבניות.</p>
+{% endif %}
+
+<h4>תבנית חדשה</h4>
+<form method="post" action="{{ url_for('whatsapp_templates.create_template') }}" class="form-card">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <div class="form-group">
+        <label>שם התבנית (אותיות לועזיות קטנות, ספרות וקו תחתון בלבד)</label>
+        <input type="text" name="name" placeholder="למשל: membership_reminder" required pattern="[a-z0-9_]+">
+    </div>
+    <div class="form-group">
+        <label>קטגוריה</label>
+        <select name="category">
+            <option value="UTILITY">UTILITY - עדכון/שירות ללקוחה קיימת (קל יותר לאישור)</option>
+            <option value="MARKETING">MARKETING - שיווקי/מבצע (בדיקה מחמירה יותר של מטא)</option>
+        </select>
+    </div>
+    <div class="form-group">
+        <label>תוכן ההודעה</label>
+        <textarea name="body_text" rows="4" required placeholder="היי {{ '{{1}}' }}! התזכורת שלך בנוגע ל{{ '{{2}}' }}..."></textarea>
+        <p class="hint">
+            אפשר להשתמש ב-{{ '{{1}}' }}, {{ '{{2}}' }} וכו' כמשתנים (ימולאו בזמן השליחה בפועל).
+            לכל משתנה חובה למלא ערך דוגמה למטה - מטא דורשת את זה כדי לבדוק את התבנית.
+        </p>
+    </div>
+    <div class="form-group">
+        <label>ערכי דוגמה למשתנים (לפי הסדר - {{ '{{1}}' }} ראשון וכו')</label>
+        <input type="text" name="example_values" placeholder="דוגמה למשתנה 1 (למשל: שרית)">
+        <input type="text" name="example_values" placeholder="דוגמה למשתנה 2 (אופציונלי)">
+        <input type="text" name="example_values" placeholder="דוגמה למשתנה 3 (אופציונלי)">
+    </div>
+    <div class="form-group">
+        <label>כותרת תחתונה (אופציונלי, טקסט קבוע)</label>
+        <input type="text" name="footer_text" placeholder="למשל: סטודיו אפרת רוזנברג">
+    </div>
+    <button type="submit" class="btn">שליחה לאישור Meta</button>
+</form>
+{% endblock %}
