@@ -2,6 +2,7 @@ import datetime
 
 from atlas.integrations.arbox import client as arbox_client
 from atlas.integrations.whatsapp import bot as whatsapp_bot
+from atlas.services import time_utils
 from atlas.services.phone_utils import normalize_phone, to_whatsapp_format
 
 CHANNEL_WHATSAPP_CLOUD_API = "whatsapp_cloud_api"
@@ -134,8 +135,15 @@ def _parse_time_of_day(value, default_hour=9, default_minute=0):
 # מחשבת שני מועדים ל"היום" (או ליחיד, ל-once) לפי trigger_config: stage_instant (מתי "נועלים"
 # את רשימת הנמענים - שלב "הורדה", תמיד <= send) ו-send_instant (מתי בפועל נשלחת ההודעה).
 # אם אין stage_time מוגדר, שני המועדים זהים (שליחה מיידית בלי שלב הורדה נפרד - ברירת המחדל).
-# מחזירה (None, None) אם האוטומציה הזו בכלל לא אמורה לרוץ היום (יום בשבוע/חודש לא תואם)
+# מחזירה (None, None) אם האוטומציה הזו בכלל לא אמורה לרוץ היום (יום בשבוע/חודש לא תואם).
+#
+# now מגיע naive-UTC (datetime.datetime.now() של השרת - ראו time_utils.py). כל הערכים
+# שהמשתמש הזין בטופס (time_of_day/run_at/stage_at/stage_time, וגם יום-בשבוע/יום-בחודש
+# שנגזרים מהתאריך "היום") מתכוונים לשעון ישראל - ממירים ל/מ-UTC naive רק כאן, כדי שהערך
+# המוחזר (וכל מה שמשתמש בו בהמשך - due_actions.run_after, השוואות מול datetime.now()) יישאר
+# UTC naive עקבי עם שאר המערכת, בלי לשנות שום דבר מחוץ לגבול הזה
 def _compute_schedule_instants(trigger_config, now):
+    now_local = time_utils.utc_now_to_israel(now)
     schedule_type = trigger_config.get("schedule_type")
 
     if schedule_type == "once":
@@ -143,13 +151,14 @@ def _compute_schedule_instants(trigger_config, now):
         if not run_at:
             return None, None
         try:
-            send_instant = datetime.datetime.fromisoformat(run_at)
+            send_instant = time_utils.israel_naive_to_utc_naive(datetime.datetime.fromisoformat(run_at))
         except ValueError:
             return None, None
         stage_at = trigger_config.get("stage_at")
         if stage_at:
             try:
-                return datetime.datetime.fromisoformat(stage_at), send_instant
+                stage_instant = time_utils.israel_naive_to_utc_naive(datetime.datetime.fromisoformat(stage_at))
+                return stage_instant, send_instant
             except ValueError:
                 pass
         return send_instant, send_instant
@@ -160,21 +169,23 @@ def _compute_schedule_instants(trigger_config, now):
         weekdays = trigger_config.get("weekdays")
         if weekdays is None:
             weekdays = [trigger_config.get("weekday", 0)]
-        if now.weekday() not in weekdays:
+        if now_local.weekday() not in weekdays:
             return None, None
     elif schedule_type == "monthly":
-        if now.day != trigger_config.get("day_of_month", 1):
+        if now_local.day != trigger_config.get("day_of_month", 1):
             return None, None
     elif schedule_type != "daily":
         return None, None
 
     hour, minute = _parse_time_of_day(trigger_config.get("time_of_day"))
-    send_instant = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
+    send_instant_local = now_local.replace(hour=hour, minute=minute, second=0, microsecond=0, tzinfo=None)
+    send_instant = time_utils.israel_naive_to_utc_naive(send_instant_local)
 
     stage_time = trigger_config.get("stage_time")
     if stage_time:
         s_hour, s_minute = _parse_time_of_day(stage_time, default_hour=hour, default_minute=minute)
-        stage_instant = now.replace(hour=s_hour, minute=s_minute, second=0, microsecond=0)
+        stage_instant_local = now_local.replace(hour=s_hour, minute=s_minute, second=0, microsecond=0, tzinfo=None)
+        stage_instant = time_utils.israel_naive_to_utc_naive(stage_instant_local)
     else:
         stage_instant = send_instant
 
@@ -192,7 +203,7 @@ def _resolve_birthday_recipients(repos, automation, now):
     if not api_key:
         return [], "שגיאה טכנית בגישה ל-Arbox (אין מפתח API)"
 
-    today = now.date().isoformat()
+    today = time_utils.utc_now_to_israel(now).date().isoformat()
     try:
         people = arbox_client.fetch_arbox_birthdays(api_key, today, today)
     except Exception as exc:
@@ -225,7 +236,7 @@ def _resolve_membership_expiring_recipients(repos, automation, now):
         return [], "שגיאה טכנית בגישה ל-Arbox (אין מפתח API)"
 
     days_before = trigger_config.get("days_before", 5)
-    target_date = (now.date() + datetime.timedelta(days=days_before)).isoformat()
+    target_date = (time_utils.utc_now_to_israel(now).date() + datetime.timedelta(days=days_before)).isoformat()
     try:
         memberships = arbox_client.fetch_arbox_expiring_memberships(api_key, target_date, target_date)
     except Exception as exc:
@@ -265,7 +276,7 @@ def _resolve_expiring_sessions_recipients(repos, automation, now):
 
     sessions_left_threshold = trigger_config.get("sessions_left", 1)
     cooldown_days = trigger_config.get("resend_cooldown_days", 14)
-    today = now.date().isoformat()
+    today = time_utils.utc_now_to_israel(now).date().isoformat()
     try:
         rows = arbox_client.fetch_arbox_expiring_sessions(api_key, today, today)
     except Exception as exc:
@@ -299,16 +310,16 @@ def _resolve_expiring_sessions_recipients(repos, automation, now):
 # רביעי), לא לבדיקת תנאי. סינון אופציונלי לפי סוג מנוי ו/או סניף (membership_types/locations -
 # שתיהן רשימות שמות מדויקים שנבחרו בתיבת סימון מרובה בטופס, ראו _schedule_fields.html - לא
 # substring, exact match על ערכי enum ידועים מראש - LOCATIONS בבלופרינט/הקאש המקומי בהתאמה).
-# בניגוד ל-Upgrade360 (שם אפשר
-# אוטומציה אחרת), ניתנת לעריכה בכל עת לפני ההרצה הבאה (וגם לשחזור מהיסטוריה - ראו
-# automation_message_history), לא פר-הרצה
+# בניגוד ל-Upgrade360 (שם אפשר לערוך את תוכן ההודעה אד-הוק בכל הרצה, ראו צילום מסך) - כאן יש
+# תבנית קבועה לאוטומציה (כמו כל אוטומציה אחרת), ניתנת לעריכה בכל עת לפני ההרצה הבאה (וגם
+# לשחזור מהיסטוריה - ראו automation_message_history), לא פר-הרצה
 def _resolve_active_members_recipients(repos, automation, now):
     trigger_config = automation["trigger_config"]
     api_key = arbox_client.load_arbox_api_key()
     if not api_key:
         return [], "שגיאה טכנית בגישה ל-Arbox (אין מפתח API)"
 
-    today = now.date().isoformat()
+    today = time_utils.utc_now_to_israel(now).date().isoformat()
     try:
         memberships = arbox_client.fetch_arbox_active_memberships_report(api_key, today, today)
     except Exception as exc:
@@ -350,7 +361,7 @@ def _resolve_trial_reminder_recipients(repos, automation, now):
         return [], "שגיאה טכנית בגישה ל-Arbox (אין מפתח API)"
 
     days_ahead = 1 if trigger_config.get("reminder_timing") != "same_day" else 0
-    target_date = (now.date() + datetime.timedelta(days=days_ahead)).isoformat()
+    target_date = (time_utils.utc_now_to_israel(now).date() + datetime.timedelta(days=days_ahead)).isoformat()
     try:
         classes = arbox_client.fetch_arbox_trial_classes(api_key, target_date, target_date)
     except Exception as exc:
