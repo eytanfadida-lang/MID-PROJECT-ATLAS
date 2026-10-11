@@ -100,6 +100,17 @@ def fetch_arbox_expiring_sessions(api_key, from_date, to_date):
     return _fetch_arbox_report(api_key, "expiringSessionsReport", from_date, to_date)
 
 
+# "דוח מנויים פעילים" - ראו _fetch_arbox_report. שם שונה בכוונה מ-fetch_arbox_active_memberships
+# הקיימת (זו מ-/users/memberships, בשימוש ל-arbox_member_cache - אין בה location_name/
+# membership_type_name עשירים) - זו דווקא /reports/activeMembershipsReport, שורה אחת לכל
+# מנוי פעיל (לא לכל לקוח - לקוחה עם 2 מנויים בו-זמנית תופיע פעמיים, ראו _resolve_
+# active_members_recipients) עם phone/full_name/membership_type_name/location_name מלאים -
+# מתאים ל"רשימת תפוצה כללית" מסוננת (סוג מנוי/סניף), בניגוד לכל שאר ה-fetch_arbox_* report
+# functions שמסננות לפי תנאי עסקי ספציפי. מאומת מול ה-API: ~7 שניות ל-948 שורות, אין timeout
+def fetch_arbox_active_memberships_report(api_key, from_date, to_date):
+    return _fetch_arbox_report(api_key, "activeMembershipsReport", from_date, to_date)
+
+
 # מושכת את לוח השיעורים האמיתי מ-Arbox (עם pagination) בין שני תאריכים - שם שיעור,
 # תאריך/שעה, סניף, מדריך, מקסימום משתתפים. אין ב-Arbox endpoint שחושף כמה מקומות
 # נותרו בפועל (רק את המקסימום) - ראה ה"שאלה פתוחה ל-Arbox support" בתוכנית

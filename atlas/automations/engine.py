@@ -293,6 +293,48 @@ def _resolve_expiring_sessions_recipients(repos, automation, now):
     return recipients, None
 
 
+# "רשימת תפוצה כללית" ללקוחות פעילים - בניגוד לשלושת הקודמים (שתמיד תזמון יומי, בודקים תנאי
+# עסקי יומיומי), זו משתמשת בתזמון הרגיל/גמיש שהמשתמש בוחר (חד-פעמי/יומי/שבועי/חודשי, בדיוק
+# כמו "רשימה ידנית" - ראו _parse_schedule_form) כי היא מיועדת לשידור כללי מתוזמן (למשל כל יום
+# רביעי), לא לבדיקת תנאי. סינון אופציונלי לפי סוג מנוי ו/או סניף (substring, לא exact match -
+# membership_type שבפועל מכיל גם את שם הסניף, ראו activeMembershipsReport). בניגוד
+# ל-Upgrade360 (שם אפשר לערוך את תוכן ההודעה אד-הוק בכל הרצה, ראו צילום מסך) - כאן יש תבנית
+# קבועה לאוטומציה (כמו כל אוטומציה אחרת), ניתנת לעריכה בכל עת לפני ההרצה הבאה, לא פר-הרצה
+def _resolve_active_members_recipients(repos, automation, now):
+    trigger_config = automation["trigger_config"]
+    api_key = arbox_client.load_arbox_api_key()
+    if not api_key:
+        return [], "שגיאה טכנית בגישה ל-Arbox (אין מפתח API)"
+
+    today = now.date().isoformat()
+    try:
+        memberships = arbox_client.fetch_arbox_active_memberships_report(api_key, today, today)
+    except Exception as exc:
+        return [], f"שליפת לקוחות פעילים מ-Arbox נכשלה: {exc}"
+
+    membership_type_filter = (trigger_config.get("membership_type") or "").strip()
+    location_filter = (trigger_config.get("location") or "").strip()
+
+    seen_phones = set()
+    recipients = []
+    for membership in memberships:
+        if membership_type_filter and membership_type_filter not in (membership.get("membership_type_name") or ""):
+            continue
+        if location_filter and location_filter not in (membership.get("location_name") or ""):
+            continue
+        phone = normalize_phone(membership.get("phone"))
+        if not phone or phone in seen_phones:
+            continue  # אותה לקוחה יכולה להופיע כמה פעמים (כמה מנויים פעילים בו-זמנית)
+        seen_phones.add(phone)
+        recipients.append({
+            "phone": phone,
+            "full_name": membership.get("full_name") or membership.get("first_name") or "",
+            "membership_type_name": membership.get("membership_type_name") or "",
+            "location_name": membership.get("location_name") or "",
+        })
+    return recipients, None
+
+
 # מיפוי audience_source -> פונקציית שליפה - כל פונקציה מחזירה (recipients, error) כמו
 # _resolve_birthday_recipients/_resolve_membership_expiring_recipients למעלה. audience_source
 # שלא מופיע כאן (כולל ברירת המחדל "manual") נופל לרשימת הנמענים הידנית (automation_recipients)
@@ -300,6 +342,7 @@ _AUDIENCE_RESOLVERS = {
     "arbox_birthday": _resolve_birthday_recipients,
     "arbox_membership_expiring": _resolve_membership_expiring_recipients,
     "arbox_expiring_sessions": _resolve_expiring_sessions_recipients,
+    "arbox_active_members": _resolve_active_members_recipients,
 }
 
 # נחשף כדי שקוד אחר (הבלופרינט, ה-repository) יוכל לבדוק "האם זו אוטומציה עם קהל דינמי

@@ -40,16 +40,34 @@ class AutomationRepository:
             "action_config": json.loads(row[5]) if row[5] else {},
         }
 
+    # שומרת רשומת היסטוריה (automation_message_history) בכל פעם שהנוסח בפועל משתנה - לא בכל
+    # שמירה (למשל שינוי רק ב-delay_minutes, או שליחת הטופס בלי שינוי בפועל, לא יוצרים רעש).
+    # מאפשרת "לחזור" לנוסח קודם (ראו get_step_history + restore בבלופרינט) - שימושי בעיקר
+    # לאוטומציות ששולחות תוכן משתנה מדי פעם (כמו רשימת תפוצה כללית, arbox_active_members)
     def update_step(self, step_id, text_template, delay_minutes):
         step = self.get_step(step_id)
         action_config = dict(step["action_config"]) if step else {}
+        previous_text = action_config.get("text_template")
         action_config["mode"] = "text"
         action_config["text_template"] = text_template
         self.conn.execute(
             "UPDATE automation_steps SET delay_minutes = ?, action_config = ? WHERE id = ?",
             (delay_minutes, json.dumps(action_config, ensure_ascii=False), step_id),
         )
+        if text_template != previous_text:
+            self.conn.execute(
+                "INSERT INTO automation_message_history (step_id, text_template, saved_at) VALUES (?, ?, ?)",
+                (step_id, text_template, datetime.datetime.now().isoformat(timespec="seconds")),
+            )
         self.conn.commit()
+
+    def get_step_history(self, step_id, limit=20):
+        rows = self.conn.execute(
+            "SELECT id, text_template, saved_at FROM automation_message_history "
+            "WHERE step_id = ? ORDER BY id DESC LIMIT ?",
+            (step_id, limit),
+        ).fetchall()
+        return [{"id": row[0], "text_template": row[1], "saved_at": row[2]} for row in rows]
 
     def get_steps(self, automation_id):
         rows = self.conn.execute(
@@ -208,6 +226,7 @@ class AutomationRepository:
                 trigger_type == "scheduled"
                 and trigger_config.get("audience_source") not in (
                     "arbox_birthday", "arbox_membership_expiring", "arbox_expiring_sessions",
+                    "arbox_active_members",
                 )
             )
             expected_recipient_count = None

@@ -11,6 +11,7 @@
         <option value="arbox_birthday" {{ 'selected' if form.get('audience_source') == 'arbox_birthday' else '' }}>יום הולדת (מתוך Arbox, אוטומטי)</option>
         <option value="arbox_membership_expiring" {{ 'selected' if form.get('audience_source') == 'arbox_membership_expiring' else '' }}>סיום מנוי מתקרב (מתוך Arbox, אוטומטי)</option>
         <option value="arbox_expiring_sessions" {{ 'selected' if form.get('audience_source') == 'arbox_expiring_sessions' else '' }}>נגמרת הכרטיסייה (מתוך Arbox, אוטומטי)</option>
+        <option value="arbox_active_members" {{ 'selected' if form.get('audience_source') == 'arbox_active_members' else '' }}>לקוחות פעילים - רשימת תפוצה כללית (מתוך Arbox)</option>
     </select>
 </div>
 
@@ -64,7 +65,23 @@
     </div>
 </div>
 
-<div class="automations-audience-field" data-for="manual">
+<div class="automations-audience-field" data-for="arbox_active_members">
+    <div class="form-group">
+        <label>סינון לפי סוג מנוי (אופציונלי)</label>
+        <input type="text" name="membership_type" placeholder="למשל: VIP, פיטנס גולד" value="{{ form.get('membership_type', '') }}">
+    </div>
+    <div class="form-group">
+        <label>סינון לפי סניף (אופציונלי)</label>
+        <input type="text" name="location" placeholder="למשל: קרית מוצקין, טירת הכרמל" value="{{ form.get('location', '') }}">
+        <p class="hint">נשלף ישירות מ-Arbox בכל הרצה - כל הלקוחות עם מנוי פעיל, או רק מי שתואמת
+            את הסינון שלמעלה (התאמה חלקית בטקסט, לא צריך להקליד במדויק). את התזמון (פעם בשבוע,
+            כל יום וכו') בוחרים למטה, בדיוק כמו ברשימה ידנית. בניגוד לאפגרייד 360 - אין כאן עריכת
+            תוכן ההודעה בכל הרצה בנפרד, אלא תבנית קבועה (ניתנת לעריכה בכל עת מתחת). אפשר להשתמש
+            ב-{{ '{full_name}' }}, {{ '{membership_type_name}' }} ו-{{ '{location_name}' }} בהודעה.</p>
+    </div>
+</div>
+
+<div class="automations-audience-field" data-for="manual arbox_active_members">
     <div class="form-group">
         <label>סוג תזמון</label>
         <select name="schedule_type" class="automations-schedule-type-select" onchange="automationsToggleSchedule(this)">
@@ -120,7 +137,7 @@ function automationsToggleAudience(select) {
     var form = select.closest('form');
     var selected = select.value;
     form.querySelectorAll('.automations-audience-field').forEach(function (el) {
-        el.hidden = el.dataset.for !== selected;
+        el.hidden = el.dataset.for.split(' ').indexOf(selected) === -1;
     });
 }
 (function () {

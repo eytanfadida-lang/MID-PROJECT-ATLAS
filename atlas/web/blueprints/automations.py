@@ -78,6 +78,24 @@ def _parse_schedule_form(form):
             "sessions_left": sessions_left, "resend_cooldown_days": resend_cooldown_days,
         }, None
 
+    trigger_config, error = _parse_generic_schedule(form)
+    if error:
+        return None, error
+
+    # "לקוחות פעילים (Arbox)" - בניגוד לשלוש האוטומציות הדינמיות למעלה (שתמיד יומי), זו
+    # משתמשת בתזמון הרגיל/גמיש (כבר נותח למעלה) - פשוט מוסיפים עליו audience_source וסינון
+    # אופציונלי לפי סוג מנוי/סניף. ראו _resolve_active_members_recipients ב-engine.py
+    if form.get("audience_source") == "arbox_active_members":
+        trigger_config["audience_source"] = "arbox_active_members"
+        trigger_config["membership_type"] = form.get("membership_type", "").strip()
+        trigger_config["location"] = form.get("location", "").strip()
+
+    return trigger_config, None
+
+
+# תזמון "רגיל" (לא קהל דינמי שתמיד יומי) - משותף לרשימה ידנית ול"לקוחות פעילים (Arbox)"
+# (ראו למעלה) - שתיהן נותנות למשתמש לבחור בעצמו חד-פעמי/יומי/שבועי/חודשי
+def _parse_generic_schedule(form):
     schedule_type = form.get("schedule_type", "")
     if schedule_type not in SCHEDULE_TYPES:
         return None, "סוג תזמון לא תקין."
@@ -145,6 +163,9 @@ def list_automations():
             repos.automations.get_recipients(automation["id"]) if is_manual_audience else None
         )
         automation["executions"] = repos.automations.get_recent_executions(automation["id"], limit=10)
+        automation["message_history"] = (
+            repos.automations.get_step_history(automation["steps"][0]["id"]) if automation["steps"] else []
+        )
     return render_template(
         "automations/list.html", automations=automations, weekday_labels=_WEEKDAY_LABELS,
     )

@@ -37,16 +37,21 @@
                         ⏳ סיום מנוי בעוד {{ tc.days_before }} ימים (Arbox), {{ tc.time_of_day }}
                     {% elif tc.audience_source == 'arbox_expiring_sessions' %}
                         🎫 נותרו {{ tc.sessions_left }} ניקובים (Arbox), {{ tc.time_of_day }}
-                    {% elif tc.schedule_type == 'once' %}
-                        חד-פעמי ב-{{ tc.run_at }}
-                    {% elif tc.schedule_type == 'daily' %}
-                        יומי, {{ tc.time_of_day }}
-                    {% elif tc.schedule_type == 'weekly' %}
-                        {% set wdays = tc.weekdays if tc.weekdays is defined and tc.weekdays else [tc.get('weekday', 0)] %}
-                        {% for w in wdays %}{{ weekday_labels[w] }}{% if not loop.last %}, {% endif %}{% endfor %}
-                        , {{ tc.time_of_day }}
-                    {% elif tc.schedule_type == 'monthly' %}
-                        {{ tc.day_of_month }} לחודש, {{ tc.time_of_day }}
+                    {% else %}
+                        {% if tc.audience_source == 'arbox_active_members' %}
+                            📋 לקוחות פעילים (Arbox{% if tc.membership_type %}, סוג מנוי: {{ tc.membership_type }}{% endif %}{% if tc.location %}, סניף: {{ tc.location }}{% endif %}) -
+                        {% endif %}
+                        {% if tc.schedule_type == 'once' %}
+                            חד-פעמי ב-{{ tc.run_at }}
+                        {% elif tc.schedule_type == 'daily' %}
+                            יומי, {{ tc.time_of_day }}
+                        {% elif tc.schedule_type == 'weekly' %}
+                            {% set wdays = tc.weekdays if tc.weekdays is defined and tc.weekdays else [tc.get('weekday', 0)] %}
+                            {% for w in wdays %}{{ weekday_labels[w] }}{% if not loop.last %}, {% endif %}{% endfor %}
+                            , {{ tc.time_of_day }}
+                        {% elif tc.schedule_type == 'monthly' %}
+                            {{ tc.day_of_month }} לחודש, {{ tc.time_of_day }}
+                        {% endif %}
                     {% endif %}
                 {% else %}
                     {{ 'הרשמה לשיעור ניסיון' if a.trigger_type == 'trial_booked' else a.trigger_type }}
@@ -82,6 +87,25 @@
                         </div>
                         <button type="submit" class="btn">שמירת הודעה</button>
                     </form>
+                    {% if a.message_history %}
+                    <details class="automations-message-history">
+                        <summary>היסטוריית הודעות שנשמרו ({{ a.message_history|length }})</summary>
+                        <ul>
+                            {% for h in a.message_history %}
+                            <li>
+                                <p class="hint">{{ h.saved_at | format_lead_datetime }}</p>
+                                <p>{{ h.text_template[:150] }}{{ '...' if h.text_template|length > 150 else '' }}</p>
+                                <form method="post" action="{{ url_for('automations.edit_step', automation_id=a.id, step_id=a.steps[0].id) }}" style="display:inline;">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                    <input type="hidden" name="text_template" value="{{ h.text_template }}">
+                                    <input type="hidden" name="delay_minutes" value="{{ a.steps[0].delay_minutes }}">
+                                    <button type="submit" class="btn" onclick="return confirm('לשחזר הודעה זו כנוסח הנוכחי?');">שחזור הודעה זו</button>
+                                </form>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    </details>
+                    {% endif %}
                     {% endif %}
 
                     {% if a.trigger_type == 'scheduled' %}
@@ -133,7 +157,7 @@
                     <p class="empty-state">אין עדיין נמענים.</p>
                     {% endif %}
                     {% else %}
-                    <p class="hint">🎂 הקהל נשלף אוטומטית מ-Arbox בכל הרצה לפי יום ההולדת - אין רשימת נמענים ידנית לנהל.</p>
+                    <p class="hint">🔄 הקהל נשלף אוטומטית מ-Arbox בכל הרצה (לפי ההגדרות בתזמון למעלה) - אין רשימת נמענים ידנית לנהל.</p>
                     {% endif %}
                     {% endif %}
 

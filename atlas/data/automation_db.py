@@ -125,6 +125,21 @@ class AutomationDB:
             "CREATE UNIQUE INDEX IF NOT EXISTS idx_global_blacklist_unique "
             "ON global_blacklist(tenant_id, phone)"
         )
+        # היסטוריית תוכן הודעה פר-step - רשומה חדשה בכל שמירה בפועל (ראו update_step
+        # ב-automation_repository.py), כדי שאפשר יהיה "לחזור" לנוסח שנשלח בעבר (למשל
+        # ברשימת תפוצה כללית שמשתנה מדי שבוע - ראו list.html) בלי להקליד אותו מחדש
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS automation_message_history (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                step_id INTEGER NOT NULL,
+                text_template TEXT NOT NULL,
+                saved_at TEXT NOT NULL
+            )
+        """)
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_automation_message_history_step "
+            "ON automation_message_history(step_id)"
+        )
         self._seed_default_automation(conn)
         self._seed_arbox_trial_class_automation(conn)
         return conn
