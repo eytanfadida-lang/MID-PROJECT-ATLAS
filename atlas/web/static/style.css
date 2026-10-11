@@ -800,6 +800,14 @@ label {
     max-width: 280px;
 }
 
+/* ללא זה, תיאור תזמון ארוך (כמו "לקוחות פעילים (Arbox, X סוגי מנוי נבחרים, סניפים: ...) -
+   חד-פעמי ב-..." של arbox_active_members) מתרחב כשורה אחת ללא גבול (ברירת המחדל: white-space:
+   nowrap מ-th/td למעלה) ומעוות את שאר הטבלה - אותו תיקון בדיוק כמו automations-message-preview */
+.automations-schedule-summary {
+    white-space: normal;
+    max-width: 260px;
+}
+
 .automations-details-row td {
     white-space: normal;
     background: var(--surface-2);

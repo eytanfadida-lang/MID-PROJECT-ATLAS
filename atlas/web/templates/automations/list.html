@@ -26,7 +26,7 @@
         {% for a in automations %}
         <tr id="automation-{{ a.id }}">
             <td>{{ a.name }}</td>
-            <td>
+            <td class="automations-schedule-summary">
                 {% if a.trigger_type == 'scheduled' %}
                     {% set tc = a.trigger_config %}
                     {% if tc.audience_source == 'arbox_birthday' %}
