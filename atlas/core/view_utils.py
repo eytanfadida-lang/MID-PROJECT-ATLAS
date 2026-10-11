@@ -3,6 +3,8 @@ import re
 
 import pandas as pd
 
+from atlas.services import time_utils
+
 ROLE_BADGE_CLASSES = {
     "admin": "badge-red",
     "user": "badge-gray",
@@ -40,7 +42,10 @@ def collapse_blank_lines(text):
     return re.sub(r"\n{3,}", "\n\n", text)
 
 
-# מציגה חותמת זמן ISO (למשל "2026-07-31T15:03") כ-"HH:MM DD/MM/YYYY", לתצוגה בטבלאות
+# מציגה חותמת זמן ISO (למשל "2026-07-31T15:03") כ-"HH:MM DD/MM/YYYY", לתצוגה בטבלאות.
+# הערך הנשמר הוא תמיד naive UTC (datetime.datetime.now() של השרת - ראו atlas/services/
+# time_utils.py) - ממירים לשעון ישראל לפני העיצוב, אחרת השעה (וליד חצות גם התאריך) מוצגים
+# כאילו הם כבר שעון ישראל, בפיגור של 2-3 שעות מהזמן האמיתי
 def format_lead_datetime(value):
     if not value:
         return "-"
@@ -48,4 +53,5 @@ def format_lead_datetime(value):
         parsed = datetime.datetime.fromisoformat(value)
     except (ValueError, TypeError):
         return value
-    return parsed.strftime("%H:%M %d/%m/%Y")
+    israel_local = time_utils.naive_utc_to_israel(parsed)
+    return israel_local.strftime("%H:%M %d/%m/%Y")

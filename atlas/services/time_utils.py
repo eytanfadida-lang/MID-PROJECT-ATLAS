@@ -26,3 +26,10 @@ def israel_naive_to_utc_naive(israel_naive_dt):
     לעבוד בלי שינוי בשום מקום אחר."""
     aware_israel = israel_naive_dt.replace(tzinfo=ISRAEL_TZ)
     return aware_israel.astimezone(datetime.timezone.utc).replace(tzinfo=None)
+
+
+# כינוי כללי יותר ל-utc_now_to_israel - אותה המרה בדיוק (naive UTC -> datetime מודע לישראל),
+# אבל בלי הרמיזה ל"עכשיו" - משמש גם לתצוגת חותמות זמן היסטוריות ששמורות ב-DB (ראו
+# format_lead_datetime ב-atlas/core/view_utils.py: כל created_at/synced_at וכו' במערכת נשמר
+# naive UTC - ראו time_utils.py למעלה - ובלי ההמרה הזו מוצג כאילו הוא כבר שעון ישראל)
+naive_utc_to_israel = utc_now_to_israel
