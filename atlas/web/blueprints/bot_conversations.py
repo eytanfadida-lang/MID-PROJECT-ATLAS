@@ -29,10 +29,25 @@ def _with_number_labels(conversations):
     return conversations
 
 
+# מעשירה כל שיחה בשם הלקוחה מהקאש המקומי של Arbox (arbox_member_cache, ראו
+# atlas/data/repositories/arbox_member_cache_repository.py - מתעדכן תדיר ע"י /tasks/arbox-sync,
+# אין כאן קריאה חיה ל-Arbox בטעינת העמוד). full_name=None אם המספר לא נמצא בקאש (למשל ליד
+# שעוד לא הפך ללקוחה ב-Arbox, או מספר שגוי) - הטמפלט נופל חזרה למספר הטלפון בעצמו
+def _with_names(conversations, repos):
+    for conversation in conversations:
+        member = repos.arbox_member_cache.get_by_phone(conversation["phone"])
+        full_name = f"{member['first_name']} {member['last_name']}".strip() if member else ""
+        conversation["full_name"] = full_name or None
+    return conversations
+
+
 @bp.route("/")
 @admin_required
 def list_conversations():
-    conversations = _with_number_labels(get_repos().customer_bot_messages.get_conversation_summaries())
+    repos = get_repos()
+    conversations = _with_names(
+        _with_number_labels(repos.customer_bot_messages.get_conversation_summaries()), repos
+    )
     return render_template(
         "bot_conversations/index.html", conversations=conversations, active_phone=None, messages=None
     )
@@ -42,19 +57,23 @@ def list_conversations():
 @admin_required
 def view_conversation(phone):
     repos = get_repos()
-    conversations = _with_number_labels(repos.customer_bot_messages.get_conversation_summaries())
+    conversations = _with_names(
+        _with_number_labels(repos.customer_bot_messages.get_conversation_summaries()), repos
+    )
     messages = repos.customer_bot_messages.get_by_phone(phone)
     if not messages:
         abort(404)
     active_bot_label = whatsapp_bot.describe_phone_number_id(
         repos.customer_bot_messages.get_latest_bot_phone_number_id(phone)
     )
+    active_full_name = next((c["full_name"] for c in conversations if c["phone"] == phone), None)
     return render_template(
         "bot_conversations/index.html",
         conversations=conversations,
         active_phone=phone,
         messages=messages,
         active_bot_label=active_bot_label,
+        active_full_name=active_full_name,
     )
 
 

@@ -12,11 +12,11 @@
                 <div class="chat-list-avatar">👤</div>
                 <div class="chat-list-info">
                     <div class="chat-list-top">
-                        <span class="chat-list-name">{{ c.phone }}</span>
+                        <span class="chat-list-name">{{ c.full_name or c.phone }}</span>
                         <span class="chat-list-time">{{ c.last_message_at | format_lead_datetime }}</span>
                     </div>
                     <div class="chat-list-preview">{{ c.last_message_body }}</div>
-                    <div class="chat-list-number">📞 {{ c.bot_phone_label }}</div>
+                    <div class="chat-list-number">📞 {{ c.phone }} · {{ c.bot_phone_label }}</div>
                 </div>
             </a>
             {% endfor %}
@@ -27,7 +27,10 @@
 
     <div class="chat-app-thread">
         {% if messages %}
-        <div class="chat-thread-header">התקבל/נשלח דרך: {{ active_bot_label }}</div>
+        <div class="chat-thread-header">
+            <strong>{{ active_full_name or active_phone }}</strong>{% if active_full_name %} · {{ active_phone }}{% endif %}
+            &nbsp;— התקבל/נשלח דרך: {{ active_bot_label }}
+        </div>
         <div class="chat-thread">
             {% for m in messages %}
             <div class="chat-bubble {{ 'chat-bubble-in' if m.direction == 'in' else 'chat-bubble-out' }}">
