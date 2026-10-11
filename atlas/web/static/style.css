@@ -876,6 +876,14 @@ label {
     background: #fff;
 }
 
+/* עמוד תבניות וואטסאפ - אותו תיקון בדיוק כמו automations-schedule-summary: בלי זה, תוכן
+   תבנית ארוך (יכול להיות כמה שורות אצל תבניות שיווקיות ישנות) מתרחב כשורה אחת בלי גבול
+   ועובר את רוחב העמוד, במקום להיעטף בתוך העמודה שלו */
+.whatsapp-templates-content {
+    white-space: normal;
+    max-width: 420px;
+}
+
 .day-list, .hour-list {
     display: flex;
     flex-wrap: wrap;

@@ -29,7 +29,7 @@
                     {{ status_labels.get(t.status, t.status) }}
                 </span>
             </td>
-            <td>
+            <td class="whatsapp-templates-content">
                 {% for c in t.components %}
                     {% if c.type == 'BODY' %}{{ c.text }}{% endif %}
                 {% endfor %}
