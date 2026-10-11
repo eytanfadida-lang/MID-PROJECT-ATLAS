@@ -61,6 +61,24 @@ class AutomationRepository:
             )
         self.conn.commit()
 
+    # מצב "תבנית מאושרת" (ראו atlas/automations/engine.py, _send_template_action) - שולח
+    # דרך תבנית קבועה שאושרה מראש ב-Meta במקום טקסט חופשי, אז עוקף את חלון 24 השעות.
+    # param_templates: רשימת מחרוזות-תבנית קטנות (כל אחת מרונדרת בנפרד עם .format(**context),
+    # בדיוק כמו text_template הרגיל) שממלאות את {{1}},{{2}} וכו' של התבנית המאושרת, לפי הסדר.
+    # אין היסטוריית הודעות למצב הזה (התוכן קבוע מראש ב-Meta, אין "לחזור" לנוסח קודם)
+    def update_step_template(self, step_id, template_name, template_language, param_templates, delay_minutes):
+        action_config = {
+            "mode": "template",
+            "template_name": template_name,
+            "template_language": template_language,
+            "param_templates": param_templates,
+        }
+        self.conn.execute(
+            "UPDATE automation_steps SET delay_minutes = ?, action_config = ? WHERE id = ?",
+            (delay_minutes, json.dumps(action_config, ensure_ascii=False), step_id),
+        )
+        self.conn.commit()
+
     def get_step_history(self, step_id, limit=20):
         rows = self.conn.execute(
             "SELECT id, text_template, saved_at FROM automation_message_history "

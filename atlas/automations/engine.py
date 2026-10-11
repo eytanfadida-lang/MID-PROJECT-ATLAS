@@ -88,6 +88,15 @@ def process_due_action(repos, due_action):
         )
         return
 
+    if action_config.get("mode") == "template":
+        _send_template_action(repos, due_action, action_config)
+    else:
+        _send_text_action(repos, due_action, action_config)
+
+
+# מצב "טקסט חופשי" (ברירת המחדל, ראו _AUDIENCE_RESOLVERS/update_step) - כפוף לחלון 24
+# השעות (ראו _is_within_whatsapp_window) כי אין תבנית מאושרת שעוקפת אותו
+def _send_text_action(repos, due_action, action_config):
     try:
         body = action_config.get("text_template", "").format(**due_action["context"])
     except Exception as exc:
@@ -127,6 +136,49 @@ def process_due_action(repos, due_action):
         CHANNEL_WHATSAPP_CLOUD_API, body, due_action_id=due_action["id"],
     )
     repos.customer_bot_messages.log(due_action["target_phone"], "out", body)
+
+
+# מצב "תבנית מאושרת" - ראו update_step_template ב-automation_repository.py. ללא בדיקת
+# חלון 24 השעות בכוונה (זו בדיוק הסיבה להשתמש בתבנית - היא מגיעה גם מחוץ לחלון).
+# param_templates מרונדרים בנפרד, כל אחד כמו text_template קטן, אותו מנגנון .format(**context)
+# בדיוק - ממלאים את {{1}},{{2}} וכו' של התבנית לפי הסדר
+def _send_template_action(repos, due_action, action_config):
+    template_name = action_config.get("template_name")
+    template_language = action_config.get("template_language") or "he"
+    param_templates = action_config.get("param_templates") or []
+
+    try:
+        params = [fragment.format(**due_action["context"]) for fragment in param_templates]
+    except Exception as exc:
+        repos.automations.mark_failed(due_action["id"])
+        repos.automations.log_execution(
+            due_action["automation_id"], due_action["target_phone"], "failed",
+            CHANNEL_WHATSAPP_CLOUD_API, f"שגיאה ברינדור פרמטרי התבנית: {exc}",
+            due_action_id=due_action["id"],
+        )
+        return
+
+    whatsapp_to = to_whatsapp_format(due_action["target_phone"])
+    try:
+        whatsapp_bot.send_template_message(
+            whatsapp_bot.CUSTOMER_BOT, whatsapp_to, template_name, template_language, body_params=params,
+        )
+    except Exception as exc:
+        repos.automations.mark_failed(due_action["id"])
+        repos.automations.log_execution(
+            due_action["automation_id"], due_action["target_phone"], "failed",
+            CHANNEL_WHATSAPP_CLOUD_API, f"שליחת תבנית וואטסאפ נכשלה: {exc}",
+            due_action_id=due_action["id"],
+        )
+        return
+
+    log_body = f"[תבנית: {template_name}] " + " | ".join(params) if params else f"[תבנית: {template_name}]"
+    repos.automations.mark_sent(due_action["id"])
+    repos.automations.log_execution(
+        due_action["automation_id"], due_action["target_phone"], "success",
+        CHANNEL_WHATSAPP_CLOUD_API, log_body, due_action_id=due_action["id"],
+    )
+    repos.customer_bot_messages.log(due_action["target_phone"], "out", log_body)
 
 
 # נקראת מ-/tasks/automations-run (cron חיצוני, GitHub Actions - אין thread רקע בפרודקשן,

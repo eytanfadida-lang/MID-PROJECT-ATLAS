@@ -1,8 +1,11 @@
+import re
+
 from flask import Blueprint, render_template, redirect, url_for, flash, abort, request
 
 from atlas.data.context import get_repos
 from atlas.core.auth import admin_required
 from atlas.automations.engine import SCHEDULE_TYPES, DYNAMIC_AUDIENCE_SOURCES
+from atlas.integrations.whatsapp import bot as whatsapp_bot
 
 # עמוד ניהול למנוע האוטומציות (ראו atlas/automations/engine.py) - טבלה אחת מאוחדת (לא
 # רשימה+עמוד פרטים נפרד): כל שורה כוללת עריכת תוכן/תזמון/נמענים inline (מורחבת/מוסתרת
@@ -13,6 +16,32 @@ from atlas.automations.engine import SCHEDULE_TYPES, DYNAMIC_AUDIENCE_SOURCES
 bp = Blueprint("automations", __name__, url_prefix="/automations")
 
 _WEEKDAY_LABELS = ["שני", "שלישי", "רביעי", "חמישי", "שישי", "שבת", "ראשון"]
+
+# שולפת תבניות וואטסאפ מאושרות (מ-Meta בלבד, ראו atlas/web/blueprints/whatsapp_templates.py -
+# אין שמירה מקומית) לשימוש כ"תוכן הודעה" באוטומציה, במקום טקסט חופשי - עוקף את חלון 24
+# השעות (ראו _send_template_action ב-engine.py). נכשלת בשקט לרשימה ריקה (לא WABA ID מוגדר,
+# או שגיאת רשת) - עמוד האוטומציות לא אמור "להישבר" בגלל זה, רק לא להציג אפשרות תבנית
+def _get_approved_templates():
+    config = whatsapp_bot.CUSTOMER_BOT
+    if not whatsapp_bot.load_waba_id(config):
+        return []
+    try:
+        templates = whatsapp_bot.list_message_templates(config)
+    except Exception:
+        return []
+    enriched = []
+    for t in templates:
+        if t.get("status") != "APPROVED":
+            continue
+        body_text = next(
+            (c.get("text", "") for c in t.get("components", []) if c.get("type") == "BODY"), ""
+        )
+        enriched.append({
+            "name": t.get("name"), "language": t.get("language"), "body_text": body_text,
+            "placeholder_count": len(set(re.findall(r"\{\{(\d+)\}\}", body_text))),
+        })
+    return enriched
+
 
 # שני הסניפים הפיזיים היחידים של העסק (מאומת מול location_name בכל קריאות Arbox לאורך הפרויקט -
 # אין endpoint ב-Arbox שמחזיר "רשימת סניפים" בפני עצמה, אז קבוע כאן בקוד). בשימוש לבחירה מרובה
@@ -212,6 +241,7 @@ def list_automations():
     return render_template(
         "automations/list.html", automations=automations, weekday_labels=_WEEKDAY_LABELS,
         membership_types=repos.arbox_member_cache.get_distinct_membership_types(), locations=LOCATIONS,
+        approved_templates=_get_approved_templates(),
     )
 
 
@@ -343,13 +373,29 @@ def edit_step(automation_id, step_id):
     if step is None or step["automation_id"] != automation_id:
         abort(404)
 
-    text_template = request.form.get("text_template", "").strip()
     try:
         delay_minutes = int(request.form.get("delay_minutes", "0"))
     except ValueError:
         delay_minutes = 0
     delay_minutes = max(0, delay_minutes)
 
+    mode = request.form.get("mode", "text")
+    if mode == "template":
+        template_name = request.form.get("template_name", "").strip()
+        if not template_name:
+            flash("יש לבחור תבנית מאושרת.", "error")
+            return _back_to_list(automation_id)
+        template_language = request.form.get("template_language", "he").strip() or "he"
+        # ריקים מדולגים (לא כל תבנית משתמשת בכל 5 שדות הפרמטר הקבועים בטופס) - ראו
+        # _schedule_fields "param_fields" / whatsapp_templates.py לאותו דפוס
+        param_templates = [
+            value.strip() for value in request.form.getlist("param_templates") if value.strip()
+        ]
+        repos.automations.update_step_template(step_id, template_name, template_language, param_templates, delay_minutes)
+        flash("השלב עודכן בהצלחה (תבנית מאושרת).", "success")
+        return _back_to_list(automation_id)
+
+    text_template = request.form.get("text_template", "").strip()
     if not text_template:
         flash("לא ניתן לשמור הודעה ריקה.", "error")
         return _back_to_list(automation_id)
