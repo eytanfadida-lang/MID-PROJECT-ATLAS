@@ -7,6 +7,12 @@ from atlas.services.phone_utils import normalize_phone, to_whatsapp_format
 
 CHANNEL_WHATSAPP_CLOUD_API = "whatsapp_cloud_api"
 
+# "חלון 24 השעות" של וואטסאפ: הודעת טקסט חופשית (לא תבנית מאושרת מראש) מגיעה בפועל רק אם
+# הלקוחה כתבה לבוט בטווח הזה לפני כן - אחרת ה-API עדיין מחזיר 200+wamid (כאילו הצליח) אבל
+# ההודעה נופלת בשקט ולא מגיעה לטלפון בפועל. מאומת בפועל: שידור אמיתי ל-62 לקוחות (כולן מחוץ
+# לחלון) קיבל 200 מ-Meta לכולן, ואף אחת לא קיבלה בפועל/הגיבה. ראו _is_within_whatsapp_window
+WHATSAPP_FREE_FORM_WINDOW_HOURS = 24
+
 
 # נקראת מנקודת חיבור אחת (למשל book_trial_class) ברגע שאירוע עסקי קרה בפועל - אין Event
 # Bus במערכת (ראו תוכנית), אז זו קריאה מפורשת, לא מנוי/פרסום. phone תמיד בפורמט מקומי
@@ -45,6 +51,20 @@ def _fire_automation_steps(repos, automation_id, context, phone, lead_id=None, t
             process_due_action(repos, due_action)
 
 
+# בודקת אם הלקוחה בחלון 24 השעות (כתבה לבוט לאחרונה מספיק) - ראו WHATSAPP_FREE_FORM_WINDOW_HOURS.
+# שני הצדדים (now וגם מה שנשמר ב-created_at) הם naive UTC עקביים (ראו atlas/services/
+# time_utils.py) - אין צורך בהמרת אזור זמן כאן, רק הפרש זמן נקי
+def _is_within_whatsapp_window(repos, phone, now):
+    last_incoming = repos.customer_bot_messages.get_last_incoming_at(phone)
+    if not last_incoming:
+        return False
+    try:
+        last_incoming_at = datetime.datetime.fromisoformat(last_incoming)
+    except ValueError:
+        return False
+    return (now - last_incoming_at) <= datetime.timedelta(hours=WHATSAPP_FREE_FORM_WINDOW_HOURS)
+
+
 # מבצעת פעולה אחת בפועל (כרגע רק send_whatsapp_message נתמך) ומתעדת תוצאה - גם בטבלת
 # automation_executions (יומן ביקורת ייעודי) וגם, בהצלחה, ב-customer_bot_messages כדי
 # שההודעה תופיע בעמוד שיחות בוט הלקוחות הקיים לצד שאר ההתכתבות עם אותה לקוחה. חתימה בכוונה
@@ -75,6 +95,16 @@ def process_due_action(repos, due_action):
         repos.automations.log_execution(
             due_action["automation_id"], due_action["target_phone"], "failed",
             CHANNEL_WHATSAPP_CLOUD_API, f"שגיאה ברינדור התבנית: {exc}",
+            due_action_id=due_action["id"],
+        )
+        return
+
+    if not _is_within_whatsapp_window(repos, due_action["target_phone"], datetime.datetime.now()):
+        repos.automations.mark_failed(due_action["id"])
+        repos.automations.log_execution(
+            due_action["automation_id"], due_action["target_phone"], "failed",
+            CHANNEL_WHATSAPP_CLOUD_API,
+            "מחוץ לחלון 24 השעות של וואטסאפ - הודעה חופשית לא תימסר בפועל (נדרשת תבנית מאושרת מראש)",
             due_action_id=due_action["id"],
         )
         return

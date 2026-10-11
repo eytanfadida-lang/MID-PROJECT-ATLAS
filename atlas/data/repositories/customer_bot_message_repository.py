@@ -72,3 +72,13 @@ class CustomerBotMessageRepository:
             (phone,),
         ).fetchone()
         return row[0] if row else None
+
+    # מתי הלקוחה כתבה לבוט לאחרונה (direction='in') - בשימוש לבדיקת "חלון 24 השעות" של
+    # וואטסאפ (ראו atlas/automations/engine.py, process_due_action) לפני שליחת הודעה חופשית.
+    # None אם מעולם לא כתבה (למשל "לקוחות פעילים" ששלחנו להן יזום, לא בתגובה לפנייה שלהן)
+    def get_last_incoming_at(self, phone):
+        row = self.conn.execute(
+            f"SELECT MAX(created_at) FROM {TABLE_NAME} WHERE phone = ? AND direction = 'in'",
+            (phone,),
+        ).fetchone()
+        return row[0] if row else None
