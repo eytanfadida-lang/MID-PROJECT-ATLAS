@@ -133,6 +133,21 @@ def _parse_schedule_form(form):
             "audience_source": "arbox_membership_expiring", "days_before": days_before,
         }, None
 
+    # "לקוחות שעזבו (Arbox)" - גם היא תמיד תזמון יומי (בודקים כל יום מי שהמנוי שלה פג בדיוק
+    # לפני X ימים), עם שעה + מספר ימים מאז. כדי לשלוח כמה הודעות בטווחים שונים (14/35 יום
+    # וכו', כמו ב-Upgrade360) - יוצרים כמה אוטומציות נפרדות עם days_since שונה
+    if form.get("audience_source") == "arbox_churned":
+        time_of_day = form.get("time_of_day", "").strip() or "09:00"
+        try:
+            days_since = int(form.get("days_since", "14"))
+        except ValueError:
+            days_since = 14
+        days_since = min(max(days_since, 1), 365)
+        return {
+            "schedule_type": "daily", "time_of_day": time_of_day,
+            "audience_source": "arbox_churned", "days_since": days_since,
+        }, None
+
     # "נגמרת הכרטיסייה (Arbox)" - גם תמיד תזמון יומי (בודקים כל יום כמה ניקובים נותרו), עם
     # שעה + סף ניקובים + תקופת "שקט" (לא לשלוח שוב למי שכבר נשלח לה בטווח הזה - ראו
     # has_recent_execution/_resolve_expiring_sessions_recipients - sessions_left לא "מתקדם"

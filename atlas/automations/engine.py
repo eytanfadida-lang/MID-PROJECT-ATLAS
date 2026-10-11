@@ -481,6 +481,43 @@ def _resolve_trial_reminder_recipients(repos, automation, now):
     return recipients, None
 
 
+# שולפת מי שהמנוי שלה פג (לא חודש) בדיוק לפני trigger_config["days_since"] ימים (ברירת מחדל
+# 14, תואם "מסר זה יישלח לאחר 14 ימים" ב-Upgrade360, "מסרים ללקוחות שעזבו") - ישירות מ-Arbox
+# בכל הרצה. אותו דפוס בדיוק כמו _resolve_membership_expiring_recipients, רק "אחרי" במקום
+# "לפני" ודוח שונה (expiredMembershipsReport - מנויים שפגו בפועל, לא מנויים שעומדים לפוג).
+# כמו שם, אין צורך ב-cooldown (בניגוד ל-expiring_sessions) - ההתאמה היא לפי תאריך מדויק,
+# נפתרת אוטומטית למחרת. כדי לשלוח כמה הודעות בטווחים שונים (14 יום, 35 יום וכו', כמו
+# ב-Upgrade360) - יוצרים כמה אוטומציות נפרדות עם days_since שונה, לא שלב אחד עם כמה שלבים
+def _resolve_churn_recipients(repos, automation, now):
+    trigger_config = automation["trigger_config"]
+    api_key = arbox_client.load_arbox_api_key()
+    if not api_key:
+        return [], "שגיאה טכנית בגישה ל-Arbox (אין מפתח API)"
+
+    days_since = trigger_config.get("days_since", 14)
+    target_date = (time_utils.utc_now_to_israel(now).date() - datetime.timedelta(days=days_since)).isoformat()
+    try:
+        memberships = arbox_client.fetch_arbox_expired_memberships(api_key, target_date, target_date)
+    except Exception as exc:
+        return [], f"שליפת מנויים שפגו מ-Arbox נכשלה: {exc}"
+
+    seen_phones = set()
+    recipients = []
+    for membership in memberships:
+        phone = normalize_phone(membership.get("phone"))
+        if not phone or phone in seen_phones:
+            continue
+        seen_phones.add(phone)
+        recipients.append({
+            "phone": phone,
+            "full_name": membership.get("full_name") or membership.get("first_name") or "",
+            "membership_type_name": membership.get("membership_type_name") or "",
+            "end_date": membership.get("end_date") or "",
+            "days_since": days_since,
+        })
+    return recipients, None
+
+
 # מיפוי audience_source -> פונקציית שליפה - כל פונקציה מחזירה (recipients, error) כמו
 # _resolve_birthday_recipients/_resolve_membership_expiring_recipients למעלה. audience_source
 # שלא מופיע כאן (כולל ברירת המחדל "manual") נופל לרשימת הנמענים הידנית (automation_recipients)
@@ -490,6 +527,7 @@ _AUDIENCE_RESOLVERS = {
     "arbox_expiring_sessions": _resolve_expiring_sessions_recipients,
     "arbox_active_members": _resolve_active_members_recipients,
     "arbox_trial_reminder": _resolve_trial_reminder_recipients,
+    "arbox_churned": _resolve_churn_recipients,
 }
 
 # נחשף כדי שקוד אחר (הבלופרינט, ה-repository) יוכל לבדוק "האם זו אוטומציה עם קהל דינמי

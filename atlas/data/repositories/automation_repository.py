@@ -244,7 +244,7 @@ class AutomationRepository:
                 trigger_type == "scheduled"
                 and trigger_config.get("audience_source") not in (
                     "arbox_birthday", "arbox_membership_expiring", "arbox_expiring_sessions",
-                    "arbox_active_members", "arbox_trial_reminder",
+                    "arbox_active_members", "arbox_trial_reminder", "arbox_churned",
                 )
             )
             expected_recipient_count = None

@@ -120,6 +120,12 @@ def fetch_arbox_trial_classes(api_key, from_date, to_date):
     return _fetch_arbox_report(api_key, "trialClassesReport", from_date, to_date)
 
 
+# "דוח מנויים שפגו" - ראו _fetch_arbox_report. ההתאמה היא לפי תאריך סיום ממשי (end_date) -
+# מאומת מול ה-API. מחזירה גם ending_reason ("canceled" וכו') ו-client_status ("inactive")
+def fetch_arbox_expired_memberships(api_key, from_date, to_date):
+    return _fetch_arbox_report(api_key, "expiredMembershipsReport", from_date, to_date)
+
+
 # מושכת את לוח השיעורים האמיתי מ-Arbox (עם pagination) בין שני תאריכים - שם שיעור,
 # תאריך/שעה, סניף, מדריך, מקסימום משתתפים. אין ב-Arbox endpoint שחושף כמה מקומות
 # נותרו בפועל (רק את המקסימום) - ראה ה"שאלה פתוחה ל-Arbox support" בתוכנית

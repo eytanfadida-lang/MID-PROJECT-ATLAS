@@ -13,6 +13,7 @@
         <option value="arbox_expiring_sessions" {{ 'selected' if form.get('audience_source') == 'arbox_expiring_sessions' else '' }}>נגמרת הכרטיסייה (מתוך Arbox, אוטומטי)</option>
         <option value="arbox_active_members" {{ 'selected' if form.get('audience_source') == 'arbox_active_members' else '' }}>לקוחות פעילים - רשימת תפוצה כללית (מתוך Arbox)</option>
         <option value="arbox_trial_reminder" {{ 'selected' if form.get('audience_source') == 'arbox_trial_reminder' else '' }}>תזכורת לשיעור ניסיון (מתוך Arbox, אוטומטי)</option>
+        <option value="arbox_churned" {{ 'selected' if form.get('audience_source') == 'arbox_churned' else '' }}>לקוחות שעזבו (מתוך Arbox, אוטומטי)</option>
     </select>
 </div>
 
@@ -44,6 +45,22 @@
         <p class="hint">נבדק אוטומטית כל יום - מי שהמנוי שלה מסתיים בדיוק בעוד כמות הימים הזו
             נשלפת ישירות מ-Arbox, בלי רשימת נמענים ידנית. אפשר להשתמש ב-{{ '{full_name}' }},
             {{ '{membership_type_name}' }}, {{ '{end_date}' }} ו-{{ '{days_left}' }} בהודעה.</p>
+    </div>
+</div>
+
+<div class="automations-audience-field" data-for="arbox_churned">
+    <div class="form-group">
+        <label>שעת שליחה</label>
+        <input type="time" name="time_of_day" value="{{ form.get('time_of_day', '09:00') }}">
+    </div>
+    <div class="form-group">
+        <label>כמה ימים אחרי שהמנוי פג</label>
+        <input type="number" name="days_since" min="1" max="365" value="{{ form.get('days_since', 14) }}">
+        <p class="hint">נבדק אוטומטית כל יום - מי שהמנוי שלה פג בדיוק לפני כמות הימים הזו
+            (לא חודש) נשלפת ישירות מ-Arbox, בלי רשימת נמענים ידנית. כדי לשלוח כמה הודעות
+            בטווחים שונים (למשל 14 יום ואז 35 יום, כמו ב-Upgrade360) - יוצרים כמה אוטומציות
+            נפרדות עם מספר ימים שונה. אפשר להשתמש ב-{{ '{full_name}' }},
+            {{ '{membership_type_name}' }}, {{ '{end_date}' }} ו-{{ '{days_since}' }} בהודעה.</p>
     </div>
 </div>
 
