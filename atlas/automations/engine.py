@@ -149,7 +149,7 @@ def _send_text_action(repos, due_action, action_config):
 
     whatsapp_to = to_whatsapp_format(due_action["target_phone"])
     try:
-        whatsapp_bot.send_text_message(whatsapp_bot.CUSTOMER_BOT, whatsapp_to, body)
+        response = whatsapp_bot.send_text_message(whatsapp_bot.CUSTOMER_BOT, whatsapp_to, body)
     except Exception as exc:
         repos.automations.mark_failed(due_action["id"])
         repos.automations.log_execution(
@@ -159,12 +159,13 @@ def _send_text_action(repos, due_action, action_config):
         )
         return
 
+    wamid = whatsapp_bot.extract_wamid(response)
     repos.automations.mark_sent(due_action["id"])
     repos.automations.log_execution(
         due_action["automation_id"], due_action["target_phone"], "success",
-        CHANNEL_WHATSAPP_CLOUD_API, body, due_action_id=due_action["id"],
+        CHANNEL_WHATSAPP_CLOUD_API, body, due_action_id=due_action["id"], wamid=wamid,
     )
-    repos.customer_bot_messages.log(due_action["target_phone"], "out", body)
+    repos.customer_bot_messages.log(due_action["target_phone"], "out", body, wamid=wamid)
     _remember_outgoing_for_bot(due_action["target_phone"], body)
 
 
@@ -190,7 +191,7 @@ def _send_template_action(repos, due_action, action_config):
 
     whatsapp_to = to_whatsapp_format(due_action["target_phone"])
     try:
-        whatsapp_bot.send_template_message(
+        response = whatsapp_bot.send_template_message(
             whatsapp_bot.CUSTOMER_BOT, whatsapp_to, template_name, template_language, body_params=params,
         )
     except Exception as exc:
@@ -202,14 +203,15 @@ def _send_template_action(repos, due_action, action_config):
         )
         return
 
+    wamid = whatsapp_bot.extract_wamid(response)
     fallback_log_body = f"[תבנית: {template_name}] " + " | ".join(params) if params else f"[תבנית: {template_name}]"
     log_body = _render_template_body_for_log(template_name, params, fallback_log_body)
     repos.automations.mark_sent(due_action["id"])
     repos.automations.log_execution(
         due_action["automation_id"], due_action["target_phone"], "success",
-        CHANNEL_WHATSAPP_CLOUD_API, log_body, due_action_id=due_action["id"],
+        CHANNEL_WHATSAPP_CLOUD_API, log_body, due_action_id=due_action["id"], wamid=wamid,
     )
-    repos.customer_bot_messages.log(due_action["target_phone"], "out", log_body)
+    repos.customer_bot_messages.log(due_action["target_phone"], "out", log_body, wamid=wamid)
     _remember_outgoing_for_bot(due_action["target_phone"], log_body)
 
 

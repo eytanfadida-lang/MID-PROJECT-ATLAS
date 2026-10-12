@@ -92,6 +92,7 @@ class AutomationDB:
                 created_at TEXT NOT NULL
             )
         """)
+        self._ensure_execution_columns(conn)
         # רשימת נמענים ידנית - לאוטומציות מתוזמנות (trigger_type='scheduled', למשל סקר/תזכורת
         # תקופתית) שלא קשורות לאירוע ספציפי של לקוח/ליד בודד, ולכן אין להן "phone" שמגיע
         # מנקודת חיבור כמו trial_booked - מי שמקבל אותן נבחר ידנית מראש דרך הממשק
@@ -152,6 +153,20 @@ class AutomationDB:
         columns = {row[1] for row in conn.execute("PRAGMA table_info(automations)").fetchall()}
         if "last_run_at" not in columns:
             conn.execute("ALTER TABLE automations ADD COLUMN last_run_at TEXT")
+
+    # wamid: מזהה ההודעה שהוחזר מוואטסאפ בזמן השליחה - מפתח לקישור חזרה לעדכוני סטטוס משלוח
+    # (webhook נפרד, ראו extract_status_updates ב-whatsapp/bot.py). delivery_status:
+    # sent/delivered/read/failed, מתעדכן ע"י אותו webhook - None עד עדכון ראשון/להרצות ישנות
+    @staticmethod
+    def _ensure_execution_columns(conn):
+        columns = {row[1] for row in conn.execute("PRAGMA table_info(automation_executions)").fetchall()}
+        new_columns = {"wamid": "TEXT", "delivery_status": "TEXT"}
+        for name, column_type in new_columns.items():
+            if name not in columns:
+                conn.execute(f"ALTER TABLE automation_executions ADD COLUMN {name} {column_type}")
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_automation_executions_wamid ON automation_executions(wamid)"
+        )
 
     # זורעת אוטומציה ברירת-מחדל אחת (אישור שיעור ניסיון) רק אם טבלת automations ריקה -
     # אותו אידיום בדיוק כמו DEFAULT_STATUSES ב-atlas/data/lead_db.py

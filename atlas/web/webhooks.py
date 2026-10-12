@@ -393,9 +393,24 @@ def whatsapp_customer_webhook():
         json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8"
     )
 
+    # עדכוני סטטוס משלוח (sent/delivered/read/failed) - אותו payload type כמו הודעות נכנסות
+    # (ראו extract_status_updates), אז נבדקים קודם ומטופלים בנפרד; לא אמורים להופיע באותו
+    # payload יחד עם messages בפועל (מאומת), אבל גם אם כן - אין נזק לטפל בשניהם
+    status_updates = whatsapp_bot.extract_status_updates(payload)
+    if status_updates:
+        repos = db_context.get_repos()
+        for update in status_updates:
+            repos.customer_bot_messages.update_delivery_status(update["wamid"], update["status"])
+            repos.automations.update_delivery_status(update["wamid"], update["status"])
+            if update["status"] == "failed" and update["error_detail"]:
+                print(
+                    f"[WhatsApp customer webhook] משלוח נכשל (wamid={update['wamid']}): "
+                    f"{update['error_detail']}", flush=True,
+                )
+
     from_number, message_id, message_type, text = whatsapp_bot.extract_incoming_event(payload)
     if not from_number:
-        return jsonify({"status": "ignored"})
+        return jsonify({"status": "ok" if status_updates else "ignored"})
 
     # לא בהכרח config.phone_number_id - כמה מספרים יכולים להיות מחוברים לאותה
     # אפליקציה/WABA, וצריך לענות מאותו מספר שהלקוח כתב אליו
@@ -436,8 +451,13 @@ def whatsapp_customer_webhook():
         )
 
         thank_you_text = "תודה רבה! קיבלתי את הקובץ ואחזור אלייך עם כל הפרטים בהקדם 🙏"
-        repos.customer_bot_messages.log(caller_phone, "out", thank_you_text, reply_phone_number_id)
-        whatsapp_bot.send_text_message(bot_config, from_number, thank_you_text, phone_number_id=reply_phone_number_id)
+        thank_you_response = whatsapp_bot.send_text_message(
+            bot_config, from_number, thank_you_text, phone_number_id=reply_phone_number_id
+        )
+        repos.customer_bot_messages.log(
+            caller_phone, "out", thank_you_text, reply_phone_number_id,
+            wamid=whatsapp_bot.extract_wamid(thank_you_response),
+        )
 
         # הודעת תבנית (template) - בניגוד לטקסט חופשי, מגיעה גם אם לא כתבת לבוט הפנימי
         # ב-24 השעות האחרונות (ראו CV_NOTIFICATION_TEMPLATE_NAME). נופלת חזרה לטקסט חופשי
@@ -489,8 +509,13 @@ def whatsapp_customer_webhook():
         )
 
         thank_you_text = f"תודה! קיבלתי את ה{kind_label}, אעביר את זה הלאה ונחזור אלייך בהקדם 🙏"
-        repos.customer_bot_messages.log(caller_phone, "out", thank_you_text, reply_phone_number_id)
-        whatsapp_bot.send_text_message(bot_config, from_number, thank_you_text, phone_number_id=reply_phone_number_id)
+        thank_you_response = whatsapp_bot.send_text_message(
+            bot_config, from_number, thank_you_text, phone_number_id=reply_phone_number_id
+        )
+        repos.customer_bot_messages.log(
+            caller_phone, "out", thank_you_text, reply_phone_number_id,
+            wamid=whatsapp_bot.extract_wamid(thank_you_response),
+        )
 
         alert_text = f"התקבל/ה {kind_label} מ-{sender_name or caller_phone} ({caller_phone}) - אפשר לצפות בעמוד שיחות בוט הלקוחות."
         try:
@@ -512,8 +537,13 @@ def whatsapp_customer_webhook():
         repos.customer_bot_messages.log(
             caller_phone, "in", f"[הודעה לא-טקסטואלית: {message_type}]", reply_phone_number_id
         )
-        repos.customer_bot_messages.log(caller_phone, "out", fallback_text, reply_phone_number_id)
-        whatsapp_bot.send_text_message(bot_config, from_number, fallback_text, phone_number_id=reply_phone_number_id)
+        fallback_response = whatsapp_bot.send_text_message(
+            bot_config, from_number, fallback_text, phone_number_id=reply_phone_number_id
+        )
+        repos.customer_bot_messages.log(
+            caller_phone, "out", fallback_text, reply_phone_number_id,
+            wamid=whatsapp_bot.extract_wamid(fallback_response),
+        )
         return jsonify({"status": "ignored", "reason": "non_text"})
 
     sender_name = whatsapp_bot.extract_sender_profile_name(payload)
@@ -524,8 +554,13 @@ def whatsapp_customer_webhook():
         print(f"[WhatsApp customer webhook] assistant failed: {exc}", flush=True)
         reply_text = "אירעה שגיאה בעיבוד הבקשה, נסה שוב מאוחר יותר."
 
-    repos.customer_bot_messages.log(caller_phone, "out", reply_text, reply_phone_number_id)
-    whatsapp_bot.send_text_message(bot_config, from_number, reply_text, phone_number_id=reply_phone_number_id)
+    reply_response = whatsapp_bot.send_text_message(
+        bot_config, from_number, reply_text, phone_number_id=reply_phone_number_id
+    )
+    repos.customer_bot_messages.log(
+        caller_phone, "out", reply_text, reply_phone_number_id,
+        wamid=whatsapp_bot.extract_wamid(reply_response),
+    )
     return jsonify({"status": "ok"})
 
 

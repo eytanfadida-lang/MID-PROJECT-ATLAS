@@ -11,10 +11,13 @@ class CustomerBotMessageRepository:
     def __init__(self, conn):
         self.conn = conn
 
-    def log(self, phone, direction, body, bot_phone_number_id=None, attachment_url=None):
+    # wamid: מזהה ההודעה שהוחזר מוואטסאפ (רק להודעות יוצאות, direction='out') - מפתח
+    # לקישור חזרה לעדכון סטטוס משלוח עתידי (ראו update_delivery_status). None עבור הודעות
+    # נכנסות (אין "שליחה" שלנו) או אם השליחה נכשלה לפני שהוחזר wamid בכלל
+    def log(self, phone, direction, body, bot_phone_number_id=None, attachment_url=None, wamid=None):
         self.conn.execute(
-            f"INSERT INTO {TABLE_NAME} (phone, direction, body, created_at, bot_phone_number_id, attachment_url) "
-            "VALUES (?, ?, ?, ?, ?, ?)",
+            f"INSERT INTO {TABLE_NAME} (phone, direction, body, created_at, bot_phone_number_id, "
+            "attachment_url, wamid) VALUES (?, ?, ?, ?, ?, ?, ?)",
             (
                 phone,
                 direction,
@@ -22,8 +25,17 @@ class CustomerBotMessageRepository:
                 datetime.datetime.now().isoformat(timespec="seconds"),
                 bot_phone_number_id,
                 attachment_url,
+                wamid,
             ),
         )
+        self.conn.commit()
+
+    # מעדכנת את סטטוס המשלוח (sent/delivered/read/failed) לפי wamid - נקראת מ-webhook עדכוני
+    # סטטוס אמיתי מוואטסאפ (ראו atlas/web/webhooks.py, whatsapp_customer_webhook). לא כל
+    # wamid נמצא כאן (ייתכן שהוא שייך להודעה שנרשמה רק ב-automation_executions, לא כאן) -
+    # זה בסדר, פשוט לא מתעדכן כלום (0 שורות הושפעו)
+    def update_delivery_status(self, wamid, status):
+        self.conn.execute(f"UPDATE {TABLE_NAME} SET delivery_status = ? WHERE wamid = ?", (status, wamid))
         self.conn.commit()
 
     # מחזירה סיכום שיחה אחת לכל מספר טלפון (ההודעה האחרונה + כמה הודעות בסך הכל),
@@ -55,11 +67,15 @@ class CustomerBotMessageRepository:
 
     def get_by_phone(self, phone):
         rows = self.conn.execute(
-            f"SELECT direction, body, created_at, attachment_url FROM {TABLE_NAME} WHERE phone = ? ORDER BY id",
+            f"SELECT direction, body, created_at, attachment_url, delivery_status FROM {TABLE_NAME} "
+            "WHERE phone = ? ORDER BY id",
             (phone,),
         ).fetchall()
         return [
-            {"direction": row[0], "body": row[1], "created_at": row[2], "attachment_url": row[3]}
+            {
+                "direction": row[0], "body": row[1], "created_at": row[2], "attachment_url": row[3],
+                "delivery_status": row[4],
+            }
             for row in rows
         ]
 

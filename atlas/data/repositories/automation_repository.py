@@ -195,12 +195,22 @@ class AutomationRepository:
             self.mark_failed(row[0])
         return [{"id": row[0], "automation_id": row[1], "target_phone": row[2]} for row in rows]
 
-    def log_execution(self, automation_id, target_phone, status, channel, detail, due_action_id=None):
+    # wamid: מזהה ההודעה שהוחזר מוואטסאפ (רק בהצלחה) - מפתח לקישור חזרה לעדכון סטטוס משלוח
+    # עתידי (webhook נפרד, ראו update_delivery_status)
+    def log_execution(self, automation_id, target_phone, status, channel, detail, due_action_id=None, wamid=None):
         self.conn.execute(
             "INSERT INTO automation_executions (due_action_id, automation_id, target_phone, "
-            "status, channel, detail, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            "status, channel, detail, created_at, wamid) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
             (due_action_id, automation_id, target_phone, status, channel, detail,
-             datetime.datetime.now().isoformat(timespec="seconds")),
+             datetime.datetime.now().isoformat(timespec="seconds"), wamid),
+        )
+        self.conn.commit()
+
+    # מעדכנת את סטטוס המשלוח (sent/delivered/read/failed) לפי wamid - ראו אותו רעיון ב-
+    # customer_bot_message_repository.py.update_delivery_status
+    def update_delivery_status(self, wamid, status):
+        self.conn.execute(
+            "UPDATE automation_executions SET delivery_status = ? WHERE wamid = ?", (status, wamid)
         )
         self.conn.commit()
 
@@ -390,14 +400,14 @@ class AutomationRepository:
 
     def get_recent_executions(self, automation_id, limit=50):
         rows = self.conn.execute(
-            "SELECT id, target_phone, status, channel, detail, created_at FROM automation_executions "
-            "WHERE automation_id = ? ORDER BY id DESC LIMIT ?",
+            "SELECT id, target_phone, status, channel, detail, created_at, delivery_status "
+            "FROM automation_executions WHERE automation_id = ? ORDER BY id DESC LIMIT ?",
             (automation_id, limit),
         ).fetchall()
         return [
             {
                 "id": row[0], "target_phone": row[1], "status": row[2],
-                "channel": row[3], "detail": row[4], "created_at": row[5],
+                "channel": row[3], "detail": row[4], "created_at": row[5], "delivery_status": row[6],
             }
             for row in rows
         ]

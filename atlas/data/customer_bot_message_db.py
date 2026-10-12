@@ -33,13 +33,21 @@ class CustomerBotMessageDB:
     #   מספרים רשמיים מחוברים לאותה אפליקציה)
     # attachment_url: קישור לקובץ/תמונה מצורפים (נשמר תחת static/uploads, ראו
     #   bot_conversations.py) - להצגה בתוך בועת הצ'אט בממשק הניהול
+    # wamid: מזהה ההודעה שהוחזר מוואטסאפ בזמן השליחה (רק להודעות יוצאות) - מפתח לקישור
+    #   חזרה לעדכוני סטטוס משלוח (webhook נפרד, ראו extract_status_updates ב-bot.py)
+    # delivery_status: sent/delivered/read/failed - מתעדכן ע"י אותו webhook, None עד שמגיע
+    #   עדכון ראשון (או להודעות ישנות שנשלחו לפני התכונה הזו)
     @staticmethod
     def _ensure_columns(conn):
         columns = {row[1] for row in conn.execute("PRAGMA table_info(customer_bot_messages)").fetchall()}
-        new_columns = {"bot_phone_number_id": "TEXT", "attachment_url": "TEXT"}
+        new_columns = {
+            "bot_phone_number_id": "TEXT", "attachment_url": "TEXT",
+            "wamid": "TEXT", "delivery_status": "TEXT",
+        }
         for name, column_type in new_columns.items():
             if name not in columns:
                 conn.execute(f"ALTER TABLE customer_bot_messages ADD COLUMN {name} {column_type}")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_customer_bot_messages_wamid ON customer_bot_messages(wamid)")
 
     def close(self):
         self.conn.close()

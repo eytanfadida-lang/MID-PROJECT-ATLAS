@@ -260,6 +260,46 @@ def get_template_body_text(config, template_name):
     return cached[0] if cached else None
 
 
+# שולפת את מזהה ההודעה (wamid) מתשובת API של שליחה מוצלחת - {"messages": [{"id": "wamid...."}]},
+# אותה צורה לכל סוגי השליחה (טקסט/תבנית/מדיה). None אם הצורה לא כצפוי - לא קורסים על זה,
+# עדיף לאבד מעקב סטטוס יחיד מאשר להפיל שליחה שכבר הצליחה בפועל (ראו קוראים ב-engine.py/
+# bot_conversations.py)
+def extract_wamid(response):
+    try:
+        return (response or {}).get("messages", [{}])[0].get("id")
+    except (AttributeError, IndexError, TypeError):
+        return None
+
+
+# שולפת עדכוני סטטוס משלוח (sent/delivered/read/failed) מ-payload של webhook - מגיעים
+# תחת אותו "field": "messages" כמו הודעות נכנסות, רק עם value.statuses במקום value.messages
+# (מאומת מול payload אמיתי שנלכד בפרודקשן - ראו .last_whatsapp_customer_payload.json).
+# errors מופיע רק כש-status="failed" - למשל חסימת מדיניות שיווק, לא רק כשל רשת טכני.
+# בלי זה (לפני התכונה) "הצלחה" במערכת שלנו תמיד התכוונה רק ל"מטא קיבלה את הבקשה", אף פעם
+# לא "אומת שהגיעה בפועל" - זה הגילוי שהוביל לבנות את זה (בדיקה אמיתית: תבנית MARKETING
+# שהתקבלה ב-API בהצלחה לא הגיעה בפועל ללקוחה אמיתית)
+def extract_status_updates(payload):
+    updates = []
+    for entry in payload.get("entry") or []:
+        for change in entry.get("changes") or []:
+            value = change.get("value") or {}
+            for status in value.get("statuses") or []:
+                wamid = status.get("id")
+                if not wamid:
+                    continue
+                errors = status.get("errors") or []
+                error_detail = "; ".join(
+                    f"{e.get('code')}: {e.get('title') or e.get('message') or ''}" for e in errors
+                ) if errors else None
+                updates.append({
+                    "wamid": wamid,
+                    "status": status.get("status", ""),
+                    "recipient": status.get("recipient_id", ""),
+                    "error_detail": error_detail,
+                })
+    return updates
+
+
 # מפענחת הודעה נכנסת אחת מ-payload של webhook, מכל סוג (לא רק טקסט) - כדי שאפשר
 # יהיה להבחין בין "אין הודעה בכלל" (למשל התראת סטטוס משלוח) לבין "הודעה שהגיעה
 # אבל היא לא טקסט" (הודעה קולית/תמונה/מדבקה), ולהגיב לכל אחד מהם אחרת

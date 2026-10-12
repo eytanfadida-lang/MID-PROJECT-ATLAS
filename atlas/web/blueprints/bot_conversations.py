@@ -140,12 +140,12 @@ def reply(phone):
                 bot_config, file_bytes, uploaded_file.filename, mime_type, phone_number_id=bot_phone_number_id
             )
             media_type = "image" if mime_type.startswith("image/") else "document"
-            whatsapp_bot.send_media_message(
+            response = whatsapp_bot.send_media_message(
                 bot_config, whatsapp_phone, media_id, media_type,
                 phone_number_id=bot_phone_number_id, caption=body or None,
             )
         else:
-            whatsapp_bot.send_text_message(
+            response = whatsapp_bot.send_text_message(
                 bot_config, whatsapp_phone, body, phone_number_id=bot_phone_number_id
             )
     except Exception as exc:
@@ -153,5 +153,6 @@ def reply(phone):
         return redirect(url_for("bot_conversations.view_conversation", phone=phone))
 
     log_body = body or ("📎 " + uploaded_file.filename if has_attachment else "")
-    repos.customer_bot_messages.log(phone, "out", log_body, bot_phone_number_id, attachment_url)
+    wamid = whatsapp_bot.extract_wamid(response)
+    repos.customer_bot_messages.log(phone, "out", log_body, bot_phone_number_id, attachment_url, wamid=wamid)
     return redirect(url_for("bot_conversations.view_conversation", phone=phone))
