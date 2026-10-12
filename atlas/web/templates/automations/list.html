@@ -10,9 +10,9 @@
 </div>
 
 {% if grouped_automations %}
-{% for category_key, items in grouped_automations.items() %}
+{% for category_key, category in grouped_automations.items() %}
 <details class="automations-category">
-    <summary>{{ category_labels.get(category_key, category_key) }} ({{ items|length }})</summary>
+    <summary>{{ category_labels.get(category_key, category_key) }} ({{ category.count }})</summary>
 <table class="automations-table">
     <thead>
         <tr>
@@ -27,8 +27,14 @@
         </tr>
     </thead>
     <tbody>
-        {% for a in items %}
-        <tr id="automation-{{ a.id }}">
+        {% for row in category.rows %}
+        {% if row.kind == 'group_header' %}
+        <tr class="automations-group-header-row" data-group-toggle="{{ row.group_id }}" onclick="automationsToggleGroup(this)">
+            <td colspan="8"><span class="automations-group-arrow">▸</span> {{ row.name }} ({{ row.count }} הודעות)</td>
+        </tr>
+        {% else %}
+        {% set a = row.automation %}
+        <tr id="automation-{{ a.id }}" {% if row.group_id %}class="automations-group-member" data-group="{{ row.group_id }}" hidden{% endif %}>
             <td>{{ a.name }}</td>
             <td class="automations-schedule-summary">
                 {% if a.trigger_type == 'scheduled' %}
@@ -86,7 +92,7 @@
                 <button type="button" class="btn" onclick="document.getElementById('details-{{ a.id }}').hidden = !document.getElementById('details-{{ a.id }}').hidden;">עריכה</button>
             </td>
         </tr>
-        <tr id="details-{{ a.id }}" class="automations-details-row" hidden>
+        <tr id="details-{{ a.id }}" class="automations-details-row" {% if row.group_id %}data-group="{{ row.group_id }}"{% endif %} hidden>
             <td colspan="8">
                 <div class="automations-details">
                     <h4>תוכן ההודעה</h4>
@@ -200,6 +206,7 @@
                 </div>
             </td>
         </tr>
+        {% endif %}
         {% endfor %}
     </tbody>
 </table>
@@ -210,16 +217,46 @@
 {% endif %}
 
 <script>
-// פותחת אוטומטית את קטגורית האוטומציה (details מתקפל) ואת שורת הפירוט שלה שחזרנו אליה
-// אחרי שמירה (ראו _back_to_list בבלופרינט) - בלי לפתוח את ה-<details> ההורה, שורת הפירוט
-// נשארת hidden=false אבל בלתי נראית בפועל
+// מכווצת/פותחת קבוצת שם משותף (למשל "לקוחות שעזבו - 14/35 ימים", ראו _subgroup_by_name
+// בבלופרינט) - מוגבל לטבלה הזו (קטגוריה אחת), לא גלובלי, כדי שלא יתנגש בין קטגוריות שונות
+// עם אותו group_id. סוגר תמיד את שורת הפירוט (details) של החברות כשמכווצים, גם אם הייתה
+// פתוחה - אין טעם להציג פירוט של שורה מוסתרת
+function automationsToggleGroup(headerRow) {
+    var groupId = headerRow.dataset.groupToggle;
+    var table = headerRow.closest('table');
+    var rows = table.querySelectorAll('[data-group="' + groupId + '"]');
+    var anyMemberVisible = false;
+    rows.forEach(function (el) {
+        if (!el.classList.contains('automations-details-row') && !el.hidden) {
+            anyMemberVisible = true;
+        }
+    });
+    rows.forEach(function (el) {
+        if (el.classList.contains('automations-details-row')) {
+            el.hidden = true;
+        } else {
+            el.hidden = anyMemberVisible;
+        }
+    });
+    headerRow.classList.toggle('expanded', !anyMemberVisible);
+}
+
+// פותחת אוטומטית את קטגורית האוטומציה (details מתקפל), את הקבוצה שלה אם היא חברה בקבוצת
+// שם משותף, ואת שורת הפירוט שלה - שחזרנו אליה אחרי שמירה (ראו _back_to_list בבלופרינט)
 if (window.location.hash && window.location.hash.startsWith('#automation-')) {
-    var detailsRow = document.getElementById('details-' + window.location.hash.replace('#automation-', ''));
+    var automationId = window.location.hash.replace('#automation-', '');
+    var automationRow = document.getElementById('automation-' + automationId);
+    var detailsRow = document.getElementById('details-' + automationId);
     if (detailsRow) {
         detailsRow.hidden = false;
-        var categoryDetails = detailsRow.closest('details.automations-category');
+    }
+    if (automationRow) {
+        var categoryDetails = automationRow.closest('details.automations-category');
         if (categoryDetails) {
             categoryDetails.open = true;
+        }
+        if (automationRow.dataset.group) {
+            automationRow.hidden = false;
         }
     }
 }

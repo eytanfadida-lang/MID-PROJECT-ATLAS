@@ -913,6 +913,32 @@ label {
     margin: 0;
 }
 
+/* תת-קבוצה לפי שם משותף בתוך קטגוריה (למשל "לקוחות שעזבו - 14/35 ימים", ראו
+   _subgroup_by_name בבלופרינט/automationsToggleGroup ב-list.html) - שורת כותרת ניתנת ללחיצה
+   בתוך הטבלה עצמה (לא <details> אמיתי - אי אפשר לקנן <details> בתוך <tr>) */
+.automations-group-header-row {
+    cursor: pointer;
+    background: var(--surface-2);
+    font-weight: 600;
+}
+
+.automations-group-header-row:hover {
+    background: #eef2f7;
+}
+
+.automations-group-arrow {
+    display: inline-block;
+    transition: transform 0.15s ease;
+}
+
+.automations-group-header-row.expanded .automations-group-arrow {
+    transform: rotate(90deg);
+}
+
+.automations-group-member td:first-child {
+    padding-inline-start: 28px;
+}
+
 /* עמוד תבניות וואטסאפ - אותו תיקון בדיוק כמו automations-schedule-summary: בלי זה, תוכן
    תבנית ארוך (יכול להיות כמה שורות אצל תבניות שיווקיות ישנות) מתרחב כשורה אחת בלי גבול
    ועובר את רוחב העמוד, במקום להיעטף בתוך העמודה שלו */

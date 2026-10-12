@@ -85,7 +85,54 @@ def _group_by_category(automations):
     grouped = {key: [] for key in _CATEGORY_LABELS}
     for automation in automations:
         grouped[_automation_category(automation)].append(automation)
-    return {key: items for key, items in grouped.items() if items}
+    return {
+        key: {"rows": _subgroup_by_name(items), "count": len(items)}
+        for key, items in grouped.items() if items
+    }
+
+
+# שם שנגמר ב-"- N ימים" (למשל "לקוחות שעזבו - 14 ימים") - כמה אוטומציות עם אותה תחילית
+# (אותו "משפחת" תנאי, days_since שונה - ראו _resolve_churn_recipients/_resolve_lost_leads_
+# recipients/_resolve_converted_leads_recipients) מקובצות יחד לתת-תפריט מתקפל אחד בתוך
+# הקטגוריה, במקום שורה נפרדת לכל אחת - ראו list.html, automationsToggleGroup
+_NAME_VARIANT_SUFFIX_RE = re.compile(r"^(.*) - \d+ ימים$")
+
+
+# הופכת רשימת אוטומציות (בתוך קטגוריה אחת) לרשימת "שורות לרינדור" - שורת אוטומציה רגילה
+# (kind="automation", group_id=None) או, כשיש 2+ אוטומציות עם אותה תחילית שם, כותרת קבוצה
+# אחת (kind="group_header") ואחריה שורות החברות (group_id משותף, מתחילות hidden). שומרת על
+# סדר "פעם ראשונה שנראתה" - לא ממיינת מחדש
+def _subgroup_by_name(automations):
+    groups = {}
+    order = []
+    seen_prefixes = set()
+    for automation in automations:
+        match = _NAME_VARIANT_SUFFIX_RE.match(automation["name"])
+        prefix = match.group(1) if match else None
+        if prefix:
+            groups.setdefault(prefix, []).append(automation)
+            if prefix not in seen_prefixes:
+                seen_prefixes.add(prefix)
+                order.append(("group", prefix))
+        else:
+            order.append(("single", automation))
+
+    rows = []
+    group_counter = 0
+    for kind, value in order:
+        if kind == "single":
+            rows.append({"kind": "automation", "automation": value, "group_id": None})
+            continue
+        items = groups[value]
+        if len(items) < 2:
+            rows.append({"kind": "automation", "automation": items[0], "group_id": None})
+            continue
+        group_counter += 1
+        group_id = f"group-{group_counter}"
+        rows.append({"kind": "group_header", "name": value, "count": len(items), "group_id": group_id})
+        for automation in items:
+            rows.append({"kind": "automation", "automation": automation, "group_id": group_id})
+    return rows
 
 
 # מחלצת את ימי השבוע הנבחרים הן מ-request.form (MultiDict, כמה ערכים תחת אותו שם שדה -
