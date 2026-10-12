@@ -15,6 +15,7 @@
         <option value="arbox_trial_reminder" {{ 'selected' if form.get('audience_source') == 'arbox_trial_reminder' else '' }}>תזכורת לשיעור ניסיון (מתוך Arbox, אוטומטי)</option>
         <option value="arbox_churned" {{ 'selected' if form.get('audience_source') == 'arbox_churned' else '' }}>לקוחות שעזבו (מתוך Arbox, אוטומטי)</option>
         <option value="arbox_lost_leads" {{ 'selected' if form.get('audience_source') == 'arbox_lost_leads' else '' }}>מתעניינים אבודים (מתוך Arbox, אוטומטי)</option>
+        <option value="arbox_converted_leads" {{ 'selected' if form.get('audience_source') == 'arbox_converted_leads' else '' }}>מתעניינים חדשים שהומרו (מתוך Arbox, אוטומטי)</option>
     </select>
 </div>
 
@@ -78,6 +79,21 @@
             בטווחים שונים (למשל 7/14/21/28 יום, כמו ב-Upgrade360) - יוצרים כמה אוטומציות
             נפרדות עם מספר ימים שונה. אפשר להשתמש ב-{{ '{full_name}' }},
             {{ '{lost_reason_name}' }} ו-{{ '{days_since}' }} בהודעה.</p>
+    </div>
+</div>
+
+<div class="automations-audience-field" data-for="arbox_converted_leads">
+    <div class="form-group">
+        <label>שעת שליחה</label>
+        <input type="time" name="time_of_day" value="{{ form.get('time_of_day', '09:00') }}">
+    </div>
+    <div class="form-group">
+        <label>כמה ימים אחרי שהליד הומר ללקוחה</label>
+        <input type="number" name="days_since" min="1" max="365" value="{{ form.get('days_since', 3) }}">
+        <p class="hint">נבדק אוטומטית כל יום - מי שהליד שלה הומר ללקוחה ב-Arbox בדיוק לפני
+            כמות הימים הזו נשלפת ישירות משם, בלי רשימת נמענים ידנית. כדי לשלוח כמה הודעות
+            בטווחים שונים (למשל 3/14 יום, כמו ב-Upgrade360) - יוצרים כמה אוטומציות נפרדות
+            עם מספר ימים שונה. אפשר להשתמש ב-{{ '{full_name}' }} ו-{{ '{days_since}' }} בהודעה.</p>
     </div>
 </div>
 

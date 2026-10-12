@@ -133,6 +133,12 @@ def fetch_arbox_lost_leads(api_key, from_date, to_date):
     return _fetch_arbox_report(api_key, "lostLeadsReport", from_date, to_date)
 
 
+# "דוח לידים שהומרו" - ראו _fetch_arbox_report. ההתאמה היא לפי converted_at (תאריך ההמרה
+# ללקוחה בפועל), לא created_at (תאריך יצירת הליד) - מאומת מול ה-API עם דוגמאות אמיתיות
+def fetch_arbox_converted_leads(api_key, from_date, to_date):
+    return _fetch_arbox_report(api_key, "convertedLeadReport", from_date, to_date)
+
+
 # מושכת את לוח השיעורים האמיתי מ-Arbox (עם pagination) בין שני תאריכים - שם שיעור,
 # תאריך/שעה, סניף, מדריך, מקסימום משתתפים. אין ב-Arbox endpoint שחושף כמה מקומות
 # נותרו בפועל (רק את המקסימום) - ראה ה"שאלה פתוחה ל-Arbox support" בתוכנית

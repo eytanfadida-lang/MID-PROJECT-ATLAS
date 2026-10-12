@@ -551,6 +551,38 @@ def _resolve_lost_leads_recipients(repos, automation, now):
     return recipients, None
 
 
+# שולפת לידים שהומרו ללקוחות בדיוק לפני trigger_config["days_since"] ימים (ברירת מחדל 3,
+# תואם "מסר זה יישלח לאחר 3 ימים" ב-Upgrade360, "מסרים למתעניינים חדשים שהומרו" - שם גם 14
+# יום). ההתאמה היא לפי converted_at (לא created_at - מאומת מול ה-API), אותו דפוס בדיוק כמו
+# _resolve_churn_recipients/_resolve_lost_leads_recipients
+def _resolve_converted_leads_recipients(repos, automation, now):
+    trigger_config = automation["trigger_config"]
+    api_key = arbox_client.load_arbox_api_key()
+    if not api_key:
+        return [], "שגיאה טכנית בגישה ל-Arbox (אין מפתח API)"
+
+    days_since = trigger_config.get("days_since", 3)
+    target_date = (time_utils.utc_now_to_israel(now).date() - datetime.timedelta(days=days_since)).isoformat()
+    try:
+        leads = arbox_client.fetch_arbox_converted_leads(api_key, target_date, target_date)
+    except Exception as exc:
+        return [], f"שליפת לידים שהומרו מ-Arbox נכשלה: {exc}"
+
+    seen_phones = set()
+    recipients = []
+    for lead in leads:
+        phone = normalize_phone(lead.get("phone"))
+        if not phone or phone in seen_phones:
+            continue
+        seen_phones.add(phone)
+        recipients.append({
+            "phone": phone,
+            "full_name": lead.get("full_name") or lead.get("first_name") or "",
+            "days_since": days_since,
+        })
+    return recipients, None
+
+
 # מיפוי audience_source -> פונקציית שליפה - כל פונקציה מחזירה (recipients, error) כמו
 # _resolve_birthday_recipients/_resolve_membership_expiring_recipients למעלה. audience_source
 # שלא מופיע כאן (כולל ברירת המחדל "manual") נופל לרשימת הנמענים הידנית (automation_recipients)
@@ -562,6 +594,7 @@ _AUDIENCE_RESOLVERS = {
     "arbox_trial_reminder": _resolve_trial_reminder_recipients,
     "arbox_churned": _resolve_churn_recipients,
     "arbox_lost_leads": _resolve_lost_leads_recipients,
+    "arbox_converted_leads": _resolve_converted_leads_recipients,
 }
 
 # נחשף כדי שקוד אחר (הבלופרינט, ה-repository) יוכל לבדוק "האם זו אוטומציה עם קהל דינמי
