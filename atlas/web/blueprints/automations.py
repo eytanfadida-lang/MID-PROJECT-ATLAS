@@ -49,6 +49,44 @@ def _get_approved_templates():
 # לפי סניף, ראוי לשלוף מכאן ולא לשכפל את הרשימה
 LOCATIONS = ["קרית מוצקין", "טירת הכרמל"]
 
+# קיבוץ אוטומציות לקטגוריות בעמוד הרשימה (כל קטגוריה היא <details> מתקפל, ראו list.html) -
+# אותו רעיון כמו הקטגוריות ב-Upgrade360, לא זהה להן (שם לכל הודעה יש קטגוריה משלה ידנית,
+# כאן נגזר אוטומטית מ-audience_source/trigger_type כדי שלא נצטרך לתחזק את זה ידנית בכל
+# אוטומציה חדשה). סדר ה-dict קובע את סדר הקטגוריות בעמוד
+_CATEGORY_LABELS = {
+    "reminders": "⏰ תזכורות",
+    "retention": "💌 שימור ושיחזור לקוחות",
+    "broadcast": "📋 הודעות כלליות",
+    "manual": "📝 רשימה ידנית",
+    "immediate": "⚡ הודעות מיידיות (מבוססות אירוע)",
+}
+_REMINDER_AUDIENCE_SOURCES = (
+    "arbox_birthday", "arbox_membership_expiring", "arbox_expiring_sessions", "arbox_trial_reminder",
+)
+_RETENTION_AUDIENCE_SOURCES = ("arbox_churned", "arbox_lost_leads", "arbox_converted_leads")
+
+
+def _automation_category(automation):
+    if automation["trigger_type"] != "scheduled":
+        return "immediate"
+    audience_source = automation["trigger_config"].get("audience_source")
+    if audience_source in _REMINDER_AUDIENCE_SOURCES:
+        return "reminders"
+    if audience_source in _RETENTION_AUDIENCE_SOURCES:
+        return "retention"
+    if audience_source == "arbox_active_members":
+        return "broadcast"
+    return "manual"
+
+
+# מקבצת אוטומציות לקטגוריות לפי _automation_category, בסדר הקבוע ב-_CATEGORY_LABELS -
+# מחזירה רק קטגוריות שיש בהן בפועל אוטומציה אחת לפחות (לא מציגים קטגוריות ריקות)
+def _group_by_category(automations):
+    grouped = {key: [] for key in _CATEGORY_LABELS}
+    for automation in automations:
+        grouped[_automation_category(automation)].append(automation)
+    return {key: items for key, items in grouped.items() if items}
+
 
 # מחלצת את ימי השבוע הנבחרים הן מ-request.form (MultiDict, כמה ערכים תחת אותו שם שדה -
 # "weekdays") והן מ-trigger_config שכבר נשמר ב-DB (dict רגיל, כבר שמור כרשימת int) - כדי
@@ -312,7 +350,8 @@ def list_automations():
             repos.automations.get_step_history(automation["steps"][0]["id"]) if automation["steps"] else []
         )
     return render_template(
-        "automations/list.html", automations=automations, weekday_labels=_WEEKDAY_LABELS,
+        "automations/list.html", grouped_automations=_group_by_category(automations),
+        category_labels=_CATEGORY_LABELS, weekday_labels=_WEEKDAY_LABELS,
         membership_types=repos.arbox_member_cache.get_distinct_membership_types(), locations=LOCATIONS,
         approved_templates=_get_approved_templates(),
     )

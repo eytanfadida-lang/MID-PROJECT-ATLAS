@@ -876,6 +876,43 @@ label {
     background: #fff;
 }
 
+/* קטגוריות מתקפלות בעמוד האוטומציות (reminders/retention/broadcast/manual/immediate, ראו
+   _automation_category בבלופרינט) - מכווצות כברירת מחדל, נפתחות בלחיצה על הכותרת */
+.automations-category {
+    margin-bottom: 16px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.automations-category summary {
+    cursor: pointer;
+    padding: 12px 16px;
+    font-weight: 700;
+    font-size: 15px;
+    background: linear-gradient(90deg, #f8fafc 0%, #f1f5f9 100%);
+    list-style: none;
+}
+
+.automations-category summary::-webkit-details-marker {
+    display: none;
+}
+
+.automations-category summary::before {
+    content: "▸";
+    display: inline-block;
+    margin-inline-end: 8px;
+    transition: transform 0.15s ease;
+}
+
+.automations-category[open] summary::before {
+    transform: rotate(90deg);
+}
+
+.automations-category .automations-table {
+    margin: 0;
+}
+
 /* עמוד תבניות וואטסאפ - אותו תיקון בדיוק כמו automations-schedule-summary: בלי זה, תוכן
    תבנית ארוך (יכול להיות כמה שורות אצל תבניות שיווקיות ישנות) מתרחב כשורה אחת בלי גבול
    ועובר את רוחב העמוד, במקום להיעטף בתוך העמודה שלו */

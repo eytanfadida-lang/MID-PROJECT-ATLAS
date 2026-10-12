@@ -9,7 +9,10 @@
     <a href="{{ url_for('whatsapp_templates.list_templates') }}" class="btn">תבניות וואטסאפ</a>
 </div>
 
-{% if automations %}
+{% if grouped_automations %}
+{% for category_key, items in grouped_automations.items() %}
+<details class="automations-category">
+    <summary>{{ category_labels.get(category_key, category_key) }} ({{ items|length }})</summary>
 <table class="automations-table">
     <thead>
         <tr>
@@ -24,7 +27,7 @@
         </tr>
     </thead>
     <tbody>
-        {% for a in automations %}
+        {% for a in items %}
         <tr id="automation-{{ a.id }}">
             <td>{{ a.name }}</td>
             <td class="automations-schedule-summary">
@@ -200,16 +203,24 @@
         {% endfor %}
     </tbody>
 </table>
+</details>
+{% endfor %}
 {% else %}
 <p class="empty-state">אין עדיין אוטומציות.</p>
 {% endif %}
 
 <script>
-// פותחת אוטומטית את שורת הפירוט של האוטומציה שחזרנו אליה אחרי שמירה (ראו _back_to_list בבלופרינט)
+// פותחת אוטומטית את קטגורית האוטומציה (details מתקפל) ואת שורת הפירוט שלה שחזרנו אליה
+// אחרי שמירה (ראו _back_to_list בבלופרינט) - בלי לפתוח את ה-<details> ההורה, שורת הפירוט
+// נשארת hidden=false אבל בלתי נראית בפועל
 if (window.location.hash && window.location.hash.startsWith('#automation-')) {
     var detailsRow = document.getElementById('details-' + window.location.hash.replace('#automation-', ''));
     if (detailsRow) {
         detailsRow.hidden = false;
+        var categoryDetails = detailsRow.closest('details.automations-category');
+        if (categoryDetails) {
+            categoryDetails.open = true;
+        }
     }
 }
 </script>
