@@ -1,5 +1,6 @@
 import hashlib
 import hmac
+import time
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -228,6 +229,35 @@ def create_message_template(config, name, category, language_code, body_text, bo
     )
     response.raise_for_status()
     return response.json()
+
+
+# קאש פנים-תהליכי של גוף תבנית (name -> (body_text, נשלף-מתי)) - נדרש כי get_template_body_text
+# נקראת פעם אחת לכל due_action שנשלח דרך תבנית (ראו _send_template_action ב-engine.py), ובלי
+# קאש זו הייתה קריאת API חוזרת ל-Meta לכל נמענת בנפרד (62 קריאות לאותו מידע בדיוק בשידור אחד).
+# TTL קצר (לא "לנצח") כי תבניות יכולות להתווסף/להשתנות; רענון אחד מרענן את כל התבניות ביחד
+_TEMPLATE_BODY_CACHE = {}
+_TEMPLATE_BODY_CACHE_TTL_SECONDS = 300
+
+
+# מחזירה את טקסט ה-BODY הגולמי (עם {{1}},{{2}} וכו', לא מוחלף) של תבנית מאושרת לפי שם, או
+# None אם לא נמצאה/קריאת Meta נכשלה (קוראים אז נופלים חזרה לייצוג פשוט יותר, לא קורסים)
+def get_template_body_text(config, template_name):
+    now = time.time()
+    cached = _TEMPLATE_BODY_CACHE.get(template_name)
+    if cached and (now - cached[1]) < _TEMPLATE_BODY_CACHE_TTL_SECONDS:
+        return cached[0]
+    try:
+        templates = list_message_templates(config)
+    except Exception:
+        return cached[0] if cached else None
+    refreshed_at = time.time()
+    for template in templates:
+        body_text = next(
+            (c.get("text", "") for c in template.get("components", []) if c.get("type") == "BODY"), ""
+        )
+        _TEMPLATE_BODY_CACHE[template.get("name")] = (body_text, refreshed_at)
+    cached = _TEMPLATE_BODY_CACHE.get(template_name)
+    return cached[0] if cached else None
 
 
 # מפענחת הודעה נכנסת אחת מ-payload של webhook, מכל סוג (לא רק טקסט) - כדי שאפשר

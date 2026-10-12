@@ -2,6 +2,7 @@ import datetime
 
 from atlas.integrations.arbox import client as arbox_client
 from atlas.integrations.whatsapp import bot as whatsapp_bot
+from atlas.integrations.whatsapp import customer_assistant
 from atlas.services import time_utils
 from atlas.services.phone_utils import normalize_phone, to_whatsapp_format
 
@@ -96,6 +97,34 @@ def process_due_action(repos, due_action):
 
 # מצב "טקסט חופשי" (ברירת המחדל, ראו _AUDIENCE_RESOLVERS/update_step) - כפוף לחלון 24
 # השעות (ראו _is_within_whatsapp_window) כי אין תבנית מאושרת שעוקפת אותו
+# רושמת את מה שבאמת נשלחה ללקוחה בזיכרון השיחה של הבוט (customer_assistant, לא רק ביומן
+# automation_executions/customer_bot_messages הקיימים - שני אלה לא משפיעים על מה שה-LLM
+# "זוכר") - כדי שאם הלקוחה תגיב, לבוט יהיה הקשר על מה היא בכלל מגיבה. עטופה ב-try כי זו
+# תוספת "נחמד שיהיה" - כישלון כאן לא אמור להפוך שליחה שכבר הצליחה בפועל ל"נכשלה"
+def _remember_outgoing_for_bot(phone, text):
+    try:
+        customer_assistant.append_outgoing_message(phone, text)
+    except Exception as exc:
+        print(f"[automations] עדכון זיכרון הבוט נכשל (לא קריטי): {exc}", flush=True)
+
+
+# ממלאת את {{1}},{{2}} וכו' בגוף התבנית האמיתי (נשלף/מקושש מ-Meta, ראו whatsapp_bot.
+# get_template_body_text) כדי שגם יומן ההרצות/עמוד השיחות וגם זיכרון הבוט יראו את הטקסט
+# הקריא בפועל שהלקוחה קיבלה - לא רק "[תבנית: שם]" חסר משמעות. נופלת ל-fallback (הייצוג
+# הישן) אם שליפת גוף התבנית נכשלה, לא קורסת
+def _render_template_body_for_log(template_name, params, fallback):
+    try:
+        body_text = whatsapp_bot.get_template_body_text(whatsapp_bot.CUSTOMER_BOT, template_name)
+    except Exception:
+        body_text = None
+    if not body_text:
+        return fallback
+    rendered = body_text
+    for index, value in enumerate(params, start=1):
+        rendered = rendered.replace("{{" + str(index) + "}}", value)
+    return rendered
+
+
 def _send_text_action(repos, due_action, action_config):
     try:
         body = action_config.get("text_template", "").format(**due_action["context"])
@@ -136,6 +165,7 @@ def _send_text_action(repos, due_action, action_config):
         CHANNEL_WHATSAPP_CLOUD_API, body, due_action_id=due_action["id"],
     )
     repos.customer_bot_messages.log(due_action["target_phone"], "out", body)
+    _remember_outgoing_for_bot(due_action["target_phone"], body)
 
 
 # מצב "תבנית מאושרת" - ראו update_step_template ב-automation_repository.py. ללא בדיקת
@@ -172,13 +202,15 @@ def _send_template_action(repos, due_action, action_config):
         )
         return
 
-    log_body = f"[תבנית: {template_name}] " + " | ".join(params) if params else f"[תבנית: {template_name}]"
+    fallback_log_body = f"[תבנית: {template_name}] " + " | ".join(params) if params else f"[תבנית: {template_name}]"
+    log_body = _render_template_body_for_log(template_name, params, fallback_log_body)
     repos.automations.mark_sent(due_action["id"])
     repos.automations.log_execution(
         due_action["automation_id"], due_action["target_phone"], "success",
         CHANNEL_WHATSAPP_CLOUD_API, log_body, due_action_id=due_action["id"],
     )
     repos.customer_bot_messages.log(due_action["target_phone"], "out", log_body)
+    _remember_outgoing_for_bot(due_action["target_phone"], log_body)
 
 
 # נקראת מ-/tasks/automations-run (cron חיצוני, GitHub Actions - אין thread רקע בפרודקשן,

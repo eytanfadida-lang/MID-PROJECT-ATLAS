@@ -51,6 +51,19 @@ def _append_history(phone, user_text, assistant_text):
     _save_all_conversations(conversations)
 
 
+# מוסיפה "תור מודל" בודד (בלי "תור משתמש" לפניו) להיסטוריית השיחה - לשימוש כשאנחנו יוזמות
+# הודעה (אוטומציה, לא תגובה לשאלה של הלקוחה - ראו atlas/automations/engine.py) כדי שאם
+# הלקוחה תגיב, לבוט יהיה הקשר על מה היא בכלל מגיבה. בלי זה, תגובה כמו "כן מעוניינת" הייתה
+# מגיעה לבוט בלי שום רמז למה היא מתייחסת - אותו אחסון בדיוק כמו _append_history (קובץ/
+# פורמט זהים), רק בלי לקרוא ל-LLM כמובן (זו לא שאלה-תשובה, רק תיעוד שההודעה נשלחה)
+def append_outgoing_message(phone, text):
+    conversations = _load_all_conversations()
+    history = conversations.get(phone, [])
+    history.append({"role": "model", "parts": [{"text": text}]})
+    conversations[phone] = history[-(MAX_HISTORY_TURNS * 2):]
+    _save_all_conversations(conversations)
+
+
 # טוענת את bot_content/business_info.md ומסירה ממנה שני דברים שלא מיועדים למודל:
 # (1) בלוק הוראות המילוי בראש הקובץ (עד ה--- הראשון) - מיועד לבן אדם שממלא את הקובץ
 # (2) placeholders בסגנון <<...>> שעדיין לא מולאו - כדי שהמודל לא "יראה" תחביר מקום-שמור
