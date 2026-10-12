@@ -939,6 +939,42 @@ label {
     padding-inline-start: 28px;
 }
 
+/* לשוניות בפאנל הפירוט של אוטומציה (הודעה/תזמון/נמענים/הרצות אחרונות) - במקום לערום את כל
+   הסעיפים זה מתחת לזה (היה תופס המון גובה), מציגים סעיף אחד בכל פעם. ראו automationsSwitchTab
+   ב-list.html. דפוס לשוניות רגיל, לא <details> - כי צריך לזכור "מי פעילה" בין כל הלשוניות יחד */
+.automations-tab-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    border-bottom: 2px solid var(--border);
+    margin-bottom: 16px;
+}
+
+.automations-tab-btn {
+    padding: 8px 16px;
+    border: none;
+    background: none;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-muted, #64748b);
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+}
+
+.automations-tab-btn:hover {
+    color: var(--primary);
+}
+
+.automations-tab-btn.active {
+    color: var(--primary);
+    border-bottom-color: var(--primary);
+}
+
+.automations-tab-panel .form-card {
+    margin-top: 0;
+}
+
 /* עמוד תבניות וואטסאפ - אותו תיקון בדיוק כמו automations-schedule-summary: בלי זה, תוכן
    תבנית ארוך (יכול להיות כמה שורות אצל תבניות שיווקיות ישנות) מתרחב כשורה אחת בלי גבול
    ועובר את רוחב העמוד, במקום להיעטף בתוך העמודה שלו */
