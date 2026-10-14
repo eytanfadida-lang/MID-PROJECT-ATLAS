@@ -11,6 +11,34 @@ LOCATION_MAP_FILE = secret("arbox_location_map.json")
 PAGE_LIMIT = 500
 
 
+# שולפת הודעת שגיאה קריאה מתגובת שגיאה של Arbox, לדיווח אמיתי ללקוח/ה (למשל ב-book_trial_class
+# ב-customer_assistant.py) - במקום לנחש "כנראה השיעור מלא" לכל כישלון, בלי קשר לסיבה האמיתית
+# (מאומת: תגובת שגיאה אמיתית מ-Arbox נראית כמו {"error": {"message": {"user_id": ["..."]} או מחרוזת}}).
+# error.message יכול להיות dict (שדה -> רשימת שגיאות, כמו בדיקת טופס) או מחרוזת פשוטה - מטפלת בשניהם.
+# נופלת חזרה לטקסט הגולמי של התגובה אם הצורה שונה/לא-JSON בכלל, כדי שלעולם לא "נבלע" מידע
+def extract_arbox_error_message(response):
+    try:
+        body = response.json()
+    except ValueError:
+        return (response.text or "").strip() or f"שגיאה לא ידועה (קוד {response.status_code})"
+
+    error = body.get("error") if isinstance(body, dict) else None
+    message = error.get("message") if isinstance(error, dict) else None
+    if isinstance(message, dict):
+        parts = []
+        for field, field_errors in message.items():
+            if isinstance(field_errors, list):
+                parts.append(f"{field}: {', '.join(str(e) for e in field_errors)}")
+            else:
+                parts.append(f"{field}: {field_errors}")
+        if parts:
+            return " | ".join(parts)
+    elif isinstance(message, str) and message.strip():
+        return message.strip()
+
+    return (response.text or "").strip() or f"שגיאה לא ידועה (קוד {response.status_code})"
+
+
 # קוראת את מפתח ה-API של Arbox מקובץ מקומי (לא נכנס לגיט); מחזירה None אם הקובץ חסר/ריק
 def load_arbox_api_key():
     if not API_KEY_FILE.exists():

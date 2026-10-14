@@ -110,7 +110,8 @@ SYSTEM_PROMPT_TEMPLATE = """את/ה העוזר/ת הדיגיטלי/ת של הע�
   - **יש לו מנוי פעיל** (get_my_membership החזיר found=true, active=true) → book_class.
   - **אין לו מנוי** (לקוחה חדשה/שיעור ניסיון) → book_trial_class, עם full_name של הלקוח.
     אם היא עדיין לא קיימת ב-Arbox, ייווצר עבורה ליד חדש אוטומטית - זה תקין ומצופה.
-- אם success=false (במנוי או בניסיון) - זה בדרך כלל אומר שהשיעור מלא או שאין מנוי מתאים.
+- אם success=false (במנוי או בניסיון) - שדה reason מכיל את הסיבה האמיתית שחזרה מהמערכת (לא
+  תמיד "מלא" - יכולה להיות כל סיבה). אל תניחי שהשיעור מלא אם זה לא מה שכתוב ב-reason בפועל.
   הפני מיד ל-request_human_callback, אל תנסי שוב עם schedule_id אחר בלי לשאול את הלקוח.
 - לביטול: cancel_class_booking (למנוי פעיל) או cancel_trial_class (לשיעור ניסיון), עם אותו schedule_id.
 - אחרי רישום מוצלח, חזרי על שם השיעור, התאריך, השעה והסניף לאישור.
@@ -233,7 +234,7 @@ TOOL_DECLARATIONS = [
         "name": "book_trial_class",
         "description": "רושמת את הלקוח שכותב כרגע לשיעור ניסיון - לא דורש מנוי קיים, מיועד למתעניינות "
         "חדשות. אם הלקוח לא קיים עדיין ב-Arbox, נוצרת עבורו רשומת ליד חדשה אוטומטית. "
-        "אם success=false כי השיעור מלא/נכשל, יש להעביר ל-request_human_callback.",
+        "אם success=false, שדה reason מכיל את הסיבה האמיתית - יש להעביר ל-request_human_callback.",
         "parameters": {
             "type": "object",
             "properties": {
@@ -324,7 +325,9 @@ def _build_tool_executors(repos, caller_phone, last_user_text):
         )
         if response.status_code == 200:
             return {"success": True}
-        return {"success": False, "reason": f"Arbox החזירה שגיאה ({response.status_code})"}
+        error_detail = arbox_client.extract_arbox_error_message(response)
+        print(f"[customer_assistant] book_class failed ({response.status_code}): {error_detail}", flush=True)
+        return {"success": False, "reason": f"Arbox החזירה שגיאה: {error_detail}"}
 
     def cancel_class_booking(schedule_id):
         member = repos.arbox_member_cache.get_by_phone(caller_phone)
@@ -338,7 +341,9 @@ def _build_tool_executors(repos, caller_phone, last_user_text):
         response = arbox_client.cancel_arbox_booking(api_key, member["user_id"], schedule_id)
         if response.status_code == 200:
             return {"success": True}
-        return {"success": False, "reason": f"Arbox החזירה שגיאה ({response.status_code})"}
+        error_detail = arbox_client.extract_arbox_error_message(response)
+        print(f"[customer_assistant] cancel_class_booking failed ({response.status_code}): {error_detail}", flush=True)
+        return {"success": False, "reason": f"Arbox החזירה שגיאה: {error_detail}"}
 
     # מוצאת/יוצרת את ה-user_id של הלקוח שכותב כרגע ב-Arbox - קודם מחפשת אם הוא כבר
     # קיים שם (בלי קשר לקאש המקומי, שמכיל רק לקוחות פעילים/לא-פעילים, לא לידים
@@ -381,7 +386,9 @@ def _build_tool_executors(repos, caller_phone, last_user_text):
             except Exception as exc:
                 print(f"[customer_assistant] trial_booked automation failed: {exc}", flush=True)
             return {"success": True}
-        return {"success": False, "reason": f"Arbox החזירה שגיאה ({response.status_code}) - כנראה השיעור מלא"}
+        error_detail = arbox_client.extract_arbox_error_message(response)
+        print(f"[customer_assistant] book_trial_class failed ({response.status_code}): {error_detail}", flush=True)
+        return {"success": False, "reason": f"Arbox החזירה שגיאה: {error_detail}"}
 
     def cancel_trial_class(schedule_id):
         api_key = arbox_client.load_arbox_api_key()
@@ -395,7 +402,9 @@ def _build_tool_executors(repos, caller_phone, last_user_text):
         response = arbox_client.cancel_arbox_trial(api_key, user_id, schedule_id)
         if response.status_code == 200:
             return {"success": True}
-        return {"success": False, "reason": f"Arbox החזירה שגיאה ({response.status_code})"}
+        error_detail = arbox_client.extract_arbox_error_message(response)
+        print(f"[customer_assistant] cancel_trial_class failed ({response.status_code}): {error_detail}", flush=True)
+        return {"success": False, "reason": f"Arbox החזירה שגיאה: {error_detail}"}
 
     def leave_my_details(full_name):
         statuses = repos.lead_statuses.get_names()
