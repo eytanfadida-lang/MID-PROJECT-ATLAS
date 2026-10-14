@@ -170,6 +170,14 @@
                         </div>
                         <button type="submit" class="btn">הוספת נמען</button>
                     </form>
+                    <form method="post" action="{{ url_for('automations.import_recipients', automation_id=a.id) }}" class="form-card" enctype="multipart/form-data">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                        <div class="form-group">
+                            <label>או ייבוא מקובץ (CSV/Excel, עמודות "שם מלא" ו"טלפון")</label>
+                            <input type="file" name="file" accept=".csv,.xlsx,.xls" required>
+                        </div>
+                        <button type="submit" class="btn">ייבוא מקובץ</button>
+                    </form>
                     {% if a.recipients %}
                     <table>
                         <thead><tr><th>טלפון</th><th>שם</th><th></th></tr></thead>

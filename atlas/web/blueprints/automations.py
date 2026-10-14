@@ -6,6 +6,7 @@ from atlas.data.context import get_repos
 from atlas.core.auth import admin_required
 from atlas.automations.engine import SCHEDULE_TYPES, DYNAMIC_AUDIENCE_SOURCES
 from atlas.integrations.whatsapp import bot as whatsapp_bot
+from atlas.services.automation_recipient_bulk_import import import_recipients_from_file
 
 # עמוד ניהול למנוע האוטומציות (ראו atlas/automations/engine.py) - טבלה אחת מאוחדת (לא
 # רשימה+עמוד פרטים נפרד): כל שורה כוללת עריכת תוכן/תזמון/נמענים inline (מורחבת/מוסתרת
@@ -481,6 +482,42 @@ def add_recipient(automation_id):
 
     repos.automations.add_recipient(automation_id, phone, full_name)
     flash("הנמען נוסף בהצלחה.", "success")
+    return _back_to_list(automation_id)
+
+
+# ייבוא נמענים בכמות מקובץ CSV/Excel (עמודות "שם מלא"/"טלפון", או full_name/phone) - אותו
+# דפוס בדיוק כמו ייבוא לידים (leads.py), ראו atlas/services/automation_recipient_bulk_import.py
+@bp.route("/<int:automation_id>/recipients/import", methods=["POST"])
+@admin_required
+def import_recipients(automation_id):
+    repos = get_repos()
+    automation = repos.automations.get_by_id(automation_id)
+    if automation is None or automation["trigger_type"] != "scheduled":
+        abort(404)
+
+    uploaded_file = request.files.get("file")
+    if not uploaded_file or not uploaded_file.filename:
+        flash("יש לבחור קובץ.", "error")
+        return _back_to_list(automation_id)
+
+    if not uploaded_file.filename.lower().endswith((".csv", ".xlsx", ".xls")):
+        flash("סוג קובץ לא נתמך. יש להעלות CSV או Excel (.xlsx).", "error")
+        return _back_to_list(automation_id)
+
+    try:
+        result = import_recipients_from_file(uploaded_file, repos, automation_id)
+    except Exception as exc:
+        flash(f"שגיאה בקריאת הקובץ: {exc}", "error")
+        return _back_to_list(automation_id)
+
+    if "error" in result:
+        flash(result["error"], "error")
+        return _back_to_list(automation_id)
+
+    flash(f"יובאו {result['created']} נמענים מתוך {result['total_rows']} שורות בקובץ.", "success")
+    for message in result["skipped"][:10]:
+        flash(message, "error")
+
     return _back_to_list(automation_id)
 
 
