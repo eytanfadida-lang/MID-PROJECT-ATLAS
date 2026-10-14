@@ -67,6 +67,9 @@ def list_conversations():
 @admin_required
 def view_conversation(phone):
     repos = get_repos()
+    # לסמן כ"נקרא" לפני שמביאים את רשימת השיחות - כדי שהשיחה הנוכחית כבר תוצג כנקראת
+    # ברשימה בצד, בלי לחכות לרענון הבא
+    repos.customer_bot_messages.mark_read(phone)
     conversations = _with_names(
         _with_number_labels(repos.customer_bot_messages.get_conversation_summaries()), repos
     )

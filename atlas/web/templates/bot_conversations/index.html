@@ -8,14 +8,17 @@
         {% if conversations %}
             {% for c in conversations %}
             <a href="{{ url_for('bot_conversations.view_conversation', phone=c.phone) }}"
-               class="chat-list-item {{ 'active' if c.phone == active_phone else '' }}">
+               class="chat-list-item {{ 'active' if c.phone == active_phone else '' }} {{ 'chat-list-item-unread' if c.unread else '' }}">
                 <div class="chat-list-avatar">👤</div>
                 <div class="chat-list-info">
                     <div class="chat-list-top">
                         <span class="chat-list-name">{{ c.full_name or c.phone }}</span>
                         <span class="chat-list-time">{{ c.last_message_at | format_lead_datetime }}</span>
                     </div>
-                    <div class="chat-list-preview">{{ c.last_message_body }}</div>
+                    <div class="chat-list-preview">
+                        <span class="chat-list-preview-text">{{ c.last_message_body }}</span>
+                        {% if c.unread %}<span class="chat-unread-dot" title="הודעה חדשה שלא נקראה"></span>{% endif %}
+                    </div>
                     <div class="chat-list-number">
                         📞 {{ c.phone }} · {{ c.bot_phone_label }}
                         {% if c.debt and c.debt not in ('0', '0.0', '0.00') %}<span class="badge badge-red">חוב {{ c.debt }}</span>{% endif %}

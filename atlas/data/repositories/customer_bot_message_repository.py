@@ -39,17 +39,22 @@ class CustomerBotMessageRepository:
         self.conn.commit()
 
     # מחזירה סיכום שיחה אחת לכל מספר טלפון (ההודעה האחרונה + כמה הודעות בסך הכל),
-    # החדש ביותר קודם - למסך הרשימה בממשק הניהול
+    # החדש ביותר קודם - למסך הרשימה בממשק הניהול. "unread" (כמו בוואטסאפ עצמו) - יש
+    # הודעה חדשה (לפי id, לא timestamp - ראו mark_read) מאז שהשיחה נפתחה לאחרונה, ולא רק
+    # הודעות נכנסות - גם תגובה ידנית/אוטומטית שלנו "סופרת" כנקראת כי שלחנו אותה ביודעין
     def get_conversation_summaries(self):
         rows = self.conn.execute(f"""
             SELECT phone,
                    COUNT(*) AS message_count,
                    MAX(created_at) AS last_message_at,
+                   MAX(id) AS last_message_id,
                    (SELECT body FROM {TABLE_NAME} m2
                     WHERE m2.phone = m1.phone ORDER BY m2.id DESC LIMIT 1) AS last_message_body,
                    (SELECT bot_phone_number_id FROM {TABLE_NAME} m3
                     WHERE m3.phone = m1.phone AND m3.bot_phone_number_id IS NOT NULL
-                    ORDER BY m3.id DESC LIMIT 1) AS bot_phone_number_id
+                    ORDER BY m3.id DESC LIMIT 1) AS bot_phone_number_id,
+                   (SELECT last_read_message_id FROM bot_conversation_read_state r
+                    WHERE r.phone = m1.phone) AS last_read_message_id
             FROM {TABLE_NAME} m1
             GROUP BY phone
             ORDER BY last_message_at DESC
@@ -59,11 +64,28 @@ class CustomerBotMessageRepository:
                 "phone": row[0],
                 "message_count": row[1],
                 "last_message_at": row[2],
-                "last_message_body": row[3],
-                "bot_phone_number_id": row[4],
+                "last_message_body": row[4],
+                "bot_phone_number_id": row[5],
+                "unread": row[6] is None or row[6] < row[3],
             }
             for row in rows
         ]
+
+    # קוראת לשיחה - נקראת כשהמנהלת פותחת אותה (ראו bot_conversations.view_conversation).
+    # upsert ידני (לא ON CONFLICT) כדי להישאר תואם לגרסאות sqlite ישנות שכבר בשימוש בפרויקט.
+    # שקטה (לא זורקת) אם אין עדיין הודעות לטלפון הזה - פשוט לא עושה כלום
+    def mark_read(self, phone):
+        last_id = self.conn.execute(
+            f"SELECT MAX(id) FROM {TABLE_NAME} WHERE phone = ?", (phone,)
+        ).fetchone()[0]
+        if last_id is None:
+            return
+        self.conn.execute("DELETE FROM bot_conversation_read_state WHERE phone = ?", (phone,))
+        self.conn.execute(
+            "INSERT INTO bot_conversation_read_state (phone, last_read_message_id) VALUES (?, ?)",
+            (phone, last_id),
+        )
+        self.conn.commit()
 
     def get_by_phone(self, phone):
         rows = self.conn.execute(

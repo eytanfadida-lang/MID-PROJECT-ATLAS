@@ -1374,12 +1374,39 @@ body.dark .chat-app-empty {
 }
 
 .chat-list-preview {
+    display: flex;
+    align-items: center;
+    gap: 6px;
     font-size: 13px;
     color: var(--muted);
+    margin-top: 2px;
+}
+
+.chat-list-preview-text {
+    flex: 1;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    margin-top: 2px;
+    min-width: 0;
+}
+
+/* שיחה עם הודעה חדשה שלא נקראה - כמו בוואטסאפ: שם מודגש + נקודה ירוקה */
+.chat-list-item-unread .chat-list-name {
+    font-weight: 800;
+    color: var(--text);
+}
+
+.chat-list-item-unread .chat-list-preview-text {
+    color: var(--text);
+    font-weight: 600;
+}
+
+.chat-unread-dot {
+    flex-shrink: 0;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #25d366;
 }
 
 .chat-list-number {

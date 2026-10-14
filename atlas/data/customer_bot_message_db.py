@@ -26,6 +26,15 @@ class CustomerBotMessageDB:
             "CREATE INDEX IF NOT EXISTS idx_customer_bot_messages_phone ON customer_bot_messages(phone)"
         )
         self._ensure_columns(conn)
+        # עד איזו הודעה (לפי id, לא timestamp - נמנעים מתיקו אם קריאה והודעה חדשה קורות
+        # באותה שנייה ממש) מנהלת העסק כבר ראתה בכל שיחה - לסימון "לא נקרא" ברשימת השיחות
+        # (ראו get_conversation_summaries/mark_read) - שורה אחת לכל טלפון, לא יומן
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS bot_conversation_read_state (
+                phone TEXT PRIMARY KEY,
+                last_read_message_id INTEGER NOT NULL
+            )
+        """)
         return conn
 
     # מיגרציה קלה: מוסיפה עמודות חדשות אם עוד לא קיימות -
