@@ -565,6 +565,14 @@ def whatsapp_customer_webhook():
         return jsonify({"status": "ok", "reason": f"{message_type}_received"})
 
     if message_type != "text":
+        # תגובת אימוג'י (❤️/👍 וכו' על הודעה קודמת) - לא "הודעה" שדורשת מענה, רק מתעדים
+        # לנראות בשיחה (כמו בוואטסאפ עצמו) ולא שולחים את הפולבק "אני לא קולטת טקסט"
+        if message_type == "reaction":
+            repos.customer_bot_messages.log(
+                caller_phone, "in", "[תגובת אימוג'י (reaction)]", reply_phone_number_id
+            )
+            return jsonify({"status": "ignored", "reason": "reaction"})
+
         fallback_text = "אני יכול לקרוא כרגע רק הודעות טקסט - אפשר לכתוב לי? 🙏"
         repos.customer_bot_messages.log(
             caller_phone, "in", f"[הודעה לא-טקסטואלית: {message_type}]", reply_phone_number_id
