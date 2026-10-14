@@ -125,6 +125,38 @@ def trigger_automations_run():
     return jsonify(result)
 
 
+# טוקן נפרד (לא automations_run/arbox_sync - לא רוצים שאותו טוקן ששרת cron חיצוני מחזיק
+# יוכל גם לשנות הגדרות) להפעלה/כיבוי אוטומציה בודדת מרחוק - נקודת קצה ממוקדת בכוונה (לא
+# "הרץ כל פקודה"), כדי לאפשר תחזוקה בלי תלות בסשן דפדפן מחובר (ראו השיחה עם אפרת)
+AUTOMATION_ADMIN_TOKEN_FILE = secret(".automation_admin_token")
+
+
+def load_automation_admin_token():
+    if not AUTOMATION_ADMIN_TOKEN_FILE.exists():
+        return None
+    token = AUTOMATION_ADMIN_TOKEN_FILE.read_text().strip()
+    return token or None
+
+
+# מהפכת enabled (פעיל/כבוי) לאוטומציה בודדת - אותה פעולה בדיוק כמו המתג בממשק הניהול
+# (ראו atlas/web/blueprints/automations.py, toggle_enabled), רק נגישה דרך HTTP+טוקן
+@bp.route("/automation-toggle/<int:automation_id>", methods=["POST"])
+def trigger_automation_toggle(automation_id):
+    expected_token = load_automation_admin_token()
+    provided_token = request.args.get("token", "")
+    if not expected_token or not secrets.compare_digest(provided_token, expected_token):
+        abort(403)
+
+    repos = db_context.get_repos()
+    automation = repos.automations.get_by_id(automation_id)
+    if not automation:
+        return jsonify({"status": "not_found"}), 404
+
+    repos.automations.toggle_enabled(automation_id)
+    updated = repos.automations.get_by_id(automation_id)
+    return jsonify({"status": "ok", "automation_id": automation_id, "enabled": bool(updated["enabled"])})
+
+
 # כמו trigger_arbox_sync, אבל מקבלת את רשימת משתמשי Arbox כבר-מוכנה ב-body (POST),
 # בלי לגשת בעצמה ל-Arbox. מיועדת לסביבות אירוח שחוסמות גישה יוצאת לדומיין של Arbox -
 # GitHub Actions (או כל מקום עם גישה פתוחה) מושך מ-Arbox ודוחף לכאן

@@ -230,6 +230,9 @@ arbox_location_map.json
 
 # Arbox webhook receiver token (ראו atlas/web/webhooks.py /tasks/arbox-webhook/<event>)
 .arbox_webhook_token
+
+# Automation admin token (הפעלה/כיבוי אוטומציה מרחוק - ראו atlas/web/webhooks.py /tasks/automation-toggle/<id>)
+.automation_admin_token
 .google_leads_webhook_key
 .landing_page_token
 .last_landing_page_payload.json
