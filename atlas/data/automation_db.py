@@ -19,6 +19,18 @@ _DEFAULT_ARBOX_TRIAL_CLASS_TEXT_TEMPLATE = (
     "{date} בשעה {time}, {location_name}. מחכים לך!"
 )
 
+# מצב תבנית מאושרת (לא טקסט חופשי) - כי האוטומציה הזו יורה גם על הזמנות שהצוות מזין ישירות
+# ב-Arbox בלי שום אינטראקציה עם הבוט, כך שהלקוחה כמעט תמיד **מחוץ** לחלון 24 השעות (ראו
+# _is_within_whatsapp_window) - טקסט חופשי פשוט לא היה נשלח במקרים האלה. "trial_class_confirmed"
+# הוגשה לאישור מטא ב-2026-10-14 (UTILITY, לא קיימת תבנית מתאימה בין 56 התבניות הקיימות
+# מאפגרייד - כולן שיווקיות/לא קשורות) - האוטומציה נשארת כבויה עד שהיא תאושר בפועל
+_DEFAULT_ARBOX_TRIAL_CLASS_ACTION_CONFIG = {
+    "mode": "template",
+    "template_name": "trial_class_confirmed",
+    "template_language": "he",
+    "param_templates": ["{name}", "{event_name}", "{date}", "{time}", "{location_name}"],
+}
+
 
 # אחראית על החיבור למסד הנתונים ועל יצירת טבלאות מנוע האוטומציות - automations (הגדרת "מתי
 # לעשות מה"), automation_steps (הפעולות המסודרות של כל אוטומציה, עם השהייה אופציונלית),
@@ -195,15 +207,34 @@ class AutomationDB:
     # ספציפי, לא "הטבלה ריקה" כמו _seed_default_automation - כי trial_booked כבר קיימת אצל
     # רוב המשתמשים, אז הטבלה כבר לא ריקה). נזרעת **כבויה** (enabled=0) בכוונה - פעילה יחד
     # עם trial_booked תגרום לשתי הודעות אישור כשההזמנה דרך הבוט (ראו התוכנית/השיחה עם אפרת
-    # לגבי ההחלטה אם לכבות את trial_booked הישנה) - המשתמש צריך להפעיל ידנית אחרי שמחליטים
+    # לגבי ההחלטה אם לכבות את trial_booked הישנה) - המשתמש צריך להפעיל ידנית אחרי שמחליטים.
+    # אם היא כבר קיימת - מהגרת אותה ממצב טקסט (ברירת המחדל הישנה) למצב תבנית, אבל **רק** אם
+    # איש לא ערך אותה בינתיים (עדיין בדיוק הטקסט המקורי) - כדי לא לדרוס עריכה ידנית של המשתמש
     @staticmethod
     def _seed_arbox_trial_class_automation(conn):
         import datetime
 
-        exists = conn.execute(
-            "SELECT 1 FROM automations WHERE trigger_type = 'arbox_trial_class'"
+        row = conn.execute(
+            "SELECT id FROM automations WHERE trigger_type = 'arbox_trial_class'"
         ).fetchone()
-        if exists:
+        if row:
+            automation_id = row[0]
+            step_row = conn.execute(
+                "SELECT id, action_config FROM automation_steps WHERE automation_id = ?",
+                (automation_id,),
+            ).fetchone()
+            if step_row:
+                step_id, action_config_json = step_row
+                unmigrated_default = json.dumps(
+                    {"mode": "text", "text_template": _DEFAULT_ARBOX_TRIAL_CLASS_TEXT_TEMPLATE},
+                    ensure_ascii=False,
+                )
+                if action_config_json == unmigrated_default:
+                    conn.execute(
+                        "UPDATE automation_steps SET action_config = ? WHERE id = ?",
+                        (json.dumps(_DEFAULT_ARBOX_TRIAL_CLASS_ACTION_CONFIG, ensure_ascii=False), step_id),
+                    )
+                    conn.commit()
             return
         now = datetime.datetime.now().isoformat(timespec="seconds")
         cursor = conn.execute(
@@ -215,8 +246,7 @@ class AutomationDB:
         conn.execute(
             "INSERT INTO automation_steps (automation_id, step_order, delay_minutes, action_type, "
             "action_config) VALUES (?, 1, 0, 'send_whatsapp_message', ?)",
-            (automation_id,
-             json.dumps({"mode": "text", "text_template": _DEFAULT_ARBOX_TRIAL_CLASS_TEXT_TEMPLATE})),
+            (automation_id, json.dumps(_DEFAULT_ARBOX_TRIAL_CLASS_ACTION_CONFIG, ensure_ascii=False)),
         )
         conn.commit()
 
