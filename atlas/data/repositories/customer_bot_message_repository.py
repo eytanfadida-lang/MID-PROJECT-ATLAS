@@ -39,15 +39,16 @@ class CustomerBotMessageRepository:
         self.conn.commit()
 
     # מחזירה סיכום שיחה אחת לכל מספר טלפון (ההודעה האחרונה + כמה הודעות בסך הכל),
-    # החדש ביותר קודם - למסך הרשימה בממשק הניהול. "unread" (כמו בוואטסאפ עצמו) - יש
-    # הודעה חדשה (לפי id, לא timestamp - ראו mark_read) מאז שהשיחה נפתחה לאחרונה, ולא רק
-    # הודעות נכנסות - גם תגובה ידנית/אוטומטית שלנו "סופרת" כנקראת כי שלחנו אותה ביודעין
+    # החדש ביותר קודם - למסך הרשימה בממשק הניהול. "unread" - יש הודעה **נכנסת** (מהלקוחה,
+    # direction='in') חדשה (לפי id, לא timestamp - ראו mark_read) מאז שהשיחה נפתחה לאחרונה.
+    # הודעות יוצאות (תגובה ידנית/אוטומטית/אוטומציה) לא הופכות שיחה ל"לא נקראה" - זו הודעה
+    # שאנחנו שלחנו ביודעין, לא משהו שהלקוחה שלחה אלינו וטרם ראינו
     def get_conversation_summaries(self):
         rows = self.conn.execute(f"""
             SELECT phone,
                    COUNT(*) AS message_count,
                    MAX(created_at) AS last_message_at,
-                   MAX(id) AS last_message_id,
+                   MAX(CASE WHEN direction = 'in' THEN id END) AS last_incoming_message_id,
                    (SELECT body FROM {TABLE_NAME} m2
                     WHERE m2.phone = m1.phone ORDER BY m2.id DESC LIMIT 1) AS last_message_body,
                    (SELECT bot_phone_number_id FROM {TABLE_NAME} m3
@@ -66,7 +67,7 @@ class CustomerBotMessageRepository:
                 "last_message_at": row[2],
                 "last_message_body": row[4],
                 "bot_phone_number_id": row[5],
-                "unread": row[6] is None or row[6] < row[3],
+                "unread": row[3] is not None and (row[6] is None or row[6] < row[3]),
             }
             for row in rows
         ]
