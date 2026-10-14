@@ -361,12 +361,22 @@ class AutomationRepository:
         self.conn.execute("DELETE FROM automation_recipients WHERE id = ?", (recipient_id,))
         self.conn.commit()
 
+    # first_name נגזר מ-full_name (לא עמודה נפרדת ב-DB) - כדי שתבניות/טקסטים שמשתמשים
+    # ב-{first_name} (כמו שאר הקהלים הדינמיים, ראו _resolve_trial_no_show_recipients
+    # ב-engine.py) יעבדו גם לרשימה ידנית, ולא רק ב-{full_name}. מאומת בפועל: שידור אמיתי
+    # נכשל על כל 56 הנמענים עם "שגיאה ברינדור פרמטרי התבנית: 'first_name'" לפני התיקון הזה
     def get_recipients(self, automation_id):
         rows = self.conn.execute(
             "SELECT id, phone, full_name FROM automation_recipients WHERE automation_id = ? ORDER BY id",
             (automation_id,),
         ).fetchall()
-        return [{"id": row[0], "phone": row[1], "full_name": row[2]} for row in rows]
+        return [
+            {
+                "id": row[0], "phone": row[1], "full_name": row[2],
+                "first_name": (row[2].split(maxsplit=1)[0] if row[2] else ""),
+            }
+            for row in rows
+        ]
 
     # --- בלאקליסט גלובלי (משותף לכל האוטומציות המתוזמנות, לא פר-אוטומציה - ראו automation_db.py) ---
 
