@@ -227,18 +227,24 @@ class AutomationDB:
             ).fetchone()
             if step_row:
                 step_id, action_config_json = step_row
-                unmigrated_text_default = json.dumps(
-                    {"mode": "text", "text_template": _DEFAULT_ARBOX_TRIAL_CLASS_TEXT_TEMPLATE},
-                    ensure_ascii=False,
-                )
+                # משווים כ-dict מפוענח, לא כמחרוזת - ה-JSON המקורי שנשמר כאן (מהגרסה
+                # הראשונה של _seed_arbox_trial_class_automation, לפני התוספת הזו) נשמר בלי
+                # ensure_ascii=False (ברירת המחדל), אז מופיע ב-DB עם \uXXXX ולא עברית
+                # גולמית - השוואת מחרוזות ישירה מול json.dumps(..., ensure_ascii=False) החדש
+                # שלנו **אף פעם לא הייתה תואמת**, והמיגרציה לא רצה בפועל על אף התקנה קיימת
+                # (התגלה אחרי שבדקנו ישירות מול פרודקשן וראינו שהיא נשארה בלי שינוי)
+                try:
+                    current_config = json.loads(action_config_json)
+                except (ValueError, TypeError):
+                    current_config = None
+                unmigrated_text_default = {"mode": "text", "text_template": _DEFAULT_ARBOX_TRIAL_CLASS_TEXT_TEMPLATE}
                 # "trial_class_confirmed" (בלי _v2) נדחתה ע"י מטא (INVALID_FORMAT) אחרי
                 # שהמיגרציה הראשונה הזו כבר רצה על חלק מהמשתמשים - מהגרים גם אותם לגרסה
                 # החדשה, שוב רק אם איש לא ערך את הפרמטרים בינתיים
-                rejected_template_default = json.dumps(
-                    dict(_DEFAULT_ARBOX_TRIAL_CLASS_ACTION_CONFIG, template_name="trial_class_confirmed"),
-                    ensure_ascii=False,
+                rejected_template_default = dict(
+                    _DEFAULT_ARBOX_TRIAL_CLASS_ACTION_CONFIG, template_name="trial_class_confirmed"
                 )
-                if action_config_json in (unmigrated_text_default, rejected_template_default):
+                if current_config in (unmigrated_text_default, rejected_template_default):
                     conn.execute(
                         "UPDATE automation_steps SET action_config = ? WHERE id = ?",
                         (json.dumps(_DEFAULT_ARBOX_TRIAL_CLASS_ACTION_CONFIG, ensure_ascii=False), step_id),
