@@ -21,12 +21,14 @@ _DEFAULT_ARBOX_TRIAL_CLASS_TEXT_TEMPLATE = (
 
 # מצב תבנית מאושרת (לא טקסט חופשי) - כי האוטומציה הזו יורה גם על הזמנות שהצוות מזין ישירות
 # ב-Arbox בלי שום אינטראקציה עם הבוט, כך שהלקוחה כמעט תמיד **מחוץ** לחלון 24 השעות (ראו
-# _is_within_whatsapp_window) - טקסט חופשי פשוט לא היה נשלח במקרים האלה. "trial_class_confirmed"
-# הוגשה לאישור מטא ב-2026-10-14 (UTILITY, לא קיימת תבנית מתאימה בין 56 התבניות הקיימות
-# מאפגרייד - כולן שיווקיות/לא קשורות) - האוטומציה נשארת כבויה עד שהיא תאושר בפועל
+# _is_within_whatsapp_window) - טקסט חופשי פשוט לא היה נשלח במקרים האלה. לא קיימת תבנית
+# מתאימה בין 56 התבניות הקיימות מאפגרייד (כולן שיווקיות/לא קשורות). הגרסה הראשונה
+# ("trial_class_confirmed", 5 פרמטרים צמודים בלי תיוג) נדחתה ע"י מטא (INVALID_FORMAT) -
+# "trial_class_confirmed_v2" (כל שדה מתויג בשורה נפרדת) הוגשה ב-2026-10-14 במקומה - האוטומציה
+# נשארת כבויה עד שהיא תאושר בפועל
 _DEFAULT_ARBOX_TRIAL_CLASS_ACTION_CONFIG = {
     "mode": "template",
-    "template_name": "trial_class_confirmed",
+    "template_name": "trial_class_confirmed_v2",
     "template_language": "he",
     "param_templates": ["{name}", "{event_name}", "{date}", "{time}", "{location_name}"],
 }
@@ -225,11 +227,18 @@ class AutomationDB:
             ).fetchone()
             if step_row:
                 step_id, action_config_json = step_row
-                unmigrated_default = json.dumps(
+                unmigrated_text_default = json.dumps(
                     {"mode": "text", "text_template": _DEFAULT_ARBOX_TRIAL_CLASS_TEXT_TEMPLATE},
                     ensure_ascii=False,
                 )
-                if action_config_json == unmigrated_default:
+                # "trial_class_confirmed" (בלי _v2) נדחתה ע"י מטא (INVALID_FORMAT) אחרי
+                # שהמיגרציה הראשונה הזו כבר רצה על חלק מהמשתמשים - מהגרים גם אותם לגרסה
+                # החדשה, שוב רק אם איש לא ערך את הפרמטרים בינתיים
+                rejected_template_default = json.dumps(
+                    dict(_DEFAULT_ARBOX_TRIAL_CLASS_ACTION_CONFIG, template_name="trial_class_confirmed"),
+                    ensure_ascii=False,
+                )
+                if action_config_json in (unmigrated_text_default, rejected_template_default):
                     conn.execute(
                         "UPDATE automation_steps SET action_config = ? WHERE id = ?",
                         (json.dumps(_DEFAULT_ARBOX_TRIAL_CLASS_ACTION_CONFIG, ensure_ascii=False), step_id),
