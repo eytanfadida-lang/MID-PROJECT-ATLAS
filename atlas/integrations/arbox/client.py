@@ -1,3 +1,4 @@
+import datetime
 import json
 
 import requests
@@ -146,6 +147,21 @@ def fetch_arbox_active_memberships_report(api_key, from_date, to_date):
 # recipients) ו-check_in (רלוונטי להיסטוריה, לא לתזכורת לפני השיעור)
 def fetch_arbox_trial_classes(api_key, from_date, to_date):
     return _fetch_arbox_report(api_key, "trialClassesReport", from_date, to_date)
+
+
+# כמו fetch_arbox_trial_classes, אבל לטווח רחב (עד כמה חודשים אחורה) - Arbox דוחה כל בקשה
+# בודדת שחוצה 31 יום (מאומת: "The date range should not exceed 31 days."), אז מפצלת
+# לבקשות של עד 30 יום כל אחת ומאחדת. בשימוש למעקב "לא הגיעו לשיעור ניסיון" על פני חלון
+# רחב (ראו _resolve_trial_no_show_recipients ב-engine.py), לא לשימוש היומיומי הרגיל
+def fetch_arbox_trial_classes_range(api_key, from_date, to_date):
+    rows = []
+    cursor = datetime.date.fromisoformat(from_date)
+    end = datetime.date.fromisoformat(to_date)
+    while cursor <= end:
+        chunk_end = min(cursor + datetime.timedelta(days=29), end)
+        rows.extend(fetch_arbox_trial_classes(api_key, cursor.isoformat(), chunk_end.isoformat()))
+        cursor = chunk_end + datetime.timedelta(days=1)
+    return rows
 
 
 # "דוח מנויים שפגו" - ראו _fetch_arbox_report. ההתאמה היא לפי תאריך סיום ממשי (end_date) -

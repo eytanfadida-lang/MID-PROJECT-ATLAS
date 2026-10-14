@@ -617,6 +617,56 @@ def _resolve_converted_leads_recipients(repos, automation, now):
     return recipients, None
 
 
+# מתעניינות שנרשמו לשיעור ניסיון, לא הגיעו בפועל (check_in="No", שדה נפרד מ-status - מאומת
+# מול payload אמיתי) ולא הומרו ללקוחות (status != "Converted to Member") - מציעה לתאם מועד
+# חדש. בניגוד לשאר הקהלים הדינמיים למעלה (שבודקים "בדיוק יום X ימים אחורה"), כאן יש חלון
+# רחב (window_days, ברירת מחדל 90) כי "לא הגיעה" הוא מצב שיכול "להיתקע" ולא להיפתר מעצמו
+# ביום ספציפי - בלי cooldown מפורש (resend_cooldown_days, כמו ב-_resolve_expiring_sessions_
+# recipients) היינו שולחים לאותה מתעניינת שוב בכל הרצה. דה-דופליקציה: יכולות להיות כמה
+# רשומות ניסיון לאותו טלפון בחלון - שומרים רק את האחרונה מביניהן
+def _resolve_trial_no_show_recipients(repos, automation, now):
+    trigger_config = automation["trigger_config"]
+    api_key = arbox_client.load_arbox_api_key()
+    if not api_key:
+        return [], "שגיאה טכנית בגישה ל-Arbox (אין מפתח API)"
+
+    window_days = trigger_config.get("window_days", 90)
+    cooldown_days = trigger_config.get("resend_cooldown_days", 90)
+    today = time_utils.utc_now_to_israel(now).date()
+    from_date = (today - datetime.timedelta(days=window_days)).isoformat()
+    to_date = today.isoformat()
+    try:
+        rows = arbox_client.fetch_arbox_trial_classes_range(api_key, from_date, to_date)
+    except Exception as exc:
+        return [], f"שליפת שיעורי ניסיון מ-Arbox נכשלה: {exc}"
+
+    by_phone = {}
+    for row in rows:
+        if row.get("check_in") != "No" or row.get("status") == "Converted to Member":
+            continue
+        phone = normalize_phone(row.get("phone"))
+        if not phone:
+            continue
+        if phone not in by_phone or (row.get("date") or "") > (by_phone[phone].get("date") or ""):
+            by_phone[phone] = row
+
+    recipients = []
+    for phone, row in by_phone.items():
+        if repos.automations.has_recent_execution(automation["id"], phone, cooldown_days):
+            continue
+        full_name = row.get("full_name") or row.get("first_name") or ""
+        first_name = row.get("first_name") or (full_name.split(maxsplit=1)[0] if full_name else "")
+        recipients.append({
+            "phone": phone,
+            "full_name": full_name,
+            "first_name": first_name,
+            "class_name": row.get("class_name") or "",
+            "date": row.get("date") or "",
+            "location_name": row.get("location_name") or "",
+        })
+    return recipients, None
+
+
 # מיפוי audience_source -> פונקציית שליפה - כל פונקציה מחזירה (recipients, error) כמו
 # _resolve_birthday_recipients/_resolve_membership_expiring_recipients למעלה. audience_source
 # שלא מופיע כאן (כולל ברירת המחדל "manual") נופל לרשימת הנמענים הידנית (automation_recipients)
@@ -629,6 +679,7 @@ _AUDIENCE_RESOLVERS = {
     "arbox_churned": _resolve_churn_recipients,
     "arbox_lost_leads": _resolve_lost_leads_recipients,
     "arbox_converted_leads": _resolve_converted_leads_recipients,
+    "arbox_trial_no_show": _resolve_trial_no_show_recipients,
 }
 
 # נחשף כדי שקוד אחר (הבלופרינט, ה-repository) יוכל לבדוק "האם זו אוטומציה עם קהל דינמי

@@ -16,6 +16,7 @@
         <option value="arbox_churned" {{ 'selected' if form.get('audience_source') == 'arbox_churned' else '' }}>לקוחות שעזבו (מתוך Arbox, אוטומטי)</option>
         <option value="arbox_lost_leads" {{ 'selected' if form.get('audience_source') == 'arbox_lost_leads' else '' }}>מתעניינים אבודים (מתוך Arbox, אוטומטי)</option>
         <option value="arbox_converted_leads" {{ 'selected' if form.get('audience_source') == 'arbox_converted_leads' else '' }}>מתעניינים חדשים שהומרו (מתוך Arbox, אוטומטי)</option>
+        <option value="arbox_trial_no_show" {{ 'selected' if form.get('audience_source') == 'arbox_trial_no_show' else '' }}>מתעניינות שלא הגיעו לשיעור ניסיון (מתוך Arbox, אוטומטי)</option>
     </select>
 </div>
 
@@ -94,6 +95,26 @@
             כמות הימים הזו נשלפת ישירות משם, בלי רשימת נמענים ידנית. כדי לשלוח כמה הודעות
             בטווחים שונים (למשל 3/14 יום, כמו ב-Upgrade360) - יוצרים כמה אוטומציות נפרדות
             עם מספר ימים שונה. אפשר להשתמש ב-{{ '{full_name}' }} ו-{{ '{days_since}' }} בהודעה.</p>
+    </div>
+</div>
+
+<div class="automations-audience-field" data-for="arbox_trial_no_show">
+    <div class="form-group">
+        <label>שעת שליחה</label>
+        <input type="time" name="time_of_day" value="{{ form.get('time_of_day', '09:00') }}">
+    </div>
+    <div class="form-group">
+        <label>כמה ימים אחורה לבדוק (חלון)</label>
+        <input type="number" name="window_days" min="1" max="365" value="{{ form.get('window_days', 90) }}">
+    </div>
+    <div class="form-group">
+        <label>לא לשלוח שוב לאותה מתעניינת למשך (ימים)</label>
+        <input type="number" name="resend_cooldown_days" min="1" max="365" value="{{ form.get('resend_cooldown_days', 90) }}">
+        <p class="hint">נבדק אוטומטית כל יום - מי שנרשמה לשיעור ניסיון בחלון שלמעלה, לא הגיעה
+            בפועל (check-in) ולא הומרה ללקוחה נשלפת ישירות מ-Arbox, בלי רשימת נמענים ידנית.
+            כדי לא לשלוח שוב בכל הרצה לאותה מתעניינת - לא נשלח שוב למי שכבר קיבלה הודעה
+            מהאוטומציה הזו בטווח הימים שלמעלה. אפשר להשתמש ב-{{ '{full_name}' }} או {{ '{first_name}' }},
+            {{ '{class_name}' }}, {{ '{date}' }} ו-{{ '{location_name}' }} בהודעה.</p>
     </div>
 </div>
 

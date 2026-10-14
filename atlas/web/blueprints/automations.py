@@ -64,7 +64,9 @@ _CATEGORY_LABELS = {
 _REMINDER_AUDIENCE_SOURCES = (
     "arbox_birthday", "arbox_membership_expiring", "arbox_expiring_sessions", "arbox_trial_reminder",
 )
-_RETENTION_AUDIENCE_SOURCES = ("arbox_churned", "arbox_lost_leads", "arbox_converted_leads")
+_RETENTION_AUDIENCE_SOURCES = (
+    "arbox_churned", "arbox_lost_leads", "arbox_converted_leads", "arbox_trial_no_show",
+)
 
 
 def _automation_category(automation):
@@ -307,6 +309,29 @@ def _parse_schedule_form(form):
             "audience_source": "arbox_trial_reminder", "reminder_timing": reminder_timing,
             "time_filter": time_filter, "before_hour": before_hour,
             "locations": form.getlist("locations"),
+        }, None
+
+    # "מתעניינות שלא הגיעו לשיעור ניסיון (Arbox)" - גם היא תמיד תזמון יומי, אבל בניגוד
+    # לכל האוטומציות הדינמיות למעלה (שבודקות "בדיוק יום X אחורה"), כאן יש חלון רחב
+    # (window_days, ברירת מחדל 90) כי "לא הגיעה" יכול "להיתקע" בלי להיפתר מעצמו ביום
+    # ספציפי - ולכן גם resend_cooldown_days כמו ב-arbox_expiring_sessions, כדי לא לשלוח
+    # שוב בכל הרצה לאותה מתעניינת (ראו _resolve_trial_no_show_recipients ב-engine.py)
+    if form.get("audience_source") == "arbox_trial_no_show":
+        time_of_day = form.get("time_of_day", "").strip() or "09:00"
+        try:
+            window_days = int(form.get("window_days", "90"))
+        except ValueError:
+            window_days = 90
+        window_days = min(max(window_days, 1), 365)
+        try:
+            resend_cooldown_days = int(form.get("resend_cooldown_days", "90"))
+        except ValueError:
+            resend_cooldown_days = 90
+        resend_cooldown_days = min(max(resend_cooldown_days, 1), 365)
+        return {
+            "schedule_type": "daily", "time_of_day": time_of_day,
+            "audience_source": "arbox_trial_no_show",
+            "window_days": window_days, "resend_cooldown_days": resend_cooldown_days,
         }, None
 
     trigger_config, error = _parse_generic_schedule(form)

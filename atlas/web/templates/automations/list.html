@@ -59,6 +59,8 @@
                         📉 ליד אבוד לפני {{ tc.days_since }} ימים (Arbox), {{ tc.time_of_day }}
                     {% elif tc.audience_source == 'arbox_converted_leads' %}
                         🎉 ליד הומר לפני {{ tc.days_since }} ימים (Arbox), {{ tc.time_of_day }}
+                    {% elif tc.audience_source == 'arbox_trial_no_show' %}
+                        🙈 לא הגיעה לניסיון, חלון {{ tc.window_days }} ימים (Arbox), {{ tc.time_of_day }}
                     {% else %}
                         {% if tc.audience_source == 'arbox_active_members' %}
                             📋 לקוחות פעילים (Arbox{% if tc.membership_types %}, {{ tc.membership_types|length }} סוגי מנוי נבחרים{% endif %}{% if tc.locations %}, סניפים: {{ tc.locations|join(', ') }}{% endif %}) -

@@ -63,6 +63,17 @@ def _guess_media_extension(mime_type):
         return _MEDIA_EXTENSION_OVERRIDES[base_mime]
     return mimetypes.guess_extension(base_mime) or ""
 
+
+# בקשת הסרה מרשימות תפוצה - מזוהה ישירות (לא דרך ה-LLM) כדי שתמיד תעבוד באופן עקבי,
+# בלי תלות בהבנת המודל. בכוונה התאמה מדויקת (אחרי הסרת פיסוק/רווחים) ולא "מכילה" - כדי לא
+# לתפוס בטעות הודעה אמיתית שרק מזכירה את המילה בהקשר אחר
+_OPT_OUT_PHRASES = {"הסר", "הסירי", "הסירי אותי", "להסיר", "stop", "unsubscribe"}
+
+
+def _is_opt_out_message(text):
+    normalized = re.sub(r"[^\w\s]", "", (text or ""), flags=re.UNICODE).strip().casefold()
+    return normalized in _OPT_OUT_PHRASES
+
 # טוקן להפעלת סנכרון Arbox דרך HTTP (למשל משירות cron חיצוני, בסביבות אירוח בלי background thread/Scheduled Tasks)
 ARBOX_SYNC_TOKEN_FILE = secret(".arbox_sync_token")
 
@@ -587,6 +598,23 @@ def whatsapp_customer_webhook():
         return jsonify({"status": "ignored", "reason": "non_text"})
 
     sender_name = whatsapp_bot.extract_sender_profile_name(payload)
+
+    # בקשת הסרה ("הסר" וכו', ראו _is_opt_out_message) - מטופלת כאן ישירות, לפני ה-LLM,
+    # ומוסיפה לבלאקליסט הגלובלי (נבדק בכל שליחה מתוזמנת - ראו process_scheduled_automations
+    # ב-engine.py) כדי שתפסיק לקבל הודעות תפוצה/שיווק באמת, לא רק הבטחה בטקסט ההודעה
+    if _is_opt_out_message(text):
+        repos.customer_bot_messages.log(caller_phone, "in", text, reply_phone_number_id)
+        repos.automations.add_to_global_blacklist(caller_phone, full_name=sender_name)
+        confirm_text = "בוצע - לא תקבלי יותר הודעות תפוצה/שיווק מאיתנו. אם תרצי לחזור בעתיד, פשוט תכתבי לנו 💛"
+        confirm_response = whatsapp_bot.send_text_message(
+            bot_config, from_number, confirm_text, phone_number_id=reply_phone_number_id
+        )
+        repos.customer_bot_messages.log(
+            caller_phone, "out", confirm_text, reply_phone_number_id,
+            wamid=whatsapp_bot.extract_wamid(confirm_response),
+        )
+        return jsonify({"status": "ok", "reason": "opted_out"})
+
     repos.customer_bot_messages.log(caller_phone, "in", text, reply_phone_number_id)
     try:
         reply_text = customer_assistant.answer_question(repos, caller_phone, text, sender_name=sender_name)
