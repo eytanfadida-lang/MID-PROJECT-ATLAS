@@ -30,6 +30,12 @@ def import_recipients_from_file(file_storage, repos, automation_id):
         if not phone:
             skipped.append(f"שורה {index + 2}: חסר טלפון")
             continue
+        if file_import_utils.looks_like_scientific_notation(phone):
+            skipped.append(
+                f"שורה {index + 2}: הטלפון ({phone}) נראה כמו מספר שהתעוות לכתיב מדעי באקסל "
+                "(הספרות המקוריות אבדו) - יש לעצב את עמודת הטלפון כ'טקסט' באקסל ולהעלות מחדש"
+            )
+            continue
         if phone in seen_phones:
             skipped.append(f"שורה {index + 2}: טלפון כפול בקובץ ({phone}), דולג")
             continue

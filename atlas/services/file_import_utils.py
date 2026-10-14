@@ -1,3 +1,5 @@
+import re
+
 import pandas as pd
 
 # פונקציות גנריות לקריאת קובץ CSV/Excel שהועלה ומיפוי עמודותיו לשדות פנימיים לפי כינויים
@@ -54,3 +56,15 @@ def cell(row, column_map, field):
         return ""
     value = row[column_map[field]]
     return "" if pd.isna(value) else str(value).strip()
+
+
+# מזהה טלפון שהתעוות לכתיב מדעי (למשל "9.72526E+11") - קורה כשתא בעמודת הטלפון באקסל
+# נשמר/יוצא כמספר (לא כטקסט) ועמודה צרה מדי לתצוגה מלאה; עד שהקובץ מגיע אלינו הספרות
+# המקוריות כבר אבדו לצמיתות (אי אפשר לשחזר אותן מתוך "9.72526E+11" - יש בו רק 6 ספרות
+# משמעותיות) - מאומת בפועל: שידור אמיתי ניסה לשלוח בדיוק לערך הזה וקיבל שגיאה מ-Meta.
+# המספר הפתרון היחיד האמיתי: לעצב את העמודה כ"טקסט" באקסל *לפני* הקלדה/הדבקה ולהעלות מחדש
+_SCIENTIFIC_NOTATION_RE = re.compile(r"^\d(\.\d+)?E\+?\d+$", re.IGNORECASE)
+
+
+def looks_like_scientific_notation(value):
+    return bool(_SCIENTIFIC_NOTATION_RE.match((value or "").strip()))

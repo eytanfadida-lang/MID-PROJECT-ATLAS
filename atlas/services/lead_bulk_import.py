@@ -36,6 +36,12 @@ def import_leads_from_file(file_storage, repos, default_status, default_channel)
         if not full_name or not phone:
             skipped.append(f"שורה {index + 2}: חסר שם מלא או טלפון")
             continue
+        if file_import_utils.looks_like_scientific_notation(phone):
+            skipped.append(
+                f"שורה {index + 2}: הטלפון ({phone}) נראה כמו מספר שהתעוות לכתיב מדעי באקסל "
+                "(הספרות המקוריות אבדו) - יש לעצב את עמודת הטלפון כ'טקסט' באקסל ולהעלות מחדש"
+            )
+            continue
 
         status = file_import_utils.cell(row, column_map, "status")
         if status not in existing_statuses:

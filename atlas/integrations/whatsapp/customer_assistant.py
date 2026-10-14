@@ -115,6 +115,9 @@ SYSTEM_PROMPT_TEMPLATE = """את/ה העוזר/ת הדיגיטלי/ת של הע�
   הפני מיד ל-request_human_callback, אל תנסי שוב עם schedule_id אחר בלי לשאול את הלקוח.
 - לביטול: cancel_class_booking (למנוי פעיל) או cancel_trial_class (לשיעור ניסיון), עם אותו schedule_id.
 - אחרי רישום מוצלח, חזרי על שם השיעור, התאריך, השעה והסניף לאישור.
+- **לאחר שכבר אישרת רישום מוצלח** (success=true) - אל תפעילי שוב book_class/book_trial_class
+  לאותה בקשה, גם אם ההודעה הבאה של הלקוחה היא רק תגובה כללית כמו "תודה"/"מעולה"/אימוג'י.
+  הרישום כבר קיים במערכת - אין צורך (ואסור) "לוודא" אותו שוב עם קריאה נוספת. עני בחום בלי כלי.
 
 ## פנייה בנושא משרה/עבודה
 אם הלקוח/ה שואל/ת על משרה פתוחה, עבודה, גיוס, או מגיב/ה לפרסום (כולל פרסומת
@@ -425,6 +428,12 @@ def _build_tool_executors(repos, caller_phone, last_user_text):
     def request_human_callback(reason):
         repos.bot_content_gaps.log(caller_phone, last_user_text, reason)
         alert_text = f"פנייה שדורשת מענה אישי\nמספר: {caller_phone}\nסיבה: {reason}"
+        # פרמטר של תבנית וואטסאפ לא יכול להכיל ירידת שורה (מטא דוחה עם קוד 132018, "Param
+        # text cannot have new-line/tab characters" - מאומת בפועל, זו הייתה הסיבה האמיתית
+        # שהתראת הבעלים נכשלה **בכל קריאה אמיתית** עד עכשיו, לא תקלה חולפת כמו שחשבנו) -
+        # לכן גרסה נפרדת בלי ירידות שורה (" | " במקום), רק לפרמטר התבנית. הטקסט המקורי
+        # (עם ירידות שורה, קריא יותר) נשמר ל-fallback הטקסט החופשי, ששם אין את המגבלה הזו
+        template_alert_text = alert_text.replace("\n", " | ")
         # הודעת תבנית מאושרת - מגיעה גם אם לא כתבת לבוט הפנימי ב-24 השעות האחרונות
         # (ראו OWNER_ALERT_TEMPLATE_NAME). נופלת לטקסט חופשי רק אם שליחת התבנית נכשלת
         try:
@@ -433,7 +442,7 @@ def _build_tool_executors(repos, caller_phone, last_user_text):
                 OWNER_WHATSAPP_NUMBER,
                 OWNER_ALERT_TEMPLATE_NAME,
                 "he",
-                body_params=[alert_text],
+                body_params=[template_alert_text],
             )
         except Exception as exc:
             print(f"[customer_assistant] owner template alert failed: {exc}", flush=True)
