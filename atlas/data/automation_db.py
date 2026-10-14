@@ -33,6 +33,18 @@ _DEFAULT_ARBOX_TRIAL_CLASS_ACTION_CONFIG = {
     "param_templates": ["{name}", "{event_name}", "{date}", "{time}", "{location_name}"],
 }
 
+# אוטומציית "חזרה" למתעניינות שלא הגיעו לשיעור ניסיון (ראו arbox_trial_no_show ב-engine.py) -
+# נזרעת פעם אחת לבקשת המשתמשת (2026-10-14), עם הנוסח המדויק שהיא נתנה. מצב תבנית (לא טקסט)
+# מאותה סיבה כמו arbox_trial_class - קהל שכמעט תמיד מחוץ לחלון 24 השעות. "trial_no_show_winback"
+# הוגשה לאישור מטא (MARKETING) באותו תאריך - נזרעת כבויה עד שתאושר ותיבדק
+_TRIAL_NO_SHOW_TEMPLATE_NAME = "trial_no_show_winback"
+_TRIAL_NO_SHOW_ACTION_CONFIG = {
+    "mode": "template",
+    "template_name": _TRIAL_NO_SHOW_TEMPLATE_NAME,
+    "template_language": "he",
+    "param_templates": ["{first_name}"],
+}
+
 
 # אחראית על החיבור למסד הנתונים ועל יצירת טבלאות מנוע האוטומציות - automations (הגדרת "מתי
 # לעשות מה"), automation_steps (הפעולות המסודרות של כל אוטומציה, עם השהייה אופציונלית),
@@ -157,6 +169,7 @@ class AutomationDB:
         )
         self._seed_default_automation(conn)
         self._seed_arbox_trial_class_automation(conn)
+        self._seed_trial_no_show_automation(conn)
         return conn
 
     # מיגרציה קלה: מוסיפה את last_run_at אם עוד לא קיימת - מתי לאחרונה אוטומציה מתוזמנת
@@ -262,6 +275,41 @@ class AutomationDB:
             "INSERT INTO automation_steps (automation_id, step_order, delay_minutes, action_type, "
             "action_config) VALUES (?, 1, 0, 'send_whatsapp_message', ?)",
             (automation_id, json.dumps(_DEFAULT_ARBOX_TRIAL_CLASS_ACTION_CONFIG, ensure_ascii=False)),
+        )
+        conn.commit()
+
+    # זורעת פעם אחת את אוטומציית "לא הגיעו לשיעור ניסיון" (ראו _TRIAL_NO_SHOW_ACTION_CONFIG
+    # למעלה) - בדיקת קיום לפי audience_source בתוך trigger_config (לא trigger_type, כי זו
+    # trigger_type="scheduled" רגילה כמו כל קהל דינמי אחר, לא סוג ייעודי כמו arbox_trial_class)
+    @staticmethod
+    def _seed_trial_no_show_automation(conn):
+        import datetime
+
+        rows = conn.execute(
+            "SELECT trigger_config FROM automations WHERE trigger_type = 'scheduled'"
+        ).fetchall()
+        for (trigger_config_json,) in rows:
+            try:
+                if json.loads(trigger_config_json or "{}").get("audience_source") == "arbox_trial_no_show":
+                    return
+            except (ValueError, TypeError):
+                continue
+
+        now = datetime.datetime.now().isoformat(timespec="seconds")
+        trigger_config = {
+            "schedule_type": "daily", "time_of_day": "09:00",
+            "audience_source": "arbox_trial_no_show", "window_days": 90, "resend_cooldown_days": 90,
+        }
+        cursor = conn.execute(
+            "INSERT INTO automations (tenant_id, name, trigger_type, trigger_config, enabled, "
+            "created_at, updated_at) VALUES (1, ?, 'scheduled', ?, 0, ?, ?)",
+            ("מתעניינות שלא הגיעו לניסיון - חזרה", json.dumps(trigger_config, ensure_ascii=False), now, now),
+        )
+        automation_id = cursor.lastrowid
+        conn.execute(
+            "INSERT INTO automation_steps (automation_id, step_order, delay_minutes, action_type, "
+            "action_config) VALUES (?, 1, 0, 'send_whatsapp_message', ?)",
+            (automation_id, json.dumps(_TRIAL_NO_SHOW_ACTION_CONFIG, ensure_ascii=False)),
         )
         conn.commit()
 
