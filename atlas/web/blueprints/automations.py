@@ -335,10 +335,11 @@ def _parse_schedule_form(form):
             "window_days": window_days, "resend_cooldown_days": resend_cooldown_days,
         }, None
 
-    # "ברכת מילסטון על נוכחות (Arbox)" - גם תמיד תזמון יומי (בודקים כל יום מי נכנסה היום
-    # והגיעה למספר כניסות עגול). הספירה "מעכשיו קדימה" בלבד (ראו arbox_entrance_count_db.py)
+    # "ברכת מילסטון על נוכחות (Arbox)" - גם תמיד תזמון יומי (בודקים כל יום מי הגיעה
+    # **אתמול** לשיעור עגול - ראו _resolve_attendance_milestone_recipients). הספירה
+    # "מעכשיו קדימה" בלבד (ראו arbox_entrance_count_db.py)
     if form.get("audience_source") == "arbox_attendance_milestone":
-        time_of_day = form.get("time_of_day", "").strip() or "18:00"
+        time_of_day = form.get("time_of_day", "").strip() or "09:00"
         try:
             milestone_interval = int(form.get("milestone_interval", "10"))
         except ValueError:

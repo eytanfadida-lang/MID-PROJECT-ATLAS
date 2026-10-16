@@ -45,6 +45,19 @@ _TRIAL_NO_SHOW_ACTION_CONFIG = {
     "param_templates": ["{first_name}"],
 }
 
+# אוטומציית "ברכת מילסטון על נוכחות" (ראו arbox_attendance_milestone ב-engine.py) - נזרעת
+# פעם אחת לבקשת המשתמשת (2026-10-16), עם הנוסח המדויק שהיא נתנה. מצב תבנית מאותה סיבה כמו
+# שאר האוטומציות היומיות - שולחת למחרת (לא באותו יום), אז הלקוחה כמעט תמיד מחוץ לחלון 24
+# השעות. "attendance_milestone" הוגשה לאישור מטא (MARKETING) באותו תאריך - נזרעת כבויה
+# עד שתאושר ותיבדק
+_ATTENDANCE_MILESTONE_TEMPLATE_NAME = "attendance_milestone"
+_ATTENDANCE_MILESTONE_ACTION_CONFIG = {
+    "mode": "template",
+    "template_name": _ATTENDANCE_MILESTONE_TEMPLATE_NAME,
+    "template_language": "he",
+    "param_templates": ["{first_name}", "{class_name}", "{staff_member}", "{visit_count}"],
+}
+
 
 # אחראית על החיבור למסד הנתונים ועל יצירת טבלאות מנוע האוטומציות - automations (הגדרת "מתי
 # לעשות מה"), automation_steps (הפעולות המסודרות של כל אוטומציה, עם השהייה אופציונלית),
@@ -170,6 +183,7 @@ class AutomationDB:
         self._seed_default_automation(conn)
         self._seed_arbox_trial_class_automation(conn)
         self._seed_trial_no_show_automation(conn)
+        self._seed_attendance_milestone_automation(conn)
         return conn
 
     # מיגרציה קלה: מוסיפה את last_run_at אם עוד לא קיימת - מתי לאחרונה אוטומציה מתוזמנת
@@ -310,6 +324,40 @@ class AutomationDB:
             "INSERT INTO automation_steps (automation_id, step_order, delay_minutes, action_type, "
             "action_config) VALUES (?, 1, 0, 'send_whatsapp_message', ?)",
             (automation_id, json.dumps(_TRIAL_NO_SHOW_ACTION_CONFIG, ensure_ascii=False)),
+        )
+        conn.commit()
+
+    # זורעת פעם אחת את אוטומציית "ברכת מילסטון על נוכחות" (ראו _ATTENDANCE_MILESTONE_
+    # ACTION_CONFIG למעלה) - אותו דפוס בדיוק כמו _seed_trial_no_show_automation
+    @staticmethod
+    def _seed_attendance_milestone_automation(conn):
+        import datetime
+
+        rows = conn.execute(
+            "SELECT trigger_config FROM automations WHERE trigger_type = 'scheduled'"
+        ).fetchall()
+        for (trigger_config_json,) in rows:
+            try:
+                if json.loads(trigger_config_json or "{}").get("audience_source") == "arbox_attendance_milestone":
+                    return
+            except (ValueError, TypeError):
+                continue
+
+        now = datetime.datetime.now().isoformat(timespec="seconds")
+        trigger_config = {
+            "schedule_type": "daily", "time_of_day": "09:00",
+            "audience_source": "arbox_attendance_milestone", "milestone_interval": 10,
+        }
+        cursor = conn.execute(
+            "INSERT INTO automations (tenant_id, name, trigger_type, trigger_config, enabled, "
+            "created_at, updated_at) VALUES (1, ?, 'scheduled', ?, 0, ?, ?)",
+            ("ברכת מילסטון על נוכחות", json.dumps(trigger_config, ensure_ascii=False), now, now),
+        )
+        automation_id = cursor.lastrowid
+        conn.execute(
+            "INSERT INTO automation_steps (automation_id, step_order, delay_minutes, action_type, "
+            "action_config) VALUES (?, 1, 0, 'send_whatsapp_message', ?)",
+            (automation_id, json.dumps(_ATTENDANCE_MILESTONE_ACTION_CONFIG, ensure_ascii=False)),
         )
         conn.commit()
 

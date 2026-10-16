@@ -150,10 +150,18 @@ def fetch_arbox_trial_classes(api_key, from_date, to_date):
 
 
 # "דוח נוכחות" - כניסות אמיתיות בפועל (לא הזמנות שיעור), שורה אחת לכל כניסה בפועל - מאומת
-# מול ה-API (101 כניסות אמיתיות ביום אחד). בשימוש ל"ברכת מילסטון" על כניסה עגולה
-# (ראו _resolve_attendance_milestone_recipients ב-engine.py), לא לקביעת שיעורים
+# מול ה-API (101 כניסות אמיתיות ביום אחד). אין בה class_name/staff_member (רק שעת כניסה
+# גולמית דרך שער) - ראו fetch_arbox_bookings לדוח שכן מקשר בין נוכחות לשיעור הספציפי
 def fetch_arbox_entrances(api_key, from_date, to_date):
     return _fetch_arbox_report(api_key, "entranceReport", from_date, to_date)
+
+
+# "דוח הזמנות" - שורה אחת לכל הזמנת שיעור (לא כל כניסה גולמית), כולל class_name,
+# staff_member ו-check_in (Yes/No - האם באמת הגיעה לשיעור הספציפי הזה, לא רק הוזמנה).
+# מאומת מול ה-API. בשימוש ל"ברכת מילסטון" על נוכחות (ראו _resolve_attendance_milestone_
+# recipients ב-engine.py) - שם, בניגוד ל-entranceReport, יש לנו גם את שם השיעור והמדריך/ה
+def fetch_arbox_bookings(api_key, from_date, to_date):
+    return _fetch_arbox_report(api_key, "bookingsReport", from_date, to_date)
 
 
 # כמו fetch_arbox_trial_classes, אבל לטווח רחב (עד כמה חודשים אחורה) - Arbox דוחה כל בקשה

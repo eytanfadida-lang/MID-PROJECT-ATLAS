@@ -667,11 +667,14 @@ def _resolve_trial_no_show_recipients(repos, automation, now):
     return recipients, None
 
 
-# ברכת "מילסטון" על כניסה עגולה (כל milestone_interval-ית, למשל כל 10 כניסות) - סופרת
-# "מעכשיו קדימה" בלבד, לא היסטוריית Arbox המלאה (ראו arbox_entrance_count_db.py למה).
-# entranceReport מחזירה שורה אחת לכל כניסה בפועל, אז אותה לקוחה יכולה להופיע כמה פעמים
-# באותו יום (למשל אם יש לה גם gate כניסה וגם exit_gate בשורות נפרדות) - סופרים אותה פעם
-# אחת ליום (לא פעם לכל שורה), ללא קשר למספר השורות
+# ברכת "מילסטון" על שיעור עגול (כל milestone_interval-ית, למשל כל 10 שיעורים) - בודקת
+# **אתמול** (לא היום - ההודעה מתייחסת ל"ראיתי שהיית אתמול", ורצה למחרת אחרי שהנתונים
+# כבר סגורים), לפי bookingsReport (לא entranceReport - יש בה class_name/staff_member
+# שאין ב-entranceReport, ומסוננת ל-check_in="Yes" כדי לספור רק מי שבאמת הגיעה, לא רק
+# הוזמנה). סופרת "מעכשיו קדימה" בלבד (ראו arbox_entrance_count_db.py למה). אותה לקוחה
+# יכולה להופיע כמה פעמים אם הגיעה לכמה שיעורים באותו יום - כל שיעור נספר בנפרד (ממוינים
+# לפי שעה כדי לעבד בסדר האמיתי), ולכן גם יכולה תיאורטית לקבל כמה הודעות מילסטון באותה
+# הרצה אם חצתה כמה ספים (נדיר, אבל לא מטופל כמקרה מיוחד - פשוט יקרה)
 def _resolve_attendance_milestone_recipients(repos, automation, now):
     trigger_config = automation["trigger_config"]
     api_key = arbox_client.load_arbox_api_key()
@@ -679,32 +682,32 @@ def _resolve_attendance_milestone_recipients(repos, automation, now):
         return [], "שגיאה טכנית בגישה ל-Arbox (אין מפתח API)"
 
     milestone_interval = trigger_config.get("milestone_interval", 10)
-    today = time_utils.utc_now_to_israel(now).date().isoformat()
+    yesterday = (time_utils.utc_now_to_israel(now).date() - datetime.timedelta(days=1)).isoformat()
     try:
-        rows = arbox_client.fetch_arbox_entrances(api_key, today, today)
+        rows = arbox_client.fetch_arbox_bookings(api_key, yesterday, yesterday)
     except Exception as exc:
-        return [], f"שליפת דוח נוכחות מ-Arbox נכשלה: {exc}"
+        return [], f"שליפת דוח הזמנות מ-Arbox נכשלה: {exc}"
 
-    visited_today = {}
-    for row in rows:
+    attended = [row for row in rows if row.get("check_in") == "Yes"]
+    attended.sort(key=lambda row: row.get("time") or "")
+
+    recipients = []
+    for row in attended:
         phone = normalize_phone(row.get("phone"))
         if not phone:
             continue
-        visited_today.setdefault(phone, row)
-
-    recipients = []
-    for phone, row in visited_today.items():
         full_name = row.get("full_name") or row.get("first_name") or ""
-        new_count = repos.arbox_entrance_counts.record_visit(phone, full_name, today)
+        new_count = repos.arbox_entrance_counts.record_visit(phone, full_name, yesterday)
         if new_count % milestone_interval != 0:
             continue
-        full_name = row.get("full_name") or row.get("first_name") or ""
         first_name = row.get("first_name") or (full_name.split(maxsplit=1)[0] if full_name else "")
         recipients.append({
             "phone": phone,
             "full_name": full_name,
             "first_name": first_name,
             "visit_count": new_count,
+            "class_name": row.get("class_name") or "",
+            "staff_member": row.get("staff_member") or "",
             "location_name": row.get("location_name") or "",
         })
     return recipients, None
