@@ -648,6 +648,21 @@ def arbox_webhook_catch():
     return jsonify({"status": "ok"})
 
 
+# כל סוג אירוע מ-Arbox מגיע עם פורמט תאריכים שונה משלו (לדוגמה trial_class: DD/MM/YYYY
+# בשדה "date"; membership_hold: YYYY-MM-DD ב-start_date/end_date - מאומת מול payloads
+# אמיתיים שנתפסו) - אין פה שום דבר אחיד לנחש, אז כל אירוע מקבל המרה ייעודית לפי הצורך
+# בפועל של ההודעה שלו, לא המרה גורפת לכל שדה שנגמר ב-"_date" (זה היה שובר את trial_class)
+def _enrich_arbox_webhook_context(event_name, payload):
+    context = dict(payload)
+    if event_name == "membership_hold":
+        for field in ("start_date", "end_date"):
+            try:
+                context[field] = datetime.datetime.strptime(payload.get(field, ""), "%Y-%m-%d").strftime("%d-%m-%Y")
+            except (ValueError, TypeError):
+                pass
+    return context
+
+
 # נקודת קליטה אמיתית ל-webhooks מ-Arbox - גנרית לכל סוגי האירועים (purchase, trial_class,
 # cancelled_membership וכו', ראו ממשק האינטגרציות של Arbox). event_name מגיע מה-URL עצמו
 # (לא מה-payload - הוא לא מזהה את סוג האירוע בתוכו, ראו ממצאי הלכידה), כי כל webhook
@@ -687,8 +702,9 @@ def arbox_webhook(event_name):
     if not phone:
         return jsonify({"status": "ignored", "reason": "no_phone"})
 
+    context = _enrich_arbox_webhook_context(event_name, payload)
     try:
-        automation_engine.fire_trigger(repos, f"arbox_{event_name}", context=payload, phone=phone)
+        automation_engine.fire_trigger(repos, f"arbox_{event_name}", context=context, phone=phone)
     except Exception as exc:
         print(f"[Arbox webhook] {event_name} automation failed: {exc}", flush=True)
     return jsonify({"status": "ok"})

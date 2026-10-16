@@ -33,6 +33,18 @@ _DEFAULT_ARBOX_TRIAL_CLASS_ACTION_CONFIG = {
     "param_templates": ["{name}", "{event_name}", "{date}", "{time}", "{location_name}"],
 }
 
+# אוטומציית webhook אמיתית מ-Arbox להקפאת מנוי (ראו atlas/web/webhooks.py, arbox_webhook +
+# _enrich_arbox_webhook_context שם ממירה start_date/end_date מ-YYYY-MM-DD ל-DD-MM-YYYY).
+# שמות המשתנים תואמים בדיוק ל-payload האמיתי שנלכד ואומת מול Arbox: first_name,
+# membership_type_name, start_date, end_date. מצב תבנית מאותה סיבה כמו arbox_trial_class -
+# הקפאה יכולה להיעשות ע"י הצוות ישירות ב-Arbox בלי אינטראקציה עם הבוט
+_ARBOX_MEMBERSHIP_HOLD_ACTION_CONFIG = {
+    "mode": "template",
+    "template_name": "membership_hold_confirmed",
+    "template_language": "he",
+    "param_templates": ["{first_name}", "{membership_type_name}", "{start_date}", "{end_date}"],
+}
+
 # אוטומציית "חזרה" למתעניינות שלא הגיעו לשיעור ניסיון (ראו arbox_trial_no_show ב-engine.py) -
 # נזרעת פעם אחת לבקשת המשתמשת (2026-10-14), עם הנוסח המדויק שהיא נתנה. מצב תבנית (לא טקסט)
 # מאותה סיבה כמו arbox_trial_class - קהל שכמעט תמיד מחוץ לחלון 24 השעות. "trial_no_show_winback"
@@ -223,6 +235,7 @@ class AutomationDB:
         )
         self._seed_default_automation(conn)
         self._seed_arbox_trial_class_automation(conn)
+        self._seed_arbox_membership_hold_automation(conn)
         self._seed_trial_no_show_automation(conn)
         self._seed_attendance_milestone_automation(conn)
         self._migrate_upgrade360_automations_to_templates(conn)
@@ -331,6 +344,32 @@ class AutomationDB:
             "INSERT INTO automation_steps (automation_id, step_order, delay_minutes, action_type, "
             "action_config) VALUES (?, 1, 0, 'send_whatsapp_message', ?)",
             (automation_id, json.dumps(_DEFAULT_ARBOX_TRIAL_CLASS_ACTION_CONFIG, ensure_ascii=False)),
+        )
+        conn.commit()
+
+    # זורעת פעם אחת את אוטומציית webhook הקפאת מנוי (ראו _ARBOX_MEMBERSHIP_HOLD_ACTION_CONFIG
+    # למעלה) - אותו דפוס בדיוק כמו _seed_arbox_trial_class_automation (trigger_type ייעודי,
+    # לא נבדקת/נזרעת דרך trigger_config.audience_source)
+    @staticmethod
+    def _seed_arbox_membership_hold_automation(conn):
+        import datetime
+
+        exists = conn.execute(
+            "SELECT 1 FROM automations WHERE trigger_type = 'arbox_membership_hold'"
+        ).fetchone()
+        if exists:
+            return
+        now = datetime.datetime.now().isoformat(timespec="seconds")
+        cursor = conn.execute(
+            "INSERT INTO automations (tenant_id, name, trigger_type, trigger_config, enabled, "
+            "created_at, updated_at) VALUES (1, ?, ?, NULL, 0, ?, ?)",
+            ("אישור הקפאת מנוי (Arbox webhook)", "arbox_membership_hold", now, now),
+        )
+        automation_id = cursor.lastrowid
+        conn.execute(
+            "INSERT INTO automation_steps (automation_id, step_order, delay_minutes, action_type, "
+            "action_config) VALUES (?, 1, 0, 'send_whatsapp_message', ?)",
+            (automation_id, json.dumps(_ARBOX_MEMBERSHIP_HOLD_ACTION_CONFIG, ensure_ascii=False)),
         )
         conn.commit()
 
