@@ -63,6 +63,7 @@ _CATEGORY_LABELS = {
 }
 _REMINDER_AUDIENCE_SOURCES = (
     "arbox_birthday", "arbox_membership_expiring", "arbox_expiring_sessions", "arbox_trial_reminder",
+    "arbox_attendance_milestone",
 )
 _RETENTION_AUDIENCE_SOURCES = (
     "arbox_churned", "arbox_lost_leads", "arbox_converted_leads", "arbox_trial_no_show",
@@ -332,6 +333,20 @@ def _parse_schedule_form(form):
             "schedule_type": "daily", "time_of_day": time_of_day,
             "audience_source": "arbox_trial_no_show",
             "window_days": window_days, "resend_cooldown_days": resend_cooldown_days,
+        }, None
+
+    # "ברכת מילסטון על נוכחות (Arbox)" - גם תמיד תזמון יומי (בודקים כל יום מי נכנסה היום
+    # והגיעה למספר כניסות עגול). הספירה "מעכשיו קדימה" בלבד (ראו arbox_entrance_count_db.py)
+    if form.get("audience_source") == "arbox_attendance_milestone":
+        time_of_day = form.get("time_of_day", "").strip() or "18:00"
+        try:
+            milestone_interval = int(form.get("milestone_interval", "10"))
+        except ValueError:
+            milestone_interval = 10
+        milestone_interval = min(max(milestone_interval, 1), 1000)
+        return {
+            "schedule_type": "daily", "time_of_day": time_of_day,
+            "audience_source": "arbox_attendance_milestone", "milestone_interval": milestone_interval,
         }, None
 
     trigger_config, error = _parse_generic_schedule(form)

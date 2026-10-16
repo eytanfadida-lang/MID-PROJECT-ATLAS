@@ -255,7 +255,7 @@ class AutomationRepository:
                 and trigger_config.get("audience_source") not in (
                     "arbox_birthday", "arbox_membership_expiring", "arbox_expiring_sessions",
                     "arbox_active_members", "arbox_trial_reminder", "arbox_churned", "arbox_lost_leads",
-                    "arbox_converted_leads", "arbox_trial_no_show",
+                    "arbox_converted_leads", "arbox_trial_no_show", "arbox_attendance_milestone",
                 )
             )
             expected_recipient_count = None

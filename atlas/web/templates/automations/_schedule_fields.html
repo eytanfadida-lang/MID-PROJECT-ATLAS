@@ -17,6 +17,7 @@
         <option value="arbox_lost_leads" {{ 'selected' if form.get('audience_source') == 'arbox_lost_leads' else '' }}>מתעניינים אבודים (מתוך Arbox, אוטומטי)</option>
         <option value="arbox_converted_leads" {{ 'selected' if form.get('audience_source') == 'arbox_converted_leads' else '' }}>מתעניינים חדשים שהומרו (מתוך Arbox, אוטומטי)</option>
         <option value="arbox_trial_no_show" {{ 'selected' if form.get('audience_source') == 'arbox_trial_no_show' else '' }}>מתעניינות שלא הגיעו לשיעור ניסיון (מתוך Arbox, אוטומטי)</option>
+        <option value="arbox_attendance_milestone" {{ 'selected' if form.get('audience_source') == 'arbox_attendance_milestone' else '' }}>ברכת מילסטון על כניסה עגולה (מתוך Arbox, אוטומטי)</option>
     </select>
 </div>
 
@@ -95,6 +96,22 @@
             כמות הימים הזו נשלפת ישירות משם, בלי רשימת נמענים ידנית. כדי לשלוח כמה הודעות
             בטווחים שונים (למשל 3/14 יום, כמו ב-Upgrade360) - יוצרים כמה אוטומציות נפרדות
             עם מספר ימים שונה. אפשר להשתמש ב-{{ '{full_name}' }} ו-{{ '{days_since}' }} בהודעה.</p>
+    </div>
+</div>
+
+<div class="automations-audience-field" data-for="arbox_attendance_milestone">
+    <div class="form-group">
+        <label>שעת בדיקה/שליחה</label>
+        <input type="time" name="time_of_day" value="{{ form.get('time_of_day', '18:00') }}">
+        <p class="hint">כדאי שעה שאחרי רוב האימונים של היום, כדי שהכניסות של היום כבר ייספרו.</p>
+    </div>
+    <div class="form-group">
+        <label>לברך כל כמה כניסות (מילסטון)</label>
+        <input type="number" name="milestone_interval" min="1" max="1000" value="{{ form.get('milestone_interval', 10) }}">
+        <p class="hint">נבדק אוטומטית כל יום - מי שנכנסה היום בפועל (לפי Arbox) ועם הכניסה הזו
+            הגיעה למספר כניסות שמתחלק בשלם במספר שלמעלה (למשל כל 10 - כניסה 10, 20, 30...)
+            מקבלת ברכה. הספירה מתחילה **מעכשיו** (לא מההיסטוריה המלאה ב-Arbox) - ראו גם הסבר
+            למעלה. אפשר להשתמש ב-{{ '{full_name}' }} או {{ '{first_name}' }} ו-{{ '{visit_count}' }} בהודעה.</p>
     </div>
 </div>
 

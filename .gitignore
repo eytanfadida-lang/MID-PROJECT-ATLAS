@@ -262,6 +262,7 @@ arbox_location_map.json
 .last_whatsapp_customer_payload.json
 .whatsapp_customer_conversations.json
 .last_arbox_webhook_payload.json
+.last_arbox_webhook_*_payload.json
 
 # Local runtime data/secrets - never track these
 appointments.db

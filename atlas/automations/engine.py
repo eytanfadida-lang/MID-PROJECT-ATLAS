@@ -667,6 +667,49 @@ def _resolve_trial_no_show_recipients(repos, automation, now):
     return recipients, None
 
 
+# ברכת "מילסטון" על כניסה עגולה (כל milestone_interval-ית, למשל כל 10 כניסות) - סופרת
+# "מעכשיו קדימה" בלבד, לא היסטוריית Arbox המלאה (ראו arbox_entrance_count_db.py למה).
+# entranceReport מחזירה שורה אחת לכל כניסה בפועל, אז אותה לקוחה יכולה להופיע כמה פעמים
+# באותו יום (למשל אם יש לה גם gate כניסה וגם exit_gate בשורות נפרדות) - סופרים אותה פעם
+# אחת ליום (לא פעם לכל שורה), ללא קשר למספר השורות
+def _resolve_attendance_milestone_recipients(repos, automation, now):
+    trigger_config = automation["trigger_config"]
+    api_key = arbox_client.load_arbox_api_key()
+    if not api_key:
+        return [], "שגיאה טכנית בגישה ל-Arbox (אין מפתח API)"
+
+    milestone_interval = trigger_config.get("milestone_interval", 10)
+    today = time_utils.utc_now_to_israel(now).date().isoformat()
+    try:
+        rows = arbox_client.fetch_arbox_entrances(api_key, today, today)
+    except Exception as exc:
+        return [], f"שליפת דוח נוכחות מ-Arbox נכשלה: {exc}"
+
+    visited_today = {}
+    for row in rows:
+        phone = normalize_phone(row.get("phone"))
+        if not phone:
+            continue
+        visited_today.setdefault(phone, row)
+
+    recipients = []
+    for phone, row in visited_today.items():
+        full_name = row.get("full_name") or row.get("first_name") or ""
+        new_count = repos.arbox_entrance_counts.record_visit(phone, full_name, today)
+        if new_count % milestone_interval != 0:
+            continue
+        full_name = row.get("full_name") or row.get("first_name") or ""
+        first_name = row.get("first_name") or (full_name.split(maxsplit=1)[0] if full_name else "")
+        recipients.append({
+            "phone": phone,
+            "full_name": full_name,
+            "first_name": first_name,
+            "visit_count": new_count,
+            "location_name": row.get("location_name") or "",
+        })
+    return recipients, None
+
+
 # מיפוי audience_source -> פונקציית שליפה - כל פונקציה מחזירה (recipients, error) כמו
 # _resolve_birthday_recipients/_resolve_membership_expiring_recipients למעלה. audience_source
 # שלא מופיע כאן (כולל ברירת המחדל "manual") נופל לרשימת הנמענים הידנית (automation_recipients)
@@ -680,6 +723,7 @@ _AUDIENCE_RESOLVERS = {
     "arbox_lost_leads": _resolve_lost_leads_recipients,
     "arbox_converted_leads": _resolve_converted_leads_recipients,
     "arbox_trial_no_show": _resolve_trial_no_show_recipients,
+    "arbox_attendance_milestone": _resolve_attendance_milestone_recipients,
 }
 
 # נחשף כדי שקוד אחר (הבלופרינט, ה-repository) יוכל לבדוק "האם זו אוטומציה עם קהל דינמי

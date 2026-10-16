@@ -661,6 +661,17 @@ def arbox_webhook(event_name):
         abort(403)
 
     payload = request.get_json(silent=True) or {}
+    # לוכדת את כל ה-payload האמיתי לקובץ ייעודי לכל event_name (לא רק trial_class, כמו
+    # arbox-webhook-catch הישן) - עד שנבנה resolver ממשי, fire_trigger לא עושה כלום
+    # (0 אוטומציות רשומות ל-trigger_type הזה) ובלי השמירה הזו המידע האמיתי פשוט אובד
+    print(f"[Arbox webhook] {event_name}: {payload}", flush=True)
+    try:
+        secret(f".last_arbox_webhook_{event_name}_payload.json").write_text(
+            json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
+    except Exception as exc:
+        print(f"[Arbox webhook] {event_name} payload save failed: {exc}", flush=True)
+
     repos = db_context.get_repos()
 
     # Arbox לא מבטיחה משלוח פעם-אחת-בלבד - דה-דופליקציה עם whatsapp_processed_messages

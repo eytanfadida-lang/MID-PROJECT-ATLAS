@@ -149,6 +149,13 @@ def fetch_arbox_trial_classes(api_key, from_date, to_date):
     return _fetch_arbox_report(api_key, "trialClassesReport", from_date, to_date)
 
 
+# "דוח נוכחות" - כניסות אמיתיות בפועל (לא הזמנות שיעור), שורה אחת לכל כניסה בפועל - מאומת
+# מול ה-API (101 כניסות אמיתיות ביום אחד). בשימוש ל"ברכת מילסטון" על כניסה עגולה
+# (ראו _resolve_attendance_milestone_recipients ב-engine.py), לא לקביעת שיעורים
+def fetch_arbox_entrances(api_key, from_date, to_date):
+    return _fetch_arbox_report(api_key, "entranceReport", from_date, to_date)
+
+
 # כמו fetch_arbox_trial_classes, אבל לטווח רחב (עד כמה חודשים אחורה) - Arbox דוחה כל בקשה
 # בודדת שחוצה 31 יום (מאומת: "The date range should not exceed 31 days."), אז מפצלת
 # לבקשות של עד 30 יום כל אחת ומאחדת. בשימוש למעקב "לא הגיעו לשיעור ניסיון" על פני חלון
