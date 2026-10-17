@@ -2,33 +2,53 @@
 <html lang="he" dir="rtl">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>התחברות - מנהל תורים</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body class="login-page">
     <div class="login-card">
+        <div class="login-logo" aria-hidden="true">📅</div>
         <h1>מנהל תורים</h1>
+        <p class="login-subtitle">התחברו כדי להמשיך למרכז הניהול</p>
 
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 {% for category, message in messages %}
-                    <div class="flash flash-{{ category }}">{{ message }}</div>
+                    <div class="flash flash-{{ category }}" role="alert">{{ message }}</div>
                 {% endfor %}
             {% endif %}
         {% endwith %}
 
-        <form method="post">
+        <form method="post" class="login-form">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <div class="form-group">
-                <label>שם משתמש</label>
-                <input type="text" name="username" value="{{ username }}" required autofocus>
+                <label for="login-username">שם משתמש</label>
+                <input type="text" id="login-username" name="username" value="{{ username }}" required autofocus autocomplete="username">
             </div>
             <div class="form-group">
-                <label>סיסמה</label>
-                <input type="password" name="password" required>
+                <label for="login-password">סיסמה</label>
+                <div class="login-password-wrap">
+                    <input type="password" id="login-password" name="password" required autocomplete="current-password">
+                    <button type="button" class="login-toggle" id="login-toggle" aria-label="הצג סיסמה" aria-pressed="false">👁</button>
+                </div>
             </div>
-            <button type="submit" class="btn">התחברות</button>
+            <button type="submit" class="btn login-submit">התחברות</button>
         </form>
     </div>
+
+    <script>
+    (function () {
+        var toggle = document.getElementById('login-toggle');
+        var input = document.getElementById('login-password');
+        toggle.addEventListener('click', function () {
+            var show = input.type === 'password';
+            input.type = show ? 'text' : 'password';
+            toggle.setAttribute('aria-pressed', show ? 'true' : 'false');
+            toggle.setAttribute('aria-label', show ? 'הסתר סיסמה' : 'הצג סיסמה');
+            toggle.textContent = show ? '🙈' : '👁';
+        });
+    })();
+    </script>
 </body>
 </html>

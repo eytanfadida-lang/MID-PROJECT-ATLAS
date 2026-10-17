@@ -975,6 +975,341 @@ label {
     margin-top: 0;
 }
 
+/* --- עיצוב מחודש של עמוד האוטומציות: כותרת פעולות, כרטיסי סיכום, מתג הפעלה, שורות ופירוט.
+   הכל מוגבל למחלקות עם קידומת automations / auto-stat / switch / num-pill, כך שאין השפעה על
+   שאר העמודים (הערה: .stat-card של לוח הבקרה הוא כלל נפרד, לכן כאן השם auto-stat) --- */
+.btn-ghost {
+    background: var(--surface);
+    color: var(--text);
+    border: 1px solid var(--border);
+    box-shadow: none;
+}
+
+.btn-ghost:hover {
+    background: var(--surface-2);
+    border-color: var(--primary);
+    color: var(--primary);
+    box-shadow: none;
+}
+
+.btn-sm {
+    padding: 5px 12px;
+    font-size: 12px;
+}
+
+.btn-ghost.active {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: #fff;
+}
+
+.automations-header {
+    margin-bottom: 16px;
+}
+
+.automations-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.automations-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.auto-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 14px 16px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-inline-start: 4px solid var(--primary);
+    border-radius: 12px;
+}
+
+.auto-stat .auto-stat-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--muted);
+}
+
+.auto-stat .auto-stat-value {
+    font-size: 26px;
+    font-weight: 800;
+    line-height: 1.1;
+    color: var(--text);
+}
+
+.auto-stat-green { border-inline-start-color: #16a34a; }
+.auto-stat-blue { border-inline-start-color: #2563eb; }
+.auto-stat-red { border-inline-start-color: #dc2626; }
+.auto-stat-gray { border-inline-start-color: #94a3b8; }
+
+/* קטגוריות */
+.automations-category {
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.automations-category summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    background: var(--surface-2);
+    color: var(--text);
+    border-bottom: 1px solid transparent;
+    transition: background 0.15s ease;
+}
+
+.automations-category summary:hover {
+    background: var(--border);
+}
+
+.automations-category[open] summary {
+    border-bottom-color: var(--border);
+}
+
+.automations-category-title {
+    flex: 1;
+}
+
+.automations-category-meta {
+    display: inline-flex;
+    gap: 6px;
+}
+
+.category-pill {
+    padding: 2px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--muted);
+}
+
+.category-pill-green {
+    background: #dcfce7;
+    border-color: #86efac;
+    color: #166534;
+}
+
+.automations-table-wrap {
+    overflow-x: auto;
+}
+
+/* טבלה */
+.automations-table thead th {
+    background: var(--surface-2);
+    color: var(--muted);
+    border-bottom: 1px solid var(--border);
+}
+
+.automations-table td {
+    vertical-align: middle;
+    border-bottom-color: var(--border);
+}
+
+.automations-table tr:hover td {
+    background: var(--surface-2);
+}
+
+.automations-name {
+    font-weight: 700;
+    white-space: normal;
+    min-width: 140px;
+}
+
+.automations-row.is-off .automations-name,
+.automations-row.is-off .automations-schedule-summary,
+.automations-row.is-off .automations-message-preview {
+    opacity: 0.55;
+}
+
+.automations-schedule-summary,
+.automations-message-preview {
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--muted);
+}
+
+.automations-num {
+    text-align: center;
+}
+
+.automations-row-actions {
+    text-align: left;
+}
+
+/* מתג הפעלה/כיבוי - מחליף את כפתור "כבה/הפעל" הנפרד. עדיין <button type=submit> בתוך אותו
+   form, ולכן ההתנהגות בשרת (toggle_automation) לא משתנה. RTL: ה"ידית" נעה לימין כשכבוי */
+.automations-toggle-form {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+}
+
+.switch {
+    position: relative;
+    width: 40px;
+    height: 22px;
+    padding: 0;
+    border: none;
+    border-radius: 999px;
+    background: #cbd5e1;
+    cursor: pointer;
+    transition: background 0.2s ease;
+    flex-shrink: 0;
+}
+
+.switch:focus-visible {
+    outline: 3px solid rgba(96, 165, 250, 0.5);
+    outline-offset: 2px;
+}
+
+.switch-knob {
+    position: absolute;
+    top: 3px;
+    right: 3px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.3);
+    transition: transform 0.2s ease;
+}
+
+.switch.on {
+    background: #16a34a;
+}
+
+.switch.on .switch-knob {
+    transform: translateX(-18px);
+}
+
+.switch-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--muted);
+    min-width: 36px;
+}
+
+.num-pill {
+    display: inline-block;
+    min-width: 28px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+    text-align: center;
+}
+
+.num-ok { background: #dcfce7; color: #166534; }
+.num-fail { background: #fee2e2; color: #b91c1c; }
+.num-zero { background: transparent; color: var(--muted); font-weight: 500; }
+
+.automations-empty {
+    padding: 40px 20px;
+}
+
+.automations-empty-icon {
+    font-size: 36px;
+    margin-bottom: 8px;
+}
+
+/* פאנל הפירוט: לשוניות בסגנון "פילים" ופאנל על כרטיס */
+.automations-details-row td {
+    border-top: 1px solid var(--border);
+    box-shadow: inset 0 3px 6px -4px rgba(15, 23, 42, 0.12);
+}
+
+.automations-tab-bar {
+    border-bottom: none;
+    gap: 6px;
+    padding: 4px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    width: fit-content;
+    max-width: 100%;
+}
+
+.automations-tab-btn {
+    border-radius: 999px;
+    margin-bottom: 0;
+    border-bottom: none;
+    padding: 6px 16px;
+    color: var(--muted);
+}
+
+.automations-tab-btn.active {
+    background: var(--primary);
+    color: #fff;
+}
+
+.automations-tab-btn:not(.active):hover {
+    background: var(--surface-2);
+}
+
+.automations-details .form-card,
+.automations-message-history li {
+    background: var(--surface);
+}
+
+.automations-message-history li,
+.automations-membership-types {
+    border-color: var(--border);
+}
+
+/* מצב כהה - בעמוד הזה היו צבעים קבועים (#fff, #f1f5f9) שנשארו בהירים */
+body.dark .automations-category-title,
+body.dark .automations-name {
+    color: var(--text);
+}
+
+body.dark .category-pill-green {
+    background: #14532d;
+    border-color: #166534;
+    color: #bbf7d0;
+}
+
+body.dark .num-ok { background: #14532d; color: #bbf7d0; }
+body.dark .num-fail { background: #7f1d1d; color: #fecaca; }
+body.dark .switch { background: #475569; }
+body.dark .switch.on { background: #22c55e; }
+body.dark .automations-membership-types,
+body.dark .automations-membership-list label {
+    background: var(--surface);
+    color: var(--text);
+}
+
+body.dark .automations-table-wrap input,
+body.dark .automations-details input[type=text],
+body.dark .automations-details input[type=number],
+body.dark .automations-details input[type=time],
+body.dark .automations-details input[type=date],
+body.dark .automations-details select,
+body.dark .automations-details textarea {
+    background: var(--surface);
+    color: var(--text);
+    border-color: var(--border);
+}
+
+body.dark .automations-details label {
+    color: var(--muted);
+}
+
+@media (max-width: 720px) {
+    .automations-stats {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
 /* עמוד תבניות וואטסאפ - אותו תיקון בדיוק כמו automations-schedule-summary: בלי זה, תוכן
    תבנית ארוך (יכול להיות כמה שורות אצל תבניות שיווקיות ישנות) מתרחב כשורה אחת בלי גבול
    ועובר את רוחב העמוד, במקום להיעטף בתוך העמודה שלו */
@@ -1422,4 +1757,1653 @@ body.dark .chat-app-empty {
     color: var(--muted);
     background: var(--surface);
     border-bottom: 1px solid var(--border);
+}
+
+/* --- מצב כהה גלובלי: צבעים שהוגדרו קבוע בהיר (#fff, #111827, #334155...) ולכן "נעלמו" או נשארו
+   בהירים כשהמשתנים (--surface/--text וכו') התהפכו. בלוק אחד מרוכז, כדי לא לפזר תיקונים בין כללים */
+body.dark {
+    background: linear-gradient(135deg, #0a1424 0%, var(--bg) 100%);
+}
+
+body.dark .card h1,
+body.dark .card h2,
+body.dark .card h3,
+body.dark .card h4 {
+    color: var(--text);
+}
+
+body.dark .card-header {
+    border-bottom-color: var(--border);
+}
+
+body.dark .sidebar a {
+    color: var(--muted);
+}
+
+body.dark .sidebar a:hover,
+body.dark .sidebar a.active {
+    background: linear-gradient(90deg, rgba(96, 165, 250, 0.18) 0%, rgba(96, 165, 250, 0.06) 100%);
+    color: var(--primary-dark);
+}
+
+body.dark th {
+    background: var(--surface-2);
+    color: var(--muted);
+}
+
+body.dark th,
+body.dark td {
+    border-bottom-color: var(--border);
+}
+
+body.dark th:not(:last-child),
+body.dark td:not(:last-child) {
+    border-inline-end-color: rgba(148, 163, 184, 0.08);
+}
+
+body.dark tr:hover td {
+    background: var(--surface-2);
+}
+
+body.dark .table-scroll {
+    border-color: var(--border);
+}
+
+body.dark .empty-state {
+    background: var(--surface-2);
+    border-color: var(--border);
+    color: var(--muted);
+}
+
+body.dark input[type=text],
+body.dark input[type=password],
+body.dark input[type=email],
+body.dark input[type=number],
+body.dark input[type=date],
+body.dark input[type=time],
+body.dark input[type=search],
+body.dark select,
+body.dark textarea {
+    background: var(--surface-2);
+    color: var(--text);
+    border-color: var(--border);
+    color-scheme: dark;
+}
+
+body.dark input::placeholder,
+body.dark textarea::placeholder {
+    color: var(--muted);
+}
+
+body.dark input[type=text]:focus,
+body.dark input[type=password]:focus,
+body.dark input[type=email]:focus,
+body.dark input[type=number]:focus,
+body.dark input[type=date]:focus,
+body.dark input[type=time]:focus,
+body.dark select:focus,
+body.dark textarea:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.25);
+}
+
+body.dark label,
+body.dark .bulk-count {
+    color: var(--muted);
+}
+
+body.dark select.status-select,
+body.dark .status-chip {
+    background-color: var(--surface-2);
+    color: var(--text);
+    border-color: var(--border);
+}
+
+body.dark .flash-success {
+    background: #14532d;
+    color: #bbf7d0;
+    border-color: #166534;
+}
+
+body.dark .flash-error {
+    background: #7f1d1d;
+    color: #fecaca;
+    border-color: #991b1b;
+}
+
+body.dark .notes-panel-body {
+    color: var(--text);
+}
+
+body.dark .day-list a,
+body.dark .hour-list a {
+    color: var(--text);
+    border-color: var(--border);
+}
+
+body.dark .day-list a:hover,
+body.dark .hour-list a:hover {
+    background: var(--surface-2);
+}
+
+body.dark .automations-category summary:hover {
+    background: var(--surface-2);
+}
+
+body.dark .automations-group-header-row:hover {
+    background: var(--surface-2);
+}
+
+/* --- עמוד תבניות וואטסאפ (templates/whatsapp_templates/index.html): כרטיסי תבניות עם תצוגת
+   "בועת הודעה", סינון/חיפוש, וטופס יצירה עם תצוגה מקדימה חיה. הכל בקידומת wa- --- */
+.wa-info {
+    margin-bottom: 16px;
+    padding: 10px 14px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+}
+
+.wa-info summary {
+    cursor: pointer;
+    font-weight: 700;
+    font-size: 14px;
+}
+
+.wa-info .hint {
+    margin: 8px 0 0;
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+.wa-section-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin: 8px 0 12px;
+}
+
+.wa-section-head h4,
+.wa-new h4 {
+    margin: 0;
+    font-size: 16px;
+}
+
+.wa-filters {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 14px;
+}
+
+.wa-filters input[type=text] {
+    min-width: 240px;
+    flex: 1;
+    max-width: 340px;
+}
+
+.wa-chip {
+    padding: 6px 14px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--surface);
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.15s ease;
+}
+
+.wa-chip:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+.wa-chip.active {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: #fff;
+}
+
+.wa-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 14px;
+}
+
+.wa-card {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 14px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+    transition: box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.wa-card:hover {
+    box-shadow: var(--shadow);
+    transform: translateY(-1px);
+}
+
+.wa-card[hidden] {
+    display: none;
+}
+
+.wa-card-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.wa-name {
+    font-family: Consolas, "Courier New", monospace;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text);
+    direction: ltr;
+    overflow-wrap: anywhere;
+}
+
+.wa-meta {
+    display: flex;
+    gap: 6px;
+}
+
+.wa-pill-marketing {
+    background: #fef3c7;
+    border-color: #fcd34d;
+    color: #92400e;
+}
+
+.wa-bubble {
+    padding: 8px 12px;
+    background: #d9fdd3;
+    color: #111b21;
+    border-radius: 10px 10px 2px 10px;
+    box-shadow: 0 1px 1px rgba(0, 0, 0, 0.08);
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.wa-bubble-text {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+.wa-bubble-footer {
+    margin-top: 6px;
+    font-size: 11px;
+    color: rgba(17, 27, 33, 0.55);
+}
+
+.wa-var {
+    padding: 0 4px;
+    border-radius: 4px;
+    background: rgba(37, 99, 235, 0.15);
+    color: #1d4ed8;
+    font-weight: 700;
+    direction: ltr;
+    unicode-bidi: isolate;
+}
+
+.wa-placeholder {
+    color: rgba(17, 27, 33, 0.45);
+}
+
+/* טופס יצירה + תצוגה מקדימה זה לצד זה */
+.wa-new {
+    margin-top: 28px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+    scroll-margin-top: 80px;
+}
+
+.wa-new-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 320px;
+    gap: 24px;
+    align-items: start;
+    margin-top: 14px;
+}
+
+.wa-form .form-group {
+    max-width: 560px;
+}
+
+.wa-form .form-group input,
+.wa-form .form-group select {
+    width: 100%;
+    margin-bottom: 6px;
+}
+
+.wa-preview {
+    position: sticky;
+    top: 84px;
+}
+
+.wa-preview-title {
+    margin-bottom: 8px;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--muted);
+}
+
+.wa-preview-thread {
+    min-height: 140px;
+    max-width: none;
+}
+
+.wa-bubble-preview {
+    align-self: flex-end;
+    max-width: 92%;
+}
+
+@media (max-width: 900px) {
+    .wa-new-layout {
+        grid-template-columns: 1fr;
+    }
+    .wa-preview {
+        position: static;
+    }
+}
+
+body.dark .wa-bubble {
+    background: #005c4b;
+    color: #e9edef;
+}
+
+body.dark .wa-bubble-footer {
+    color: rgba(233, 237, 239, 0.6);
+}
+
+body.dark .wa-placeholder {
+    color: rgba(233, 237, 239, 0.5);
+}
+
+body.dark .wa-var {
+    background: rgba(147, 197, 253, 0.2);
+    color: #bfdbfe;
+}
+
+body.dark .wa-pill-marketing {
+    background: #78350f;
+    border-color: #92400e;
+    color: #fde68a;
+}
+
+/* --- בלאקליסט גלובלי (templates/automations/blacklist.html), קידומת bl- --- */
+.bl-callout {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+    padding: 12px 16px;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-inline-start: 4px solid #dc2626;
+    border-radius: 12px;
+    color: #991b1b;
+}
+
+.bl-callout p {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.bl-callout-icon {
+    font-size: 20px;
+}
+
+.bl-add {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 12px;
+    margin-bottom: 24px;
+    padding: 14px 16px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+}
+
+.bl-add-field {
+    flex: 1;
+    min-width: 180px;
+    max-width: 280px;
+}
+
+.bl-add-field label {
+    margin-bottom: 4px;
+}
+
+.bl-add-field input {
+    width: 100%;
+}
+
+.bl-table-wrap {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+}
+
+.bl-table {
+    margin: 0;
+}
+
+.bl-table thead th {
+    background: var(--surface-2);
+    color: var(--muted);
+}
+
+.bl-table td {
+    vertical-align: middle;
+}
+
+.bl-row[hidden] {
+    display: none;
+}
+
+.bl-phone {
+    font-family: Consolas, "Courier New", monospace;
+    font-weight: 600;
+    text-align: right;
+}
+
+.btn-ghost-danger:hover {
+    background: #fef2f2;
+    border-color: #dc2626;
+    color: #dc2626;
+}
+
+body.dark .bl-callout {
+    background: #450a0a;
+    border-color: #7f1d1d;
+    border-inline-start-color: #f87171;
+    color: #fecaca;
+}
+
+body.dark .btn-ghost-danger:hover {
+    background: #450a0a;
+    border-color: #f87171;
+    color: #fecaca;
+}
+
+/* --- טופס אוטומציה (new.html + פאנל העריכה ברשימה, דרך _schedule_fields/_message_fields),
+   קידומת af-. רוב השינוי הוא על המחלקות הקיימות של הפרטיאלים כדי שלא ייגעו בלוגיקה --- */
+.af-form {
+    max-width: 800px;
+    margin-inline: auto;
+}
+
+.af-section {
+    margin-bottom: 18px;
+    padding: 18px 20px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.af-section-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0 0 14px;
+    font-size: 16px;
+}
+
+.af-step {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: var(--primary);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 800;
+}
+
+.af-actions {
+    display: flex;
+    gap: 10px;
+    padding-top: 4px;
+}
+
+.af-form .form-group,
+.automations-tab-panel .form-group {
+    max-width: 560px;
+}
+
+.af-form .form-group input[type=text],
+.af-form .form-group input[type=number],
+.af-form .form-group input[type=time],
+.af-form .form-group input[type=datetime-local],
+.af-form .form-group select,
+.automations-tab-panel .form-group input[type=text],
+.automations-tab-panel .form-group input[type=number],
+.automations-tab-panel .form-group input[type=time],
+.automations-tab-panel .form-group input[type=datetime-local],
+.automations-tab-panel .form-group select {
+    width: 100%;
+    margin-bottom: 6px;
+}
+
+/* שדה מספר קטן שנשאר צר (למשל "עד השעה" ליד תפריט) */
+.af-form .form-group input[style*="width:70px"],
+.automations-tab-panel .form-group input[style*="width:70px"] {
+    width: 70px;
+}
+
+.af-form input[type=datetime-local],
+.automations-tab-panel input[type=datetime-local] {
+    padding: 9px 12px;
+    border: 1px solid #cbd5e1;
+    border-radius: 10px;
+    font-size: 14px;
+    font-family: inherit;
+    background: #fff;
+}
+
+.af-form textarea,
+.automations-tab-panel textarea {
+    min-height: 120px;
+    line-height: 1.6;
+}
+
+.af-form .form-card,
+.automations-tab-panel .form-card {
+    max-width: 640px;
+}
+
+/* ההסברים הארוכים בטופס - כקריאת "מידע" ולא כשורת טקסט אפורה צפופה */
+.automations-audience-field .hint,
+.automations-message-mode-field .hint,
+.af-section .hint {
+    margin: 6px 0 0;
+    padding: 8px 12px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-inline-start: 3px solid var(--primary);
+    border-radius: 8px;
+    line-height: 1.7;
+}
+
+.af-weekdays {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.af-weekdays label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+    padding: 6px 12px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    font-weight: 600;
+    cursor: pointer;
+    user-select: none;
+}
+
+.af-weekdays label:has(input:checked) {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: #fff;
+}
+
+.af-weekdays input {
+    accent-color: #fff;
+}
+
+.automations-membership-types {
+    border-color: var(--border);
+    background: var(--surface-2);
+    border-radius: 10px;
+}
+
+.automations-membership-option {
+    padding: 4px 6px;
+    border-radius: 6px;
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.automations-membership-option:hover {
+    background: var(--border);
+}
+
+.automations-audience-field[hidden],
+.automations-message-mode-field[hidden],
+.schedule-field[hidden] {
+    display: none;
+}
+
+body.dark .af-section {
+    background: var(--surface);
+}
+
+body.dark .af-form input[type=datetime-local],
+body.dark .automations-tab-panel input[type=datetime-local] {
+    background: var(--surface-2);
+    color: var(--text);
+    border-color: var(--border);
+    color-scheme: dark;
+}
+
+body.dark .af-weekdays label:has(input:checked) {
+    color: #0f172a;
+}
+
+@media (max-width: 720px) {
+    .af-section {
+        padding: 14px;
+    }
+}
+
+/* --- לוח בקרה (templates/dashboard.html): כרטיסי סטטיסטיקה לחיצים עם אייקון וצבע, ורשימות
+   "אחרונים" עם אווטאר וקישור "הצג הכל". קידומות dash-/panel-/recent-. ה-.stat-card של הלוח
+   הוא כלל קיים (למעלה), כאן רק מרחיבים אותו לפי .dash-stat --- */
+.dashboard-hero h2 {
+    font-size: 22px;
+}
+
+.dashboard-hero p {
+    line-height: 1.6;
+}
+
+.dashboard-actions {
+    justify-content: flex-end;
+}
+
+.dash-stat {
+    position: relative;
+    display: block;
+    overflow: hidden;
+    text-decoration: none;
+    color: inherit;
+    border-inline-start: 4px solid var(--dash-accent, var(--primary));
+    transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+.dash-stat:hover {
+    transform: translateY(-2px);
+    border-color: var(--dash-accent, var(--primary));
+}
+
+.dash-stat:focus-visible {
+    outline: 3px solid rgba(96, 165, 250, 0.5);
+    outline-offset: 2px;
+}
+
+.dash-stat-icon {
+    position: absolute;
+    top: 14px;
+    left: 14px;
+    width: 38px;
+    height: 38px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+    font-size: 18px;
+    background: color-mix(in srgb, var(--dash-accent, var(--primary)) 14%, transparent);
+}
+
+.dash-stat-blue { --dash-accent: #2563eb; }
+.dash-stat-green { --dash-accent: #16a34a; }
+.dash-stat-orange { --dash-accent: #f59e0b; }
+.dash-stat-purple { --dash-accent: #9333ea; }
+.dash-stat-gray { --dash-accent: #94a3b8; }
+
+.panel-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.panel-head .panel-title {
+    margin-bottom: 0;
+}
+
+.panel-link {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--primary);
+    text-decoration: none;
+}
+
+.panel-link:hover {
+    text-decoration: underline;
+}
+
+.recent-list li {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    transition: border-color 0.15s ease;
+}
+
+.recent-list li:hover {
+    border-color: var(--primary);
+}
+
+.recent-body {
+    flex: 1;
+    min-width: 0;
+}
+
+.recent-body strong {
+    margin-bottom: 2px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.recent-list .recent-avatar {
+    flex-shrink: 0;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--primary) 0%, #3b82f6 100%);
+    color: #fff;
+    font-size: 15px;
+    font-weight: 700;
+}
+
+body.dark .recent-list .recent-avatar {
+    color: #0f172a;
+}
+
+.recent-list .recent-tag {
+    flex-shrink: 0;
+    padding: 2px 10px;
+    border-radius: 999px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 600;
+}
+
+body.dark .dashboard-hero {
+    background: linear-gradient(135deg, rgba(96, 165, 250, 0.14) 0%, rgba(96, 165, 250, 0.05) 100%);
+    border-color: rgba(96, 165, 250, 0.22);
+}
+
+@media (max-width: 720px) {
+    .dashboard-hero {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    .dashboard-actions {
+        justify-content: flex-start;
+    }
+}
+
+/* --- עמוד הלידים (templates/leads/list.html). רק עיצוב - לא נוגעים בשרשרת ה-flex/overflow של
+   body.page-leads-list למעלה, כדי לא לשבור את הפריסה הקבועה (ראו ההערות שם). סרגל הפעולות
+   המרובות מוסתר עד שנבחר ליד, וזה גם מפנה גובה לטבלה --- */
+.bulk-actions-bar[hidden] {
+    display: none;
+}
+
+.bulk-actions-bar {
+    background: color-mix(in srgb, var(--primary) 10%, var(--surface));
+    border-color: color-mix(in srgb, var(--primary) 35%, var(--border));
+}
+
+.bulk-actions-bar .bulk-count {
+    padding: 3px 12px;
+    border-radius: 999px;
+    background: var(--primary);
+    color: #fff;
+    font-size: 12px;
+}
+
+body.dark .bulk-actions-bar .bulk-count {
+    color: #0f172a;
+}
+
+/* כפתורים משניים בסרגלי הכלים של הלידים - מתאר במקום גרדיאנט אפור כבד */
+.leads-toolbar .btn-secondary,
+.bulk-actions-bar .btn-secondary {
+    background: var(--surface);
+    color: var(--text);
+    border: 1px solid var(--border);
+    box-shadow: none;
+}
+
+.leads-toolbar .btn-secondary:hover,
+.bulk-actions-bar .btn-secondary:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+    box-shadow: none;
+}
+
+.leads-toolbar .toolbar-actions {
+    margin-inline-start: auto;
+}
+
+.leads-toolbar input[type=text] {
+    min-width: 190px;
+}
+
+/* טבלה: שורות נבחרות, ריחוף, והיררכיה ויזואלית (שם בולט, מזהה/תאריכים עמומים) */
+.leads-table tr.row-selected td {
+    background: color-mix(in srgb, var(--primary) 12%, var(--surface));
+}
+
+.leads-table tbody tr:hover td {
+    background: var(--surface-2);
+}
+
+.leads-table tbody tr.row-selected:hover td {
+    background: color-mix(in srgb, var(--primary) 16%, var(--surface));
+}
+
+.leads-table td {
+    vertical-align: middle;
+}
+
+.leads-table .col-name {
+    font-weight: 700;
+}
+
+.leads-table .col-id,
+.leads-table .col-created,
+.leads-table .col-updated,
+.leads-table .col-routings,
+.leads-table .col-branch,
+.leads-table .col-channel {
+    color: var(--muted);
+}
+
+.leads-table .col-id {
+    font-size: 11px;
+}
+
+.leads-table .col-phone .phone-cell > span:first-child {
+    direction: ltr;
+    unicode-bidi: isolate;
+}
+
+.leads-table .col-select input,
+#select-all-checkbox {
+    accent-color: var(--primary);
+    cursor: pointer;
+}
+
+.leads-table tr:hover td.col-notes.has-notes {
+    color: var(--text);
+}
+
+/* תפריט הסטטוס/המשויך בתוך השורה - עדין יותר בקליטה, מתבלט רק בריחוף/פוקוס */
+.leads-table select.assigned-select {
+    border-color: transparent;
+    background: transparent;
+    color: var(--text);
+}
+
+.leads-table select.assigned-select:hover,
+.leads-table select.assigned-select:focus {
+    border-color: var(--border);
+    background: var(--surface);
+}
+
+body.dark .leads-table select.status-select {
+    color: var(--text);
+}
+
+body.dark .leads-table select.assigned-select:hover,
+body.dark .leads-table select.assigned-select:focus {
+    background: var(--surface-2);
+}
+
+/* שורת הסטטיסטיקה/עימוד התחתונה: קצת נשימה ובלוק סיכום ברור */
+.leads-stats-bar {
+    padding: 6px 18px;
+    font-size: 12px;
+}
+
+.leads-stats-group span {
+    padding: 2px 10px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.08);
+}
+
+/* פסי גלילה וקונטרולים מובנים (checkbox, date picker וכו') בצבעי מצב כהה */
+body.dark {
+    color-scheme: dark;
+}
+
+/* טפסי ליד חדש / עריכה / המרה: כרטיס בשתי עמודות (הערות ולחצן יוצאים לרוחב מלא) */
+.form-card.lead-form {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px 18px;
+    max-width: 720px;
+    padding: 20px 22px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+}
+
+.lead-form > .form-group {
+    max-width: none;
+    margin: 0;
+}
+
+.lead-form .form-group input[type=text],
+.lead-form .form-group select,
+.lead-form .form-group textarea {
+    width: 100%;
+}
+
+.lead-form .lead-form-wide,
+.lead-form > .btn {
+    grid-column: 1 / -1;
+}
+
+.lead-form > .btn {
+    justify-self: start;
+}
+
+@media (max-width: 640px) {
+    .form-card.lead-form {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* בורר צבע (ניהול סטטוסים) - כפתור צבע מעוגל במקום תיבה מובנית ענקית */
+input[type=color] {
+    width: 46px;
+    height: 30px;
+    padding: 2px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface);
+    cursor: pointer;
+}
+
+.form-card.lead-form {
+    margin-inline: auto;
+}
+
+/* כפתורים משניים בכל סרגלי הכלים באתר: מתאר עדין, עקבי עם עמודי האוטומציות והלידים */
+.toolbar .btn-secondary {
+    background: var(--surface);
+    color: var(--text);
+    border: 1px solid var(--border);
+    box-shadow: none;
+}
+
+.toolbar .btn-secondary:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+    box-shadow: none;
+}
+
+/* --- שיחות בוט הלקוחות (templates/bot_conversations/index.html): חיפוש/סינון ברשימה, כותרת שיחה
+   עם אווטאר, מפרידי ימים, ופס כתיבה מסודר. הבסיס (chat-app/chat-bubble) נשאר כמו שהיה --- */
+.chat-app {
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+}
+
+.chat-list-item[hidden] {
+    display: none;
+}
+
+.chat-list-tools {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    padding: 10px 12px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+}
+
+.chat-list-tools input[type=text] {
+    width: 100%;
+    margin-bottom: 8px;
+    border-radius: 999px;
+}
+
+.chat-list-filters {
+    display: flex;
+    gap: 6px;
+}
+
+.chat-list-filters .wa-chip {
+    padding: 4px 12px;
+    font-size: 12px;
+}
+
+.chat-list-item {
+    border-inline-start: 3px solid transparent;
+}
+
+.chat-list-item.active {
+    border-inline-start-color: var(--primary);
+}
+
+.chat-list-avatar {
+    background: linear-gradient(135deg, var(--primary) 0%, #3b82f6 100%);
+    font-weight: 700;
+}
+
+body.dark .chat-list-avatar {
+    color: #0f172a;
+}
+
+.chat-list-number .badge {
+    margin-inline-start: 4px;
+    padding: 1px 8px;
+    font-size: 10.5px;
+}
+
+.chat-thread-header {
+    padding: 10px 16px;
+    font-size: 12px;
+}
+
+.chat-header-main {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.chat-header-avatar {
+    width: 38px;
+    height: 38px;
+    font-size: 16px;
+}
+
+.chat-header-title {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.chat-header-title strong {
+    font-size: 15px;
+    color: var(--text);
+}
+
+.chat-header-sub {
+    color: var(--muted);
+}
+
+.chat-thread-header .hint {
+    margin: 6px 0 0;
+}
+
+.chat-day-sep {
+    align-self: center;
+    margin: 8px 0 4px;
+}
+
+.chat-day-sep span {
+    display: inline-block;
+    padding: 3px 12px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.85);
+    color: #54656f;
+    font-size: 11px;
+    font-weight: 600;
+    box-shadow: 0 1px 1px rgba(0, 0, 0, 0.08);
+}
+
+body.dark .chat-day-sep span {
+    background: #182229;
+    color: #8696a0;
+}
+
+.chat-bubble {
+    max-width: 72%;
+}
+
+.chat-reply-form {
+    padding: 10px 14px;
+}
+
+.chat-reply-form textarea {
+    border-radius: 20px;
+}
+
+.chat-attach-name {
+    max-width: 160px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 12px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.chat-reply-form .btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+@media (max-width: 800px) {
+    .chat-app {
+        flex-direction: column;
+        height: auto;
+    }
+    .chat-app-list {
+        width: auto;
+        max-height: 34vh;
+        border-left: none;
+        border-bottom: 1px solid var(--border);
+    }
+    .chat-app-thread {
+        min-height: 60vh;
+    }
+}
+
+/* --- לקוחות (templates/customers/*). משתמש גם ב-af-section / auto-stat / recent-avatar שהוגדרו
+   לעמודים אחרים (כרטיס סעיף, כרטיס מספר, אווטאר), כדי לשמור על שפה עיצובית אחת --- */
+.cust-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+}
+
+.cust-bar input[type=text] {
+    flex: 1;
+    max-width: 420px;
+    border-radius: 999px;
+}
+
+.cust-table-wrap {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+}
+
+.cust-table {
+    margin: 0;
+}
+
+.cust-table thead th {
+    background: var(--surface-2);
+    color: var(--muted);
+}
+
+.cust-table td {
+    vertical-align: middle;
+}
+
+.cust-row[hidden] {
+    display: none;
+}
+
+.cust-name-cell {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    text-decoration: none;
+    color: var(--text);
+}
+
+.cust-name {
+    display: flex;
+    flex-direction: column;
+    font-weight: 700;
+}
+
+.cust-name small {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--muted);
+}
+
+.cust-name-cell:hover .cust-name {
+    color: var(--primary);
+}
+
+.cust-link {
+    color: var(--primary);
+    text-decoration: none;
+}
+
+.cust-link:hover {
+    text-decoration: underline;
+}
+
+.cust-address {
+    white-space: normal;
+    max-width: 260px;
+}
+
+.cust-empty,
+.cust-muted {
+    color: var(--muted);
+}
+
+.cust-actions {
+    display: flex;
+    gap: 6px;
+    justify-content: flex-end;
+}
+
+.cust-actions form {
+    margin: 0;
+}
+
+/* פרופיל לקוח */
+.cust-profile {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 18px;
+    padding: 18px 20px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+}
+
+.cust-profile-avatar {
+    width: 56px;
+    height: 56px;
+    font-size: 22px;
+}
+
+.cust-profile-info {
+    flex: 1;
+    min-width: 220px;
+}
+
+.cust-profile-info h2 {
+    margin: 0 0 8px;
+    font-size: 20px;
+}
+
+.cust-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.cust-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    border-radius: 999px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    font-size: 13px;
+}
+
+.cust-chip-link {
+    color: var(--primary);
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.cust-chip-link:hover {
+    text-decoration: underline;
+}
+
+.cust-profile-stats {
+    display: flex;
+    gap: 10px;
+}
+
+.cust-profile-stats .auto-stat {
+    min-width: 96px;
+    padding: 10px 14px;
+}
+
+.cust-profile-delete {
+    margin: 0;
+}
+
+.cust-actions-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 16px;
+}
+
+.cust-actions-grid .af-section {
+    margin-bottom: 0;
+}
+
+.cust-actions-grid .form-group {
+    max-width: none;
+}
+
+.cust-actions-grid .form-group input,
+.cust-actions-grid .form-group select {
+    width: 100%;
+}
+
+.af-section .af-step {
+    font-size: 13px;
+}
+
+body.dark .cust-profile-avatar {
+    color: #0f172a;
+}
+
+/* אווטאר בעמודי לקוחות (מחוץ ל-.recent-list, שם הכלל המקורי חל) */
+.cust-name-cell .recent-avatar,
+.cust-profile .recent-avatar {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--primary) 0%, #3b82f6 100%);
+    color: #fff;
+    font-size: 15px;
+    font-weight: 700;
+}
+
+.cust-profile .cust-profile-avatar {
+    width: 56px;
+    height: 56px;
+    font-size: 22px;
+}
+
+body.dark .cust-name-cell .recent-avatar,
+body.dark .cust-profile .recent-avatar {
+    color: #0f172a;
+}
+
+/* --- תורים / משתמשים / התחברות. משתמש גם ב-cust-table, wa-chip, af-weekdays, lead-form שהוגדרו
+   לעמודים אחרים, כדי לשמור על שפה עיצובית אחת --- */
+.appt-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 14px;
+}
+
+.appt-filters {
+    margin-bottom: 0;
+}
+
+.appt-search {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-inline-start: auto;
+}
+
+.appt-search input[type=text] {
+    min-width: 200px;
+    border-radius: 999px;
+}
+
+.appt-count {
+    margin-bottom: 10px;
+}
+
+a.wa-chip {
+    text-decoration: none;
+    display: inline-block;
+}
+
+.appt-when {
+    white-space: nowrap;
+}
+
+.appt-when strong,
+.appt-when small {
+    display: block;
+}
+
+.appt-when small {
+    margin-top: 2px;
+    color: var(--muted);
+    font-size: 11px;
+}
+
+/* מחוון שלבים בקביעת תור: יום > שעה > פרטים */
+.appt-steps {
+    display: flex;
+    gap: 8px;
+    list-style: none;
+    padding: 0;
+    margin: 0 0 18px;
+    counter-reset: step;
+}
+
+.appt-steps li {
+    counter-increment: step;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 14px;
+    border-radius: 999px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.appt-steps li::before {
+    content: counter(step);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--border);
+    color: var(--text);
+    font-size: 11px;
+}
+
+.appt-steps li.active {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: #fff;
+}
+
+.appt-steps li.active::before {
+    background: rgba(255, 255, 255, 0.3);
+    color: #fff;
+}
+
+.appt-steps li.done {
+    color: var(--text);
+}
+
+.appt-steps li.done::before {
+    content: "✓";
+    background: #16a34a;
+    color: #fff;
+}
+
+body.dark .appt-steps li.active {
+    color: #0f172a;
+}
+
+body.dark .appt-steps li.active::before {
+    background: rgba(15, 23, 42, 0.25);
+    color: #0f172a;
+}
+
+/* בחירת יום/שעה: כרטיסים גדולים ללחיצה */
+.pick-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 10px;
+}
+
+.pick-grid a {
+    padding: 16px 12px;
+    text-align: center;
+    font-size: 16px;
+    font-weight: 700;
+    background: var(--surface);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    transition: all 0.15s ease;
+}
+
+.pick-grid a:hover {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: #fff;
+    transform: translateY(-2px);
+    box-shadow: var(--shadow);
+}
+
+body.dark .pick-grid a:hover {
+    background: var(--primary);
+    color: #0f172a;
+}
+
+/* עמוד התחברות */
+.login-page {
+    position: relative;
+    overflow: hidden;
+    padding: 20px;
+}
+
+.login-page::before,
+.login-page::after {
+    content: "";
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(60px);
+    opacity: 0.45;
+    pointer-events: none;
+}
+
+.login-page::before {
+    width: 360px;
+    height: 360px;
+    background: #60a5fa;
+    top: -120px;
+    left: 0;
+}
+
+.login-page::after {
+    width: 300px;
+    height: 300px;
+    background: #8b5cf6;
+    bottom: -100px;
+    right: 0;
+}
+
+.login-card {
+    position: relative;
+    z-index: 1;
+    width: 380px;
+    max-width: 100%;
+    text-align: center;
+}
+
+.login-logo {
+    width: 60px;
+    height: 60px;
+    margin: 0 auto 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 18px;
+    background: linear-gradient(135deg, #2563eb 0%, #60a5fa 100%);
+    box-shadow: 0 10px 24px rgba(37, 99, 235, 0.35);
+    font-size: 28px;
+}
+
+.login-card h1 {
+    margin-bottom: 4px;
+}
+
+.login-subtitle {
+    margin: 0 0 20px;
+    color: #64748b;
+    font-size: 14px;
+}
+
+.login-card .flash {
+    margin-bottom: 14px;
+    text-align: right;
+}
+
+.login-form {
+    text-align: right;
+}
+
+.login-form .form-group {
+    max-width: none;
+}
+
+.login-form .form-group label {
+    color: #475569;
+}
+
+.login-form .form-group input {
+    width: 100%;
+    padding: 11px 14px;
+    background: #fff;
+    color: #0f172a;
+    border-color: #cbd5e1;
+}
+
+.login-password-wrap {
+    position: relative;
+}
+
+.login-password-wrap input {
+    padding-inline-start: 44px;
+}
+
+.login-toggle {
+    position: absolute;
+    top: 50%;
+    inset-inline-start: 8px;
+    transform: translateY(-50%);
+    border: none;
+    background: none;
+    cursor: pointer;
+    font-size: 16px;
+    line-height: 1;
+    padding: 4px 6px;
+    border-radius: 6px;
+}
+
+.login-toggle:hover {
+    background: #f1f5f9;
+}
+
+.login-submit {
+    width: 100%;
+    padding: 12px;
+    font-size: 15px;
+    margin-top: 4px;
 }

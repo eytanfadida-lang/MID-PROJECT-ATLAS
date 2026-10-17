@@ -3,16 +3,67 @@
 {% block page_heading %}אוטומציות{% endblock %}
 
 {% block content %}
-<div class="toolbar">
-    <a href="{{ url_for('automations.new_automation') }}" class="btn">אוטומציה מתוזמנת חדשה</a>
-    <a href="{{ url_for('automations.blacklist') }}" class="btn">בלאקליסט גלובלי</a>
-    <a href="{{ url_for('whatsapp_templates.list_templates') }}" class="btn">תבניות וואטסאפ</a>
+{# סיכום כללי לכל העמוד + ספירת פעילות לכל קטגוריה (חישוב בתבנית בלבד, בלי שינוי בבלופרינט) #}
+{% set ns = namespace(total=0, active=0, ok=0, fail=0) %}
+{% set cat_active = {} %}
+{% for category_key, category in (grouped_automations or {}).items() %}
+    {% set cns = namespace(active=0) %}
+    {% for row in category.rows %}
+        {% if row.kind != 'group_header' %}
+            {% set ns.total = ns.total + 1 %}
+            {% set ns.ok = ns.ok + (row.automation.success_count or 0) %}
+            {% set ns.fail = ns.fail + (row.automation.failed_count or 0) %}
+            {% if row.automation.enabled %}
+                {% set ns.active = ns.active + 1 %}
+                {% set cns.active = cns.active + 1 %}
+            {% endif %}
+        {% endif %}
+    {% endfor %}
+    {% set _ = cat_active.update({category_key: cns.active}) %}
+{% endfor %}
+
+<div class="automations-header">
+    <div class="automations-actions">
+        <a href="{{ url_for('automations.new_automation') }}" class="btn">＋ אוטומציה מתוזמנת חדשה</a>
+        <a href="{{ url_for('automations.blacklist') }}" class="btn btn-ghost">🚫 בלאקליסט גלובלי</a>
+        <a href="{{ url_for('whatsapp_templates.list_templates') }}" class="btn btn-ghost">📨 תבניות וואטסאפ</a>
+    </div>
+</div>
+
+<div class="automations-stats">
+    <div class="auto-stat">
+        <span class="auto-stat-label">סה״כ אוטומציות</span>
+        <span class="auto-stat-value">{{ ns.total }}</span>
+    </div>
+    <div class="auto-stat auto-stat-green">
+        <span class="auto-stat-label">פעילות</span>
+        <span class="auto-stat-value">{{ ns.active }}</span>
+    </div>
+    <div class="auto-stat auto-stat-gray">
+        <span class="auto-stat-label">כבויות</span>
+        <span class="auto-stat-value">{{ ns.total - ns.active }}</span>
+    </div>
+    <div class="auto-stat auto-stat-blue">
+        <span class="auto-stat-label">הודעות שנשלחו</span>
+        <span class="auto-stat-value">{{ ns.ok }}</span>
+    </div>
+    <div class="auto-stat {{ 'auto-stat-red' if ns.fail else 'auto-stat-gray' }}">
+        <span class="auto-stat-label">כשלונות</span>
+        <span class="auto-stat-value">{{ ns.fail }}</span>
+    </div>
 </div>
 
 {% if grouped_automations %}
 {% for category_key, category in grouped_automations.items() %}
 <details class="automations-category">
-    <summary>{{ category_labels.get(category_key, category_key) }} ({{ category.count }})</summary>
+    <summary>
+        <span class="automations-category-title">{{ category_labels.get(category_key, category_key) }}</span>
+        <span class="automations-category-meta">
+            <span class="category-pill">{{ category.count }} אוטומציות</span>
+            <span class="category-pill {{ 'category-pill-green' if cat_active[category_key] else '' }}">{{ cat_active[category_key] }} פעילות</span>
+        </span>
+    </summary>
+<div class="automations-table-wrap">
 <table class="automations-table">
     <thead>
         <tr>
@@ -34,8 +85,8 @@
         </tr>
         {% else %}
         {% set a = row.automation %}
-        <tr id="automation-{{ a.id }}" {% if row.group_id %}class="automations-group-member" data-group="{{ row.group_id }}" hidden{% endif %}>
-            <td>{{ a.name }}</td>
+        <tr id="automation-{{ a.id }}" class="automations-row{{ '' if a.enabled else ' is-off' }}{{ ' automations-group-member' if row.group_id else '' }}" {% if row.group_id %}data-group="{{ row.group_id }}" hidden{% endif %}>
+            <td class="automations-name">{{ a.name }}</td>
             <td class="automations-schedule-summary">
                 {% if a.trigger_type == 'scheduled' %}
                     {% set tc = a.trigger_config %}
@@ -84,16 +135,23 @@
                 {% endif %}
             </td>
             <td class="automations-message-preview">{{ (a.steps[0].action_config.text_template or '')[:60] if a.steps else '' }}</td>
-            <td>{{ a.expected_recipient_count if a.expected_recipient_count is not none else '-' }}</td>
-            <td><span class="badge {{ 'badge-green' if a.enabled else 'badge-gray' }}">{{ 'פעילה' if a.enabled else 'כבויה' }}</span></td>
-            <td>{{ a.success_count }}</td>
-            <td>{{ a.failed_count }}</td>
+            <td class="automations-num">{{ a.expected_recipient_count if a.expected_recipient_count is not none else '-' }}</td>
             <td>
-                <form method="post" action="{{ url_for('automations.toggle_automation', automation_id=a.id) }}" style="display:inline;">
+                <form method="post" action="{{ url_for('automations.toggle_automation', automation_id=a.id) }}" class="automations-toggle-form">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                    <button type="submit" class="btn">{{ 'כבה' if a.enabled else 'הפעל' }}</button>
+                    <button type="submit" class="switch {{ 'on' if a.enabled else '' }}" role="switch"
+                            aria-checked="{{ 'true' if a.enabled else 'false' }}"
+                            title="{{ 'לחיצה לכיבוי האוטומציה' if a.enabled else 'לחיצה להפעלת האוטומציה' }}">
+                        <span class="switch-knob"></span>
+                    </button>
+                    <span class="switch-label">{{ 'פעילה' if a.enabled else 'כבויה' }}</span>
                 </form>
-                <button type="button" class="btn" onclick="document.getElementById('details-{{ a.id }}').hidden = !document.getElementById('details-{{ a.id }}').hidden;">עריכה</button>
+            </td>
+            <td class="automations-num"><span class="num-pill {{ 'num-ok' if a.success_count else 'num-zero' }}">{{ a.success_count }}</span></td>
+            <td class="automations-num"><span class="num-pill {{ 'num-fail' if a.failed_count else 'num-zero' }}">{{ a.failed_count }}</span></td>
+            <td class="automations-row-actions">
+                <button type="button" class="btn btn-ghost btn-sm" aria-expanded="false"
+                        onclick="automationsToggleDetails({{ a.id }}, this)">✏️ עריכה</button>
             </td>
         </tr>
         <tr id="details-{{ a.id }}" class="automations-details-row" {% if row.group_id %}data-group="{{ row.group_id }}"{% endif %} hidden>
@@ -235,13 +293,26 @@
         {% endfor %}
     </tbody>
 </table>
+</div>
 </details>
 {% endfor %}
 {% else %}
-<p class="empty-state">אין עדיין אוטומציות.</p>
+<div class="empty-state automations-empty">
+    <div class="automations-empty-icon">⚡</div>
+    <strong>אין עדיין אוטומציות</strong>
+    <p class="hint">צרו אוטומציה מתוזמנת ראשונה כדי להתחיל לשלוח הודעות אוטומטית.</p>
+</div>
 {% endif %}
 
 <script>
+// פותחת/סוגרת את שורת הפירוט של אוטומציה, ומסנכרנת את מצב הכפתור (aria-expanded + צבע פעיל)
+function automationsToggleDetails(id, btn) {
+    var row = document.getElementById('details-' + id);
+    row.hidden = !row.hidden;
+    btn.setAttribute('aria-expanded', row.hidden ? 'false' : 'true');
+    btn.classList.toggle('active', !row.hidden);
+}
+
 // מכווצת/פותחת קבוצת שם משותף (למשל "לקוחות שעזבו - 14/35 ימים", ראו _subgroup_by_name
 // בבלופרינט) - מוגבל לטבלה הזו (קטגוריה אחת), לא גלובלי, כדי שלא יתנגש בין קטגוריות שונות
 // עם אותו group_id. סוגר תמיד את שורת הפירוט (details) של החברות כשמכווצים, גם אם הייתה
@@ -288,6 +359,11 @@ if (window.location.hash && window.location.hash.startsWith('#automation-')) {
     var detailsRow = document.getElementById('details-' + automationId);
     if (detailsRow) {
         detailsRow.hidden = false;
+        var editBtn = document.querySelector('#automation-' + automationId + ' .automations-row-actions button');
+        if (editBtn) {
+            editBtn.setAttribute('aria-expanded', 'true');
+            editBtn.classList.add('active');
+        }
     }
     if (automationRow) {
         var categoryDetails = automationRow.closest('details.automations-category');

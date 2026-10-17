@@ -3,45 +3,91 @@
 {% block page_heading %}לקוחות והזמנות{% endblock %}
 
 {% block content %}
-<div class="toolbar">
-    <a href="{{ url_for('customers.new_customer') }}" class="btn">לקוח חדש</a>
+<div class="automations-header">
+    <div class="automations-actions">
+        <a href="{{ url_for('customers.new_customer') }}" class="btn">＋ לקוח חדש</a>
+    </div>
 </div>
 
 {% if customers %}
-<table>
+<div class="cust-bar">
+    <input type="text" id="cust-search" placeholder="🔍 חיפוש לפי שם, טלפון, אימייל או כתובת" aria-label="חיפוש לקוחות" dir="auto">
+    <span class="category-pill" id="cust-count">{{ customers | length }} לקוחות</span>
+</div>
+
+<div class="automations-table-wrap cust-table-wrap">
+<table class="cust-table">
     <thead>
         <tr>
-            <th>מזהה</th>
-            <th>שם</th>
+            <th>לקוח</th>
             <th>טלפון</th>
             <th>אימייל</th>
             <th>כתובת</th>
-            <th>פעולות</th>
+            <th></th>
         </tr>
     </thead>
     <tbody>
         {% for c in customers %}
-        <tr>
-            <td>{{ c.id }}</td>
-            <td>{{ c.name }}</td>
-            <td>{{ c.phone }}</td>
-            <td>{{ c.email }}</td>
-            <td>{{ c.address }}</td>
-            <td class="actions-row">
-                <a href="{{ url_for('customers.detail', customer_id=c.id) }}" class="btn btn-secondary">הצג</a>
-                {% if current_user.role == ROLE_ADMIN %}
-                <form method="post" action="{{ url_for('customers.delete', customer_id=c.id) }}"
-                      onsubmit="return confirm('האם אתה בטוח שברצונך למחוק את הלקוח?');">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                    <button type="submit" class="btn btn-danger">מחק</button>
-                </form>
-                {% endif %}
+        <tr class="cust-row" data-search="{{ ((c.name or '') ~ ' ' ~ (c.phone or '') ~ ' ' ~ (c.email or '') ~ ' ' ~ (c.address or '')) | lower }}">
+            <td>
+                <a href="{{ url_for('customers.detail', customer_id=c.id) }}" class="cust-name-cell">
+                    <span class="recent-avatar" aria-hidden="true">{{ (c.name or '?')[:1] }}</span>
+                    <span class="cust-name">{{ c.name }}<small>#{{ c.id }}</small></span>
+                </a>
+            </td>
+            <td>
+                {% if c.phone %}
+                <span class="phone-cell"><bdi dir="ltr">{{ c.phone }}</bdi>
+                    <a href="{{ c.phone | whatsapp_link }}" target="_blank" rel="noopener" class="whatsapp-icon" title="פתח בוואטסאפ" aria-label="פתח בוואטסאפ">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/></svg>
+                    </a>
+                </span>
+                {% else %}-{% endif %}
+            </td>
+            <td>{% if c.email %}<a href="mailto:{{ c.email }}" class="cust-link"><bdi dir="ltr">{{ c.email }}</bdi></a>{% else %}<span class="cust-empty">—</span>{% endif %}</td>
+            <td class="cust-address">{{ c.address or '—' }}</td>
+            <td class="automations-row-actions">
+                <div class="cust-actions">
+                    <a href="{{ url_for('customers.detail', customer_id=c.id) }}" class="btn btn-ghost btn-sm">הצג</a>
+                    {% if current_user.role == ROLE_ADMIN %}
+                    <form method="post" action="{{ url_for('customers.delete', customer_id=c.id) }}"
+                          onsubmit="return confirm('האם אתה בטוח שברצונך למחוק את הלקוח?');">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                        <button type="submit" class="btn btn-ghost btn-sm btn-ghost-danger">מחק</button>
+                    </form>
+                    {% endif %}
+                </div>
             </td>
         </tr>
         {% endfor %}
     </tbody>
 </table>
+</div>
+<p class="empty-state" id="cust-no-results" hidden>לא נמצאו לקוחות שמתאימים לחיפוש.</p>
+
+<script>
+(function () {
+    var search = document.getElementById('cust-search');
+    var rows = document.querySelectorAll('.cust-row');
+    var count = document.getElementById('cust-count');
+    var none = document.getElementById('cust-no-results');
+    search.addEventListener('input', function () {
+        var q = search.value.trim().toLowerCase();
+        var visible = 0;
+        rows.forEach(function (row) {
+            row.hidden = q && row.dataset.search.indexOf(q) === -1;
+            if (!row.hidden) visible++;
+        });
+        count.textContent = visible + ' לקוחות';
+        none.hidden = visible !== 0;
+    });
+})();
+</script>
 {% else %}
-<p class="empty-state">עדיין אין לקוחות.</p>
+<div class="empty-state automations-empty">
+    <div class="automations-empty-icon">👥</div>
+    <strong>עדיין אין לקוחות</strong>
+    <p class="hint">הוסיפו לקוח ראשון, או המירו ליד ללקוח מרשימת הלידים.</p>
+</div>
 {% endif %}
 {% endblock %}

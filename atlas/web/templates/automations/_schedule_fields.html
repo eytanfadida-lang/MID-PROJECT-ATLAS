@@ -268,7 +268,7 @@
 
     <div class="form-group schedule-field" data-for="weekly">
         <label>ימים בשבוע</label>
-        <div>
+        <div class="af-weekdays">
             {% for i in range(7) %}
             <label><input type="checkbox" name="weekdays" value="{{ i }}" {{ 'checked' if i in selected_weekdays else '' }}> {{ weekday_labels[i] }}</label>
             {% endfor %}

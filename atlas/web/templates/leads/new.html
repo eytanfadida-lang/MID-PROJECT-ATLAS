@@ -3,7 +3,7 @@
 {% block page_heading %}הוספת ליד חדש{% endblock %}
 
 {% block content %}
-<form method="post" class="form-card">
+<form method="post" class="form-card lead-form">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <div class="form-group">
         <label>שם מלא</label>
@@ -38,7 +38,7 @@
             {% endfor %}
         </select>
     </div>
-    <div class="form-group">
+    <div class="form-group lead-form-wide">
         <label>הערות</label>
         <textarea name="notes" rows="3"></textarea>
     </div>
