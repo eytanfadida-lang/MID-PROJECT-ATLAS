@@ -3544,3 +3544,30 @@ body.dark .sidebar .nav-link.active {
         display: none;
     }
 }
+
+/* צבע נפרד לכל אייקון בתפריט (--nav-color מוגדר ב-style של כל קישור ב-base.html) + כותרות קבוצה גדולות יותר */
+.sidebar-title {
+    font-size: 15px;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    text-transform: none;
+}
+
+.sidebar .nav-icon {
+    stroke: var(--nav-color, currentColor);
+    opacity: 1;
+}
+
+body .sidebar .nav-link.active {
+    background: color-mix(in srgb, var(--nav-color, var(--primary)) 14%, transparent);
+    color: var(--text);
+}
+
+body.dark .sidebar .nav-link.active {
+    background: color-mix(in srgb, var(--nav-color, var(--primary)) 22%, transparent);
+    color: var(--text);
+}
+
+.sidebar .nav-link.active::before {
+    background: var(--nav-color, var(--primary));
+}
