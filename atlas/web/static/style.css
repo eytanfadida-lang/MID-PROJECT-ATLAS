@@ -3407,3 +3407,140 @@ body.dark .pick-grid a:hover {
     font-size: 15px;
     margin-top: 4px;
 }
+
+/* --- תפריט צד: אייקוני SVG אחידים (צבע לפי currentColor, לכן עובדים גם במצב כהה), קבוצות "ראשי" ו"ניהול",
+   סימון ברור לעמוד הפעיל, ותפריט אופקי נגלל במסך צר --- */
+.sidebar {
+    width: 204px;
+    padding: 12px 10px;
+}
+
+.sidebar-title {
+    padding: 4px 10px 8px;
+}
+
+.sidebar-title-sep {
+    margin-top: 10px;
+    padding-top: 14px;
+    border-top: 1px solid var(--border);
+}
+
+.sidebar .nav-link {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    padding: 9px 12px;
+    margin-bottom: 2px;
+    color: var(--muted);
+    font-size: 14px;
+    font-weight: 600;
+    border-radius: 10px;
+    text-decoration: none;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+.sidebar .nav-icon {
+    flex-shrink: 0;
+    width: 19px;
+    height: 19px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    opacity: 0.85;
+    transition: transform 0.15s ease, opacity 0.15s ease;
+}
+
+body .sidebar .nav-link:hover {
+    background: var(--surface-2);
+    color: var(--text);
+    font-weight: 600;
+}
+
+body .sidebar .nav-link:hover .nav-icon {
+    opacity: 1;
+    transform: scale(1.08);
+}
+
+body .sidebar .nav-link.active {
+    background: color-mix(in srgb, var(--primary) 12%, transparent);
+    color: var(--primary);
+    font-weight: 700;
+}
+
+body .sidebar .nav-link.active .nav-icon {
+    opacity: 1;
+}
+
+/* פס צבע בצד ההתחלה (ימין ב-RTL) של הפריט הפעיל */
+.sidebar .nav-link.active::before {
+    content: "";
+    position: absolute;
+    inset-block: 8px;
+    inset-inline-start: -9px;
+    width: 4px;
+    border-radius: 0 4px 4px 0;
+    background: var(--primary);
+}
+
+[dir="rtl"] .sidebar .nav-link.active::before {
+    border-radius: 4px 0 0 4px;
+}
+
+.sidebar .nav-link:focus-visible {
+    outline: 3px solid rgba(96, 165, 250, 0.5);
+    outline-offset: -2px;
+}
+
+body.dark .sidebar .nav-link:hover {
+    background: var(--surface-2);
+    color: var(--text);
+}
+
+body.dark .sidebar .nav-link.active {
+    background: color-mix(in srgb, var(--primary) 18%, transparent);
+    color: var(--primary);
+}
+
+@media (max-width: 800px) {
+    .layout {
+        flex-direction: column;
+        padding: 12px;
+    }
+
+    .sidebar {
+        position: static;
+        width: auto;
+        align-self: stretch;
+        display: flex;
+        gap: 4px;
+        overflow-x: auto;
+        padding: 8px;
+    }
+
+    .sidebar-title {
+        display: none;
+    }
+
+    .sidebar .nav-link {
+        flex-shrink: 0;
+        margin-bottom: 0;
+        padding: 8px 12px;
+        white-space: nowrap;
+    }
+
+    .sidebar .nav-link.active::before {
+        display: none;
+    }
+}
+
+@media (max-width: 800px) {
+    .sidebar {
+        scrollbar-width: none;
+    }
+    .sidebar::-webkit-scrollbar {
+        display: none;
+    }
+}
