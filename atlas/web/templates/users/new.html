@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block page_title %}משתמש חדש{% endblock %}
+{% block page_heading %}הוספת משתמש חדש{% endblock %}
+
+{% block content %}
+<div class="automations-header">
+    <div class="automations-actions">
+        <a href="{{ url_for('users.list_users') }}" class="btn btn-ghost">→ חזרה למשתמשים</a>
+    </div>
+</div>
+
+<form method="post" class="form-card lead-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <div class="form-group">
+        <label>שם משתמש</label>
+        <input type="text" name="username" required autofocus autocomplete="off">
+    </div>
+    <div class="form-group">
+        <label>סיסמה</label>
+        <input type="password" name="password" required autocomplete="new-password">
+    </div>
+    <div class="form-group lead-form-wide">
+        <label>תפקיד</label>
+        <select name="role">
+            {% for r in roles %}
+            <option value="{{ r }}">{{ r }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="form-group lead-form-wide">
+        <label>הרשאות</label>
+        <div class="af-weekdays">
+            <label><input type="checkbox" name="permissions" value="manage_users"> ניהול משתמשים</label>
+            <label><input type="checkbox" name="permissions" value="manage_appointments"> ניהול תורים</label>
+            <label><input type="checkbox" name="permissions" value="manage_leads"> ניהול לידים</label>
+            <label><input type="checkbox" name="permissions" value="manage_customers"> ניהול לקוחות</label>
+        </div>
+    </div>
+    <button type="submit" class="btn">✓ צור משתמש</button>
+</form>
+{% endblock %}

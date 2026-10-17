@@ -1,0 +1,320 @@
+import datetime
+import json
+
+import requests
+
+from atlas.paths import secret
+
+API_BASE_URL = "https://arboxserver.arboxapp.com/api/public/v3"
+API_KEY_FILE = secret(".arbox_api_key")
+API_KEY_PLACEHOLDER = "PUT_YOUR_ARBOX_API_KEY_HERE"
+LOCATION_MAP_FILE = secret("arbox_location_map.json")
+PAGE_LIMIT = 500
+
+
+# שולפת הודעת שגיאה קריאה מתגובת שגיאה של Arbox, לדיווח אמיתי ללקוח/ה (למשל ב-book_trial_class
+# ב-customer_assistant.py) - במקום לנחש "כנראה השיעור מלא" לכל כישלון, בלי קשר לסיבה האמיתית
+# (מאומת: תגובת שגיאה אמיתית מ-Arbox נראית כמו {"error": {"message": {"user_id": ["..."]} או מחרוזת}}).
+# error.message יכול להיות dict (שדה -> רשימת שגיאות, כמו בדיקת טופס) או מחרוזת פשוטה - מטפלת בשניהם.
+# נופלת חזרה לטקסט הגולמי של התגובה אם הצורה שונה/לא-JSON בכלל, כדי שלעולם לא "נבלע" מידע
+def extract_arbox_error_message(response):
+    try:
+        body = response.json()
+    except ValueError:
+        return (response.text or "").strip() or f"שגיאה לא ידועה (קוד {response.status_code})"
+
+    error = body.get("error") if isinstance(body, dict) else None
+    message = error.get("message") if isinstance(error, dict) else None
+    if isinstance(message, dict):
+        parts = []
+        for field, field_errors in message.items():
+            if isinstance(field_errors, list):
+                parts.append(f"{field}: {', '.join(str(e) for e in field_errors)}")
+            else:
+                parts.append(f"{field}: {field_errors}")
+        if parts:
+            return " | ".join(parts)
+    elif isinstance(message, str) and message.strip():
+        return message.strip()
+
+    return (response.text or "").strip() or f"שגיאה לא ידועה (קוד {response.status_code})"
+
+
+# קוראת את מפתח ה-API של Arbox מקובץ מקומי (לא נכנס לגיט); מחזירה None אם הקובץ חסר/ריק
+def load_arbox_api_key():
+    if not API_KEY_FILE.exists():
+        return None
+    key = API_KEY_FILE.read_text().strip()
+    if not key or key == API_KEY_PLACEHOLDER:
+        return None
+    return key
+
+
+# קוראת את מיפוי location_id (של Arbox) -> שם סניף שלנו, מקובץ JSON מקומי (לא נכנס לגיט)
+def load_location_branch_map():
+    if not LOCATION_MAP_FILE.exists():
+        return {}
+    try:
+        return json.loads(LOCATION_MAP_FILE.read_text())
+    except (ValueError, OSError):
+        return {}
+
+
+# מושכת את כל המשתמשים מ-Arbox (עם pagination), לפי פרמטרי הסינון שהועברו
+def fetch_arbox_users(api_key, **filters):
+    users = []
+    page = 1
+    while True:
+        response = requests.get(
+            f"{API_BASE_URL}/users",
+            headers={"Accept": "application/json", "api-key": api_key},
+            params={**filters, "limit": PAGE_LIMIT, "page": page},
+            timeout=30,
+        )
+        response.raise_for_status()
+        page_users = response.json().get("data", []) or []
+        users.extend(page_users)
+        if len(page_users) < PAGE_LIMIT:
+            break
+        page += 1
+    return users
+
+
+# מושכת דוח כלשהו מתוך /v3/reports/{reportName} (עם pagination) בין שני תאריכים - משותפת
+# לכל ה-fetch_arbox_* report-specific functions למטה, כדי לא לשכפל את לוגיקת ה-pagination.
+# שימו לב: המשמעות של fromDate/toDate שונה בין דוחות - ב-birthdayReport זו התאמה לפי
+# יום-בחודש (אירוע שנתי חוזר, בלי קשר לשנה), ואילו ב-expiringMembershipsReport זו התאמה
+# לפי תאריך ממשי (end_date בפועל) - מאומת ישירות מול ה-API לכל דוח בנפרד, לא להניח
+def _fetch_arbox_report(api_key, report_name, from_date, to_date):
+    rows = []
+    page = 1
+    while True:
+        response = requests.get(
+            f"{API_BASE_URL}/reports/{report_name}",
+            headers={"Accept": "application/json", "api-key": api_key},
+            params={"fromDate": from_date, "toDate": to_date, "limit": PAGE_LIMIT, "page": page},
+            timeout=30,
+        )
+        response.raise_for_status()
+        page_rows = response.json().get("data", []) or []
+        rows.extend(page_rows)
+        if len(page_rows) < PAGE_LIMIT:
+            break
+        page += 1
+    return rows
+
+
+# "דוח ימי הולדת" - ראו _fetch_arbox_report. חשוב: ההתאמה היא לפי יום-בחודש בלבד (כמו אירוע
+# שנתי חוזר) - fromDate/toDate=אותו תאריך מחזירה את כל מי שנולד באותו יום-בחודש, בלי קשר
+# לשנת הלידה (מאומת ישירות מול ה-API). מחזירה user_id/full_name/birthday/age/
+# status(active/inactive)/phone
+def fetch_arbox_birthdays(api_key, from_date, to_date):
+    return _fetch_arbox_report(api_key, "birthdayReport", from_date, to_date)
+
+
+# "דוח מנויים שעומדים להסתיים" - ראו _fetch_arbox_report. בניגוד ל-birthdayReport, ההתאמה
+# כאן היא לפי תאריך סיום ממשי (end_date), לא יום-בחודש חוזר - מאומת ישירות מול ה-API.
+# מחזירה user_id/full_name/phone/membership_type_name/end_date/cancelled ועוד
+def fetch_arbox_expiring_memberships(api_key, from_date, to_date):
+    return _fetch_arbox_report(api_key, "expiringMembershipsReport", from_date, to_date)
+
+
+# "דוח כרטיסיות שעומדות להסתיים" - ראו _fetch_arbox_report. בניגוד למנויים, אין פה תאריך
+# סיום - ההתאמה היא לפי ספירת ניקובים שנותרו (sessions_left), ומוחזרות שורות עם כל טווח
+# ערכים (לא רק 1) - הסינון לפי הסף הרצוי (בד"כ 1, תואם "הגדר שליחה עבור 1 ניקובים שנותרו"
+# ב-Upgrade360) נעשה ע"י הקורא (ראו _resolve_expiring_sessions_recipients). fromDate/toDate
+# מוגבל ל-31 יום (מאומת מול ה-API, כמו lostLeadsReport) - אין צורך בטווח גדול כי אנחנו
+# שולפים את המצב הנוכחי (fromDate=toDate=היום), לא תחזית לעתיד
+def fetch_arbox_expiring_sessions(api_key, from_date, to_date):
+    return _fetch_arbox_report(api_key, "expiringSessionsReport", from_date, to_date)
+
+
+# "דוח מנויים פעילים" - ראו _fetch_arbox_report. שם שונה בכוונה מ-fetch_arbox_active_memberships
+# הקיימת (זו מ-/users/memberships, בשימוש ל-arbox_member_cache - אין בה location_name/
+# membership_type_name עשירים) - זו דווקא /reports/activeMembershipsReport, שורה אחת לכל
+# מנוי פעיל (לא לכל לקוח - לקוחה עם 2 מנויים בו-זמנית תופיע פעמיים, ראו _resolve_
+# active_members_recipients) עם phone/full_name/membership_type_name/location_name מלאים -
+# מתאים ל"רשימת תפוצה כללית" מסוננת (סוג מנוי/סניף), בניגוד לכל שאר ה-fetch_arbox_* report
+# functions שמסננות לפי תנאי עסקי ספציפי. מאומת מול ה-API: ~7 שניות ל-948 שורות, אין timeout
+def fetch_arbox_active_memberships_report(api_key, from_date, to_date):
+    return _fetch_arbox_report(api_key, "activeMembershipsReport", from_date, to_date)
+
+
+# "דוח שיעורי ניסיון" - ראו _fetch_arbox_report. שורה אחת לכל הזמנת שיעור ניסיון (עבר/עתיד) -
+# date הוא YYYY-MM-ISO רגיל (בניגוד ל-DD/MM/YYYY ב-webhook trial_class, ראו automation_db.py).
+# אין שדה cancelled גלוי - הזמנות שבוטלו כנראה פשוט לא מופיעות (לא מאומת, לא ראינו דוגמה
+# אמיתית). מחזירה גם phone (יכול להיות None - ליד בלי טלפון, ראו _resolve_trial_reminder_
+# recipients) ו-check_in (רלוונטי להיסטוריה, לא לתזכורת לפני השיעור)
+def fetch_arbox_trial_classes(api_key, from_date, to_date):
+    return _fetch_arbox_report(api_key, "trialClassesReport", from_date, to_date)
+
+
+# "דוח נוכחות" - כניסות אמיתיות בפועל (לא הזמנות שיעור), שורה אחת לכל כניסה בפועל - מאומת
+# מול ה-API (101 כניסות אמיתיות ביום אחד). אין בה class_name/staff_member (רק שעת כניסה
+# גולמית דרך שער) - ראו fetch_arbox_bookings לדוח שכן מקשר בין נוכחות לשיעור הספציפי
+def fetch_arbox_entrances(api_key, from_date, to_date):
+    return _fetch_arbox_report(api_key, "entranceReport", from_date, to_date)
+
+
+# "דוח הזמנות" - שורה אחת לכל הזמנת שיעור (לא כל כניסה גולמית), כולל class_name,
+# staff_member ו-check_in (Yes/No - האם באמת הגיעה לשיעור הספציפי הזה, לא רק הוזמנה).
+# מאומת מול ה-API. בשימוש ל"ברכת מילסטון" על נוכחות (ראו _resolve_attendance_milestone_
+# recipients ב-engine.py) - שם, בניגוד ל-entranceReport, יש לנו גם את שם השיעור והמדריך/ה
+def fetch_arbox_bookings(api_key, from_date, to_date):
+    return _fetch_arbox_report(api_key, "bookingsReport", from_date, to_date)
+
+
+# כמו fetch_arbox_trial_classes, אבל לטווח רחב (עד כמה חודשים אחורה) - Arbox דוחה כל בקשה
+# בודדת שחוצה 31 יום (מאומת: "The date range should not exceed 31 days."), אז מפצלת
+# לבקשות של עד 30 יום כל אחת ומאחדת. בשימוש למעקב "לא הגיעו לשיעור ניסיון" על פני חלון
+# רחב (ראו _resolve_trial_no_show_recipients ב-engine.py), לא לשימוש היומיומי הרגיל
+def fetch_arbox_trial_classes_range(api_key, from_date, to_date):
+    rows = []
+    cursor = datetime.date.fromisoformat(from_date)
+    end = datetime.date.fromisoformat(to_date)
+    while cursor <= end:
+        chunk_end = min(cursor + datetime.timedelta(days=29), end)
+        rows.extend(fetch_arbox_trial_classes(api_key, cursor.isoformat(), chunk_end.isoformat()))
+        cursor = chunk_end + datetime.timedelta(days=1)
+    return rows
+
+
+# "דוח מנויים שפגו" - ראו _fetch_arbox_report. ההתאמה היא לפי תאריך סיום ממשי (end_date) -
+# מאומת מול ה-API. מחזירה גם ending_reason ("canceled" וכו') ו-client_status ("inactive")
+def fetch_arbox_expired_memberships(api_key, from_date, to_date):
+    return _fetch_arbox_report(api_key, "expiredMembershipsReport", from_date, to_date)
+
+
+# "דוח לידים אבודים" - ראו _fetch_arbox_report. ההתאמה היא לפי lost_date (תאריך שהליד סומן
+# "אבוד"), לא created_at (תאריך יצירת הליד) - מאומת מול ה-API עם דוגמה אמיתית. מוגבל ל-31
+# יום בטווח (כמו דוחות לידים אחרים) - לא רלוונטי כאן כי שולחים fromDate=toDate=יום בודד
+def fetch_arbox_lost_leads(api_key, from_date, to_date):
+    return _fetch_arbox_report(api_key, "lostLeadsReport", from_date, to_date)
+
+
+# "דוח לידים שהומרו" - ראו _fetch_arbox_report. ההתאמה היא לפי converted_at (תאריך ההמרה
+# ללקוחה בפועל), לא created_at (תאריך יצירת הליד) - מאומת מול ה-API עם דוגמאות אמיתיות
+def fetch_arbox_converted_leads(api_key, from_date, to_date):
+    return _fetch_arbox_report(api_key, "convertedLeadReport", from_date, to_date)
+
+
+# מושכת את לוח השיעורים האמיתי מ-Arbox (עם pagination) בין שני תאריכים - שם שיעור,
+# תאריך/שעה, סניף, מדריך, מקסימום משתתפים. אין ב-Arbox endpoint שחושף כמה מקומות
+# נותרו בפועל (רק את המקסימום) - ראה ה"שאלה פתוחה ל-Arbox support" בתוכנית
+def fetch_arbox_schedule(api_key, from_date, to_date):
+    sessions = []
+    page = 1
+    while True:
+        response = requests.get(
+            f"{API_BASE_URL}/schedule",
+            headers={"Accept": "application/json", "api-key": api_key},
+            params={"from_date": from_date, "to_date": to_date, "limit": PAGE_LIMIT, "page": page},
+            timeout=30,
+        )
+        response.raise_for_status()
+        page_sessions = response.json().get("data", []) or []
+        sessions.extend(page_sessions)
+        if len(page_sessions) < PAGE_LIMIT:
+            break
+        page += 1
+    return sessions
+
+
+# מושכת את כל המנויים הפעילים מ-Arbox (עם pagination) - מידע עשיר יותר מ-/users:
+# סוג מנוי, חוב פתוח, האם בוטל, ו-membership_user_id (דרוש לרישום/ביטול שיעור בפועל
+# דרך /schedule/bookSession, ראו §3.8). מסוננים ל-active=1 בכוונה - זו רשימת כל המנויים
+# שאי-פעם נוצרו (כולל מ-2018), בלי הסינון הכמות תהיה עצומה ולא רלוונטית לבוט
+def fetch_arbox_active_memberships(api_key):
+    memberships = []
+    page = 1
+    while True:
+        response = requests.get(
+            f"{API_BASE_URL}/users/memberships",
+            headers={"Accept": "application/json", "api-key": api_key},
+            params={"active": "1", "limit": PAGE_LIMIT, "page": page},
+            timeout=30,
+        )
+        response.raise_for_status()
+        page_memberships = response.json().get("data", []) or []
+        memberships.extend(page_memberships)
+        if len(page_memberships) < PAGE_LIMIT:
+            break
+        page += 1
+    return memberships
+
+
+# רושמת משתמש קיים לשיעור אמיתי ב-Arbox (לא ליומן הפנימי שלנו) - כתיבה בזמן אמת,
+# ולכן דורשת שהתהליך שקורא לפונקציה הזו יוכל להגיע ל-Arbox יוצא (לא PythonAnywhere
+# בתוכנית החינמית, ראו §3.8 בתוכנית)
+def book_arbox_session(api_key, user_id, schedule_id, membership_user_id):
+    response = requests.post(
+        f"{API_BASE_URL}/schedule/bookSession",
+        headers={"Accept": "application/json", "api-key": api_key},
+        json={"user_id": user_id, "schedule_id": schedule_id, "membership_user_id": membership_user_id},
+        timeout=30,
+    )
+    return response
+
+
+# מבטלת רישום קיים של משתמש לשיעור ב-Arbox
+def cancel_arbox_booking(api_key, user_id, schedule_id):
+    response = requests.post(
+        f"{API_BASE_URL}/schedule/cancelUserBooking",
+        headers={"Accept": "application/json", "api-key": api_key},
+        json={"user_id": user_id, "schedule_id": schedule_id},
+        timeout=30,
+    )
+    return response
+
+
+# מחפשת משתמש קיים ב-Arbox לפי טלפון (מספר-מלא-אחד, לא רשימה) - מחזירה user_id
+# ראשון שנמצא, או None אם אין. נחוץ כדי לדעת אם לקוחה/מתעניינת חדשה כבר קיימת
+# ב-Arbox (כליד, למשל) לפני שרושמים אותה לשיעור ניסיון
+def search_arbox_user_by_phone(api_key, phone):
+    response = requests.get(
+        f"{API_BASE_URL}/users/searchUser",
+        headers={"Accept": "application/json", "api-key": api_key},
+        params={"type": "phone", "value": phone},
+        timeout=30,
+    )
+    response.raise_for_status()
+    results = response.json().get("data", []) or []
+    return results[0]["user_id"] if results else None
+
+
+# יוצרת ליד חדש ב-Arbox (POST /v3/users נבדק ולא הצליח - השיעור-ניסיון דוחה את
+# ה-user_id שהוא מחזיר עם "not valid"; רק לידים שנוצרו דרך /leads עובדים) - למשל
+# מתעניינת חדשה שרוצה שיעור ניסיון ועדיין לא קיימת ב-Arbox בכלל. מחזירה את ה-user_id
+def create_arbox_lead(api_key, first_name, last_name, phone, location_id):
+    response = requests.post(
+        f"{API_BASE_URL}/leads",
+        headers={"Accept": "application/json", "api-key": api_key},
+        json={"first_name": first_name, "last_name": last_name, "phone": phone, "location_id": location_id},
+        timeout=30,
+    )
+    response.raise_for_status()
+    return response.json()["data"]["user_id"]
+
+
+# רושמת (משתמש קיים או חדש) לשיעור ניסיון ב-Arbox - endpoint ייעודי שלא דורש מנוי
+# פעיל (בשונה מ-bookSession הרגיל). Arbox עצמה דוחה את הבקשה אם השיעור מלא, וזו
+# בפועל הדרך היחידה לדעת אם יש מקום פנוי (אין endpoint נפרד לכך)
+def book_arbox_trial(api_key, user_id, schedule_id):
+    response = requests.post(
+        f"{API_BASE_URL}/schedule/booking/trial",
+        headers={"Accept": "application/json", "api-key": api_key},
+        json={"user_id": user_id, "schedule_id": schedule_id},
+        timeout=30,
+    )
+    return response
+
+
+# מבטלת רישום קיים לשיעור ניסיון
+def cancel_arbox_trial(api_key, user_id, schedule_id):
+    response = requests.delete(
+        f"{API_BASE_URL}/schedule/booking/trial",
+        headers={"Accept": "application/json", "api-key": api_key},
+        params={"user_id": user_id, "schedule_id": schedule_id},
+        timeout=30,
+    )
+    return response

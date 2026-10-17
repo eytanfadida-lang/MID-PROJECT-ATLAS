@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+{% block page_title %}שיחות בוט הלקוחות{% endblock %}
+{% block page_heading %}שיחות בוט הלקוחות{% endblock %}
+
+{% block content %}
+{% set unread_count = (conversations | selectattr('unread') | list | length) if conversations else 0 %}
+<div class="chat-app">
+    <div class="chat-app-list">
+        {% if conversations %}
+        <div class="chat-list-tools">
+            <input type="text" id="chat-search" placeholder="🔍 חיפוש לפי שם או טלפון" aria-label="חיפוש שיחות" dir="auto">
+            <div class="chat-list-filters">
+                <button type="button" class="wa-chip active" data-chat-filter="all">הכל ({{ conversations | length }})</button>
+                <button type="button" class="wa-chip" data-chat-filter="unread">לא נקראו ({{ unread_count }})</button>
+            </div>
+        </div>
+        <p class="empty-state" id="chat-no-results" hidden>לא נמצאו שיחות.</p>
+            {% for c in conversations %}
+            <a href="{{ url_for('bot_conversations.view_conversation', phone=c.phone) }}"
+               class="chat-list-item {{ 'active' if c.phone == active_phone else '' }} {{ 'chat-list-item-unread' if c.unread else '' }}"
+               data-unread="{{ '1' if c.unread else '0' }}" data-search="{{ ((c.full_name or '') ~ ' ' ~ c.phone) | lower }}">
+                <div class="chat-list-avatar">{{ (c.full_name or c.phone or '?')[:1] }}</div>
+                <div class="chat-list-info">
+                    <div class="chat-list-top">
+                        <span class="chat-list-name">{{ c.full_name or c.phone }}</span>
+                        <span class="chat-list-time">{{ c.last_message_at | format_lead_datetime }}</span>
+                    </div>
+                    <div class="chat-list-preview">
+                        <span class="chat-list-preview-text">{{ c.last_message_body }}</span>
+                        {% if c.unread %}<span class="chat-unread-dot" title="הודעה חדשה שלא נקראה"></span>{% endif %}
+                    </div>
+                    <div class="chat-list-number">
+                        📞 {{ c.phone }} · {{ c.bot_phone_label }}
+                        {% if c.debt and c.debt not in ('0', '0.0', '0.00') %}<span class="badge badge-red">חוב {{ c.debt }}</span>{% endif %}
+                        {% if c.cancelled %}<span class="badge badge-gray">מנוי בוטל</span>{% elif c.active == False %}<span class="badge badge-gray">לא פעילה</span>{% endif %}
+                    </div>
+                </div>
+            </a>
+            {% endfor %}
+        {% else %}
+        <p class="empty-state">אין עדיין שיחות עם בוט הלקוחות.</p>
+        {% endif %}
+    </div>
+
+    <div class="chat-app-thread">
+        {% if messages %}
+        <div class="chat-thread-header">
+            <div class="chat-header-main">
+                <span class="chat-list-avatar chat-header-avatar">{{ (active_conversation.full_name or active_phone or '?')[:1] }}</span>
+                <div class="chat-header-title">
+                    <strong>{{ active_conversation.full_name or active_phone }}</strong>
+                    <span class="chat-header-sub">{% if active_conversation.full_name %}<bdi dir="ltr">{{ active_phone }}</bdi> · {% endif %}דרך: {{ active_bot_label }}</span>
+                </div>
+            </div>
+            {% if active_conversation.membership_type_name %}
+            <div class="hint">
+                מנוי: {{ active_conversation.membership_type_name }}
+                {% if active_conversation.membership_start_date or active_conversation.membership_end_date %}
+                    · {{ active_conversation.membership_start_date or '?' }} עד {{ active_conversation.membership_end_date or '?' }}
+                {% endif %}
+                {% if active_conversation.debt and active_conversation.debt not in ('0', '0.0', '0.00') %} · <span class="badge badge-red">חוב {{ active_conversation.debt }}</span>{% endif %}
+                {% if active_conversation.cancelled %} · <span class="badge badge-gray">מנוי בוטל</span>{% elif active_conversation.active == False %} · <span class="badge badge-gray">לא פעילה</span>{% endif %}
+            </div>
+            {% endif %}
+            {% if active_conversation.synced_at %}
+            <div class="hint">נתוני Arbox עודכנו לאחרונה: {{ active_conversation.synced_at | format_lead_datetime }}</div>
+            {% endif %}
+        </div>
+        <div class="chat-thread">
+            {% set day = namespace(last='') %}
+            {% for m in messages %}
+            {% set this_day = (m.created_at | format_lead_datetime)[-10:] %}
+            {% if this_day != day.last %}
+            {% set day.last = this_day %}
+            <div class="chat-day-sep"><span>{{ this_day }}</span></div>
+            {% endif %}
+            <div class="chat-bubble {{ 'chat-bubble-in' if m.direction == 'in' else 'chat-bubble-out' }}">
+                {% if m.attachment_url %}
+                    {% if m.attachment_url.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.webp')) %}
+                    <a href="{{ m.attachment_url }}" target="_blank" rel="noopener">
+                        <img src="{{ m.attachment_url }}" class="chat-attachment-image" alt="תמונה מצורפת">
+                    </a>
+                    {% elif m.attachment_url.lower().endswith(('.mp4', '.3gp', '.mov', '.webm')) %}
+                    <video src="{{ m.attachment_url }}" class="chat-attachment-image" controls></video>
+                    {% else %}
+                    <a href="{{ m.attachment_url }}" target="_blank" rel="noopener" class="chat-attachment-file">📎 קובץ מצורף</a>
+                    {% endif %}
+                {% endif %}
+                {% if m.body %}{{ m.body | collapse_blank_lines }}{% endif %}<span class="chat-time">{{ m.created_at | format_lead_datetime }}</span>
+            </div>
+            {% endfor %}
+        </div>
+
+        <form method="post" action="{{ url_for('bot_conversations.reply', phone=active_phone) }}"
+              class="chat-reply-form" enctype="multipart/form-data">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <label class="chat-attach-btn" title="צירוף קובץ/תמונה">
+                📎
+                <input type="file" name="attachment" id="chat-attachment" hidden>
+            </label>
+            <span class="chat-attach-name" id="chat-attach-name" hidden></span>
+            <textarea name="body" id="chat-body" rows="1" placeholder="כתוב הודעה... (Ctrl+Enter לשליחה)"></textarea>
+            <button type="submit" class="btn" id="chat-send">שלח ➤</button>
+        </form>
+        {% else %}
+        <div class="chat-app-empty">בחר/י שיחה מהרשימה</div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+(function () {
+    // רשימה: חיפוש + סינון "לא נקראו" (בצד הדפדפן, על הרשימה שכבר נטענה)
+    var items = Array.prototype.slice.call(document.querySelectorAll('.chat-list-item'));
+    var search = document.getElementById('chat-search');
+    var chips = document.querySelectorAll('[data-chat-filter]');
+    var noResults = document.getElementById('chat-no-results');
+    var filter = 'all';
+    function apply() {
+        var q = search ? search.value.trim().toLowerCase() : '';
+        var visible = 0;
+        items.forEach(function (el) {
+            var ok = (filter === 'all' || el.dataset.unread === '1') && (!q || el.dataset.search.indexOf(q) !== -1);
+            el.hidden = !ok;
+            if (ok) visible++;
+        });
+        if (noResults) noResults.hidden = visible !== 0;
+    }
+    if (search) search.addEventListener('input', apply);
+    chips.forEach(function (chip) {
+        chip.addEventListener('click', function () {
+            filter = chip.dataset.chatFilter;
+            chips.forEach(function (c) { c.classList.toggle('active', c === chip); });
+            apply();
+        });
+    });
+
+    // שיחה פתוחה: גלילה להודעה האחרונה, והשיחה הפעילה נראית ברשימה
+    var thread = document.querySelector('.chat-app-thread .chat-thread');
+    if (thread) thread.scrollTop = thread.scrollHeight;
+    var active = document.querySelector('.chat-list-item.active');
+    if (active && active.scrollIntoView) active.scrollIntoView({ block: 'nearest' });
+
+    // טופס תשובה: Ctrl+Enter שולח (Enter רגיל לא - כדי לא לשלוח בטעות ללקוחה), שם הקובץ המצורף
+    // מוצג, וכפתור השליחה מושבת כשאין לא טקסט ולא קובץ
+    var form = document.querySelector('.chat-reply-form');
+    if (form) {
+        var body = document.getElementById('chat-body');
+        var file = document.getElementById('chat-attachment');
+        var fileName = document.getElementById('chat-attach-name');
+        var send = document.getElementById('chat-send');
+        function refresh() {
+            var hasFile = file.files && file.files.length > 0;
+            send.disabled = !body.value.trim() && !hasFile;
+            fileName.hidden = !hasFile;
+            fileName.textContent = hasFile ? '📎 ' + file.files[0].name : '';
+        }
+        body.addEventListener('input', refresh);
+        file.addEventListener('change', refresh);
+        body.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && !send.disabled) {
+                e.preventDefault();
+                form.requestSubmit();
+            }
+        });
+        refresh();
+    }
+})();
+</script>
+{% endblock %}
