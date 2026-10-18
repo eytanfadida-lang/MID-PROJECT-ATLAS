@@ -660,6 +660,10 @@ def _enrich_arbox_webhook_context(event_name, payload):
                 context[field] = datetime.datetime.strptime(payload.get(field, ""), "%Y-%m-%d").strftime("%d-%m-%Y")
             except (ValueError, TypeError):
                 pass
+    elif event_name in ("purchase", "credit_refusal"):
+        # אין שדה first_name נפרד ב-payload (רק "name" מלא) - מאומת מול payload אמיתי לשניהם
+        full_name = (payload.get("name") or "").strip()
+        context["first_name"] = full_name.split(maxsplit=1)[0] if full_name else ""
     return context
 
 
