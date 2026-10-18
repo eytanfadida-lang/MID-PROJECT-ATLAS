@@ -3606,3 +3606,18 @@ body.page-leads-list .table-scroll {
         scrollbar-width: thin;
     }
 }
+
+/* סרגל הפעולות המרובות בלידים מוצג תמיד; בלי בחירה המונה אפור והסרגל עמום קלות, עם בחירה - כחול */
+.bulk-actions-bar:not(.has-selection) {
+    background: var(--surface-2);
+    border-color: var(--border);
+}
+
+.bulk-actions-bar:not(.has-selection) .bulk-count {
+    background: var(--border);
+    color: var(--muted);
+}
+
+body.dark .bulk-actions-bar:not(.has-selection) .bulk-count {
+    color: var(--muted);
+}

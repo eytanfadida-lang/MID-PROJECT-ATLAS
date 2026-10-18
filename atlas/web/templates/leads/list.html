@@ -28,7 +28,7 @@
 </div>
 
 {% if leads %}
-<div class="toolbar bulk-actions-bar" id="bulk-actions-bar" hidden>
+<div class="toolbar bulk-actions-bar" id="bulk-actions-bar">
     <span id="bulk-selected-count" class="bulk-count">0 לידים נבחרו</span>
     <form method="post" action="{{ url_for('leads.bulk_update_status') }}" id="bulk-status-form">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
@@ -200,9 +200,9 @@
     function updateCount() {
         const checkedCount = leadCheckboxes.filter((checkbox) => checkbox.checked).length;
         countLabel.textContent = checkedCount + ' לידים נבחרו';
-        // סרגל הפעולות המרובות מופיע רק כשנבחר לפחות ליד אחד (חוסך גובה בעמוד שגובהו קבוע),
-        // והשורות הנבחרות מודגשות
-        if (bulkBar) bulkBar.hidden = checkedCount === 0;
+        // סרגל הפעולות המרובות מוצג תמיד; כשנבחר ליד הוא מקבל מצב "פעיל" (מונה כחול), והשורות
+        // הנבחרות מודגשות. לחיצה על פעולה בלי בחירה מציגה הודעה (ראו מאזין ה-submit למטה)
+        if (bulkBar) bulkBar.classList.toggle('has-selection', checkedCount > 0);
         leadCheckboxes.forEach((checkbox) => {
             const row = checkbox.closest('tr');
             if (row) row.classList.toggle('row-selected', checkbox.checked);
