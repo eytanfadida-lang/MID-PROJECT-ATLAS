@@ -3571,3 +3571,38 @@ body.dark .sidebar .nav-link.active {
 .sidebar .nav-link.active::before {
     background: var(--nav-color, var(--primary));
 }
+
+/* עמוד הלידים: נעילה קשיחה של המסמך עצמו - העמוד לא גולל בכלל, ורק .table-scroll גולל בתוך עצמו.
+   סרגלי הכלים והפעולות המרובות (flex-shrink: 0) ותפריט הצד תמיד נשארים במקומם */
+html:has(body.page-leads-list) {
+    height: 100%;
+    overflow: hidden;
+    overscroll-behavior: none;
+}
+
+body.page-leads-list {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    overscroll-behavior: none;
+}
+
+body.page-leads-list .toolbar,
+body.page-leads-list .sidebar {
+    flex-shrink: 0;
+}
+
+body.page-leads-list .table-scroll {
+    overscroll-behavior: contain;
+}
+
+/* בשאר העמודים: תפריט הצד נשאר דבק בגלילה, עם מרווח מהטופ-בר, וגולל פנימית אם הוא ארוך מהמסך */
+@media (min-width: 801px) {
+    body:not(.page-leads-list) .sidebar {
+        position: sticky;
+        top: 76px;
+        max-height: calc(100vh - 92px);
+        overflow-y: auto;
+        scrollbar-width: thin;
+    }
+}
