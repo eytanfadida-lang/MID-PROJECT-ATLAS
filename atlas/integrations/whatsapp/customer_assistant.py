@@ -374,6 +374,38 @@ def _build_tool_executors(repos, caller_phone, last_user_text):
             return {"success": False, "reason": "שגיאה טכנית בגישה ל-Arbox"}
 
         location_id = schedule.get("location_id") or 856
+
+        # פתרון זמני עד 20/10/2026: מנויה קיימת שמבקשת שיעור ניסיון (למשל רולר מטריקס) -
+        # endpoint ה"שיעור ניסיון" של Arbox דוחה את ה-user_id שלה עם "user_id is not valid"
+        # (מאומת בפועל 18/10 - ה-endpoint הזה מיועד רק ללידים חדשים). עד שתתקבל החלטה עסקית
+        # קבועה מול אפרת, מנויה קיימת נרשמת בחינם דרך הזמנת שיעור רגילה, שכן מקבלת user_id
+        # של מנוי. אחרי התאריך הזה חוזרים להתנהגות הרגילה (ותידרש החלטה לטווח ארוך).
+        if datetime.date.today() <= datetime.date(2026, 10, 20):
+            member = repos.arbox_member_cache.get_by_phone(caller_phone)
+            if member and member.get("user_id") and member.get("membership_user_id"):
+                response = arbox_client.book_arbox_session(
+                    api_key, member["user_id"], schedule_id, member["membership_user_id"]
+                )
+                if response.status_code == 200:
+                    try:
+                        automation_engine.fire_trigger(
+                            repos, "trial_booked",
+                            context={
+                                "full_name": full_name,
+                                "session_name": schedule.get("session_name"),
+                                "date": schedule.get("date"),
+                                "start_time": schedule.get("start_time"),
+                                "location_name": schedule.get("location_name"),
+                            },
+                            phone=caller_phone,
+                        )
+                    except Exception as exc:
+                        print(f"[customer_assistant] trial_booked automation failed: {exc}", flush=True)
+                    return {"success": True}
+                error_detail = arbox_client.extract_arbox_error_message(response)
+                print(f"[customer_assistant] book_trial_class (existing member fallback) failed ({response.status_code}): {error_detail}", flush=True)
+                return {"success": False, "reason": f"Arbox החזירה שגיאה: {error_detail}"}
+
         user_id = _resolve_or_create_trial_user_id(api_key, full_name, location_id)
         response = arbox_client.book_arbox_trial(api_key, user_id, schedule_id)
         if response.status_code == 200:
