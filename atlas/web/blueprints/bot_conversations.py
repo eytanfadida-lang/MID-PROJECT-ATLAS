@@ -2,7 +2,7 @@ import datetime
 import re
 from pathlib import Path
 
-from flask import Blueprint, render_template, redirect, url_for, request, flash, abort
+from flask import Blueprint, render_template, redirect, url_for, request, flash, abort, jsonify
 from werkzeug.utils import secure_filename
 
 from atlas.data.context import get_repos
@@ -59,8 +59,30 @@ def list_conversations():
     )
     return render_template(
         "bot_conversations/index.html", conversations=conversations, active_phone=None, messages=None,
-        active_conversation=None,
+        active_conversation=None, signature=repos.customer_bot_messages.get_state_signature(),
     )
+
+
+# חתימת המצב הנוכחית של כל השיחות - העמוד בודק אותה כל כמה שניות ורענן את עצמו רק כשהיא
+# משתנה (ראו הסקריפט ב-bot_conversations/index.html). שאילתה זולה, בלי חיפוש בקאש Arbox
+@bp.route("/_state")
+@admin_required
+def poll_state():
+    return jsonify(signature=get_repos().customer_bot_messages.get_state_signature())
+
+
+# הופכת שיחה ל"לא נקראה" (למשל כדי לחזור אליה אחר כך). נקראת גם מהרשימה (fetch, מחזירה JSON)
+# וגם מכפתור בראש השיחה (טופס רגיל, חוזרת לרשימה - לא לשיחה עצמה, אחרת פתיחתה הייתה מסמנת
+# אותה מיד כנקראת שוב)
+@bp.route("/<phone>/mark-unread", methods=["POST"])
+@admin_required
+def mark_unread(phone):
+    done = get_repos().customer_bot_messages.mark_unread(phone)
+    if request.headers.get("X-Requested-With") == "fetch":
+        return jsonify(ok=done)
+    if not done:
+        flash("אי אפשר לסמן כלא נקרא - הלקוחה עוד לא כתבה בשיחה הזו.", "error")
+    return redirect(url_for("bot_conversations.list_conversations"))
 
 
 @bp.route("/<phone>")
@@ -68,8 +90,12 @@ def list_conversations():
 def view_conversation(phone):
     repos = get_repos()
     # לסמן כ"נקרא" לפני שמביאים את רשימת השיחות - כדי שהשיחה הנוכחית כבר תוצג כנקראת
-    # ברשימה בצד, בלי לחכות לרענון הבא
-    repos.customer_bot_messages.mark_read(phone)
+    # ברשימה בצד, בלי לחכות לרענון הבא.
+    # בקשת רענון אוטומטי (poll=1) מסמנת כנקרא רק אם הלשונית באמת גלויה (visible=1) - אחרת
+    # הודעה שהגיעה בזמן שהמנהלת בלשונית אחרת הייתה מסומנת כנקראת בלי שראתה אותה
+    is_poll = request.args.get("poll") == "1"
+    if not is_poll or request.args.get("visible") == "1":
+        repos.customer_bot_messages.mark_read(phone)
     conversations = _with_names(
         _with_number_labels(repos.customer_bot_messages.get_conversation_summaries()), repos
     )
@@ -87,6 +113,7 @@ def view_conversation(phone):
         messages=messages,
         active_bot_label=active_bot_label,
         active_conversation=active_conversation,
+        signature=repos.customer_bot_messages.get_state_signature(),
     )
 
 

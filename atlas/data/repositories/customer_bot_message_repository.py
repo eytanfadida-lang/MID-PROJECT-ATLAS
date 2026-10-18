@@ -67,6 +67,9 @@ class CustomerBotMessageRepository:
                 "last_message_at": row[2],
                 "last_message_body": row[4],
                 "bot_phone_number_id": row[5],
+                # המזהה של ההודעה הנכנסת האחרונה - None אם הלקוחה מעולם לא כתבה (רק הודעות יוצאות).
+                # בשימוש לכפתור "סמן כלא נקרא", שאפשרי רק כשיש הודעה נכנסת לסמן
+                "last_incoming_message_id": row[3],
                 "unread": row[3] is not None and (row[6] is None or row[6] < row[3]),
             }
             for row in rows
@@ -87,6 +90,34 @@ class CustomerBotMessageRepository:
             (phone, last_id),
         )
         self.conn.commit()
+
+    # הופכת שיחה ל"לא נקראה" ידנית: מחזירה את מצב הקריאה להודעה שלפני ההודעה הנכנסת האחרונה,
+    # כך שההודעה הזו נחשבת שוב חדשה (ראו get_conversation_summaries). אפשרי רק לשיחה שיש בה
+    # הודעה נכנסת אחת לפחות - אחרת אין מה "לא לקרוא" (הודעות יוצאות לא נחשבות לא-נקראות).
+    # מחזירה True אם הסימון בוצע, False אם אין הודעה נכנסת
+    def mark_unread(self, phone):
+        last_incoming_id = self.conn.execute(
+            f"SELECT MAX(id) FROM {TABLE_NAME} WHERE phone = ? AND direction = 'in'", (phone,)
+        ).fetchone()[0]
+        if last_incoming_id is None:
+            return False
+        self.conn.execute("DELETE FROM bot_conversation_read_state WHERE phone = ?", (phone,))
+        self.conn.execute(
+            "INSERT INTO bot_conversation_read_state (phone, last_read_message_id) VALUES (?, ?)",
+            (phone, last_incoming_id - 1),
+        )
+        self.conn.commit()
+        return True
+
+    # "חתימה" זולה של מצב כל השיחות (הודעה אחרונה + מצב קריאה) - העמוד בודק אותה כל כמה שניות
+    # (ראו bot_conversations.poll_state) וטוען מחדש את הרשימה/השיחה רק כשהיא משתנה, כדי שלא
+    # נריץ את השאילתות הכבדות של הרשימה (כולל חיפוש בקאש Arbox לכל שיחה) בכל בדיקה
+    def get_state_signature(self):
+        max_id = self.conn.execute(f"SELECT MAX(id) FROM {TABLE_NAME}").fetchone()[0] or 0
+        read_count, read_sum = self.conn.execute(
+            "SELECT COUNT(*), COALESCE(SUM(last_read_message_id), 0) FROM bot_conversation_read_state"
+        ).fetchone()
+        return f"{max_id}:{read_count}:{read_sum}"
 
     def get_by_phone(self, phone):
         rows = self.conn.execute(
