@@ -69,6 +69,28 @@ _ARBOX_CREDIT_REFUSAL_ACTION_CONFIG = {
     "param_templates": ["{first_name}"],
 }
 
+# קמפיין חד-פעמי: הזמנת לקוחות VIP LIFESTYLE לטיפול ניסיון ב-MATRIX ROLL (ראו שיחה עם
+# המשתמשת, 2026-10-18) - לא "קהל חדש" אמיתי, רק שימוש ב-arbox_active_members הקיים עם סינון
+# membership_types לארבעת הווריאנטים האמיתיים של VIP LIFESTYLE (מאומת מול הקאש המקומי -
+# 2 סניפים × רגיל/הוראת קבע). schedule_type="once" בלי run_at (ראו _compute_schedule_instants
+# ב-engine.py) - בכוונה, כדי שלא תישלח במקרה - המשתמשת תקבע תאריך/שעה בעצמה דרך עריכת התזמון
+# לפני שתפעיל, בדיוק כמו "תפריטים - שירז" שנוצרה באותו אופן דרך הממשק
+_VIP_ROLLER_TRIAL_TRIGGER_CONFIG = {
+    "schedule_type": "once",
+    "audience_source": "arbox_active_members",
+    "membership_types": [
+        'VIP LIFESTYLE - טירת כרמל', 'VIP LIFESTYLE - טירת כרמל הו"ק',
+        'VIP LIFESTYLE - קרית מוצקין', 'VIP LIFESTYLE - קרית מוצקין הו"ק',
+    ],
+    "locations": [],
+}
+_VIP_ROLLER_TRIAL_ACTION_CONFIG = {
+    "mode": "template",
+    "template_name": "vip_roller_trial_invite",
+    "template_language": "he",
+    "param_templates": ["{first_name}"],
+}
+
 # אוטומציית "חזרה" למתעניינות שלא הגיעו לשיעור ניסיון (ראו arbox_trial_no_show ב-engine.py) -
 # נזרעת פעם אחת לבקשת המשתמשת (2026-10-14), עם הנוסח המדויק שהיא נתנה. מצב תבנית (לא טקסט)
 # מאותה סיבה כמו arbox_trial_class - קהל שכמעט תמיד מחוץ לחלון 24 השעות. "trial_no_show_winback"
@@ -262,6 +284,7 @@ class AutomationDB:
         self._seed_arbox_membership_hold_automation(conn)
         self._seed_arbox_purchase_automation(conn)
         self._seed_arbox_credit_refusal_automation(conn)
+        self._seed_vip_roller_trial_automation(conn)
         self._seed_trial_no_show_automation(conn)
         self._seed_attendance_milestone_automation(conn)
         self._migrate_upgrade360_automations_to_templates(conn)
@@ -446,6 +469,32 @@ class AutomationDB:
             "INSERT INTO automation_steps (automation_id, step_order, delay_minutes, action_type, "
             "action_config) VALUES (?, 1, 0, 'send_whatsapp_message', ?)",
             (automation_id, json.dumps(_ARBOX_CREDIT_REFUSAL_ACTION_CONFIG, ensure_ascii=False)),
+        )
+        conn.commit()
+
+    # זורעת פעם אחת את קמפיין הפינוק ל-VIP LIFESTYLE (ראו _VIP_ROLLER_TRIAL_*_CONFIG למעלה).
+    # בדיקת קיום לפי שם (לא audience_source - "arbox_active_members" כבר משותף לאוטומציות
+    # אחרות, כמו "תפריטים - שירז") - קמפיין חד-פעמי, לא "קהל" כללי לזיהוי
+    @staticmethod
+    def _seed_vip_roller_trial_automation(conn):
+        import datetime
+
+        exists = conn.execute(
+            "SELECT 1 FROM automations WHERE name = ?", ("פינוק VIP - טיפול ניסיון רולר",)
+        ).fetchone()
+        if exists:
+            return
+        now = datetime.datetime.now().isoformat(timespec="seconds")
+        cursor = conn.execute(
+            "INSERT INTO automations (tenant_id, name, trigger_type, trigger_config, enabled, "
+            "created_at, updated_at) VALUES (1, ?, 'scheduled', ?, 0, ?, ?)",
+            ("פינוק VIP - טיפול ניסיון רולר", json.dumps(_VIP_ROLLER_TRIAL_TRIGGER_CONFIG, ensure_ascii=False), now, now),
+        )
+        automation_id = cursor.lastrowid
+        conn.execute(
+            "INSERT INTO automation_steps (automation_id, step_order, delay_minutes, action_type, "
+            "action_config) VALUES (?, 1, 0, 'send_whatsapp_message', ?)",
+            (automation_id, json.dumps(_VIP_ROLLER_TRIAL_ACTION_CONFIG, ensure_ascii=False)),
         )
         conn.commit()
 

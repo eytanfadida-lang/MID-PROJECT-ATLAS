@@ -455,9 +455,12 @@ def _resolve_active_members_recipients(repos, automation, now):
         if not phone or phone in seen_phones:
             continue  # אותה לקוחה יכולה להופיע כמה פעמים (כמה מנויים פעילים בו-זמנית)
         seen_phones.add(phone)
+        full_name = membership.get("full_name") or membership.get("first_name") or ""
+        first_name = membership.get("first_name") or (full_name.split(maxsplit=1)[0] if full_name else "")
         recipients.append({
             "phone": phone,
-            "full_name": membership.get("full_name") or membership.get("first_name") or "",
+            "full_name": full_name,
+            "first_name": first_name,
             "membership_type_name": membership.get("membership_type_name") or "",
             "location_name": membership.get("location_name") or "",
         })
