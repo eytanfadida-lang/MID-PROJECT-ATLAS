@@ -85,6 +85,22 @@ def mark_unread(phone):
     return redirect(url_for("bot_conversations.list_conversations"))
 
 
+# מוחקת הודעה מהיומן שבממשק (מחיקה רכה, ראו delete_message בריפוזיטורי). חשוב: לא מוחקת
+# אותה מוואטסאפ של הלקוחה - ל-Cloud API אין אפשרות למחוק הודעה שכבר נשלחה. נקראת ב-fetch מהעמוד
+# (מחזירה כמה הודעות נשארו בשיחה, כדי שהעמוד יחזור לרשימה אם נמחקה האחרונה)
+@bp.route("/<phone>/messages/<int:message_id>/delete", methods=["POST"])
+@admin_required
+def delete_message(phone, message_id):
+    remaining = get_repos().customer_bot_messages.delete_message(phone, message_id)
+    if request.headers.get("X-Requested-With") == "fetch":
+        return jsonify(ok=remaining is not None, remaining=remaining or 0)
+    if remaining is None:
+        flash("ההודעה לא נמצאה או שכבר נמחקה.", "error")
+    elif remaining == 0:
+        return redirect(url_for("bot_conversations.list_conversations"))
+    return redirect(url_for("bot_conversations.view_conversation", phone=phone))
+
+
 @bp.route("/<phone>")
 @admin_required
 def view_conversation(phone):

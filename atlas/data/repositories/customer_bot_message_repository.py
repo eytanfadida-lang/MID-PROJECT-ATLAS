@@ -50,13 +50,15 @@ class CustomerBotMessageRepository:
                    MAX(created_at) AS last_message_at,
                    MAX(CASE WHEN direction = 'in' THEN id END) AS last_incoming_message_id,
                    (SELECT body FROM {TABLE_NAME} m2
-                    WHERE m2.phone = m1.phone ORDER BY m2.id DESC LIMIT 1) AS last_message_body,
+                    WHERE m2.phone = m1.phone AND m2.deleted_at IS NULL
+                    ORDER BY m2.id DESC LIMIT 1) AS last_message_body,
                    (SELECT bot_phone_number_id FROM {TABLE_NAME} m3
                     WHERE m3.phone = m1.phone AND m3.bot_phone_number_id IS NOT NULL
                     ORDER BY m3.id DESC LIMIT 1) AS bot_phone_number_id,
                    (SELECT last_read_message_id FROM bot_conversation_read_state r
                     WHERE r.phone = m1.phone) AS last_read_message_id
             FROM {TABLE_NAME} m1
+            WHERE m1.deleted_at IS NULL
             GROUP BY phone
             ORDER BY last_message_at DESC
         """).fetchall()
@@ -97,7 +99,8 @@ class CustomerBotMessageRepository:
     # מחזירה True אם הסימון בוצע, False אם אין הודעה נכנסת
     def mark_unread(self, phone):
         last_incoming_id = self.conn.execute(
-            f"SELECT MAX(id) FROM {TABLE_NAME} WHERE phone = ? AND direction = 'in'", (phone,)
+            f"SELECT MAX(id) FROM {TABLE_NAME} WHERE phone = ? AND direction = 'in' AND deleted_at IS NULL",
+            (phone,),
         ).fetchone()[0]
         if last_incoming_id is None:
             return False
@@ -117,21 +120,41 @@ class CustomerBotMessageRepository:
         read_count, read_sum = self.conn.execute(
             "SELECT COUNT(*), COALESCE(SUM(last_read_message_id), 0) FROM bot_conversation_read_state"
         ).fetchone()
-        return f"{max_id}:{read_count}:{read_sum}"
+        deleted_count = self.conn.execute(
+            f"SELECT COUNT(*) FROM {TABLE_NAME} WHERE deleted_at IS NOT NULL"
+        ).fetchone()[0]
+        return f"{max_id}:{read_count}:{read_sum}:{deleted_count}"
 
     def get_by_phone(self, phone):
         rows = self.conn.execute(
-            f"SELECT direction, body, created_at, attachment_url, delivery_status FROM {TABLE_NAME} "
-            "WHERE phone = ? ORDER BY id",
+            f"SELECT direction, body, created_at, attachment_url, delivery_status, id FROM {TABLE_NAME} "
+            "WHERE phone = ? AND deleted_at IS NULL ORDER BY id",
             (phone,),
         ).fetchall()
         return [
             {
                 "direction": row[0], "body": row[1], "created_at": row[2], "attachment_url": row[3],
-                "delivery_status": row[4],
+                "delivery_status": row[4], "id": row[5],
             }
             for row in rows
         ]
+
+    # מוחקת הודעה מהיומן בממשק - מחיקה "רכה" (deleted_at), לא פיזית: ההודעה נשארת במסד ולכן לא
+    # משבשת את get_last_incoming_at (חלון 24 השעות של וואטסאפ קיים בפועל גם אם מחקנו את ההודעה
+    # מהתצוגה). חשוב: זה לא מוחק את ההודעה מוואטסאפ של הלקוחה - ל-Cloud API אין אפשרות כזו.
+    # בודקת שההודעה שייכת לטלפון הנתון (אי אפשר למחוק הודעה של שיחה אחרת דרך כתובת מזויפת).
+    # מחזירה את מספר ההודעות שנשארו בשיחה (לא נמחקו), או None אם ההודעה לא נמצאה/כבר נמחקה
+    def delete_message(self, phone, message_id):
+        cursor = self.conn.execute(
+            f"UPDATE {TABLE_NAME} SET deleted_at = ? WHERE id = ? AND phone = ? AND deleted_at IS NULL",
+            (datetime.datetime.now().isoformat(timespec="seconds"), message_id, phone),
+        )
+        self.conn.commit()
+        if cursor.rowcount == 0:
+            return None
+        return self.conn.execute(
+            f"SELECT COUNT(*) FROM {TABLE_NAME} WHERE phone = ? AND deleted_at IS NULL", (phone,)
+        ).fetchone()[0]
 
     # מוצאת את מספר-הבוט האחרון שבו נוהלה שיחה עם לקוח נתון - כדי שתגובה ידנית
     # (ראו bot_conversations.py) תישלח מאותו מספר, לא תמיד מברירת המחדל
@@ -143,6 +166,7 @@ class CustomerBotMessageRepository:
         ).fetchone()
         return row[0] if row else None
 
+    # (בכוונה כולל הודעות שנמחקו מהיומן - ראו delete_message)
     # מתי הלקוחה כתבה לבוט לאחרונה (direction='in') - בשימוש לבדיקת "חלון 24 השעות" של
     # וואטסאפ (ראו atlas/automations/engine.py, process_due_action) לפני שליחת הודעה חופשית.
     # None אם מעולם לא כתבה (למשל "לקוחות פעילים" ששלחנו להן יזום, לא בתגובה לפנייה שלהן)

@@ -4,7 +4,7 @@
 
 {% block content %}
 {% set unread_count = (conversations | selectattr('unread') | list | length) if conversations else 0 %}
-<div class="chat-app" id="chat-app" data-signature="{{ signature }}" data-state-url="{{ url_for('bot_conversations.poll_state') }}" data-csrf="{{ csrf_token }}">
+<div class="chat-app" id="chat-app" data-signature="{{ signature }}" data-state-url="{{ url_for('bot_conversations.poll_state') }}" data-csrf="{{ csrf_token }}" data-list-url="{{ url_for('bot_conversations.list_conversations') }}">
     <div class="chat-app-list">
         <div class="chat-list-tools">
             <input type="text" id="chat-search" placeholder="🔍 חיפוש לפי שם או טלפון" aria-label="חיפוש שיחות" dir="auto">
@@ -89,19 +89,20 @@
             {% set day.last = this_day %}
             <div class="chat-day-sep"><span>{{ this_day }}</span></div>
             {% endif %}
-            <div class="chat-bubble {{ 'chat-bubble-in' if m.direction == 'in' else 'chat-bubble-out' }}">
-                {% if m.attachment_url %}
-                    {% if m.attachment_url.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.webp')) %}
-                    <a href="{{ m.attachment_url }}" target="_blank" rel="noopener">
-                        <img src="{{ m.attachment_url }}" class="chat-attachment-image" alt="תמונה מצורפת">
-                    </a>
-                    {% elif m.attachment_url.lower().endswith(('.mp4', '.3gp', '.mov', '.webm')) %}
+            {# הרווחים בתבנית מוסרים בכוונה ({%- -%}): הבועה היא white-space: pre-wrap, ולכן כל רווח/שורה בין
+               התגיות היה נשמר ומוסיף שורה ריקה בראש הבועה #}
+            <div class="chat-bubble {{ 'chat-bubble-in' if m.direction == 'in' else 'chat-bubble-out' }}">{# -#}
+                <button type="button" class="chat-msg-delete" data-url="{{ url_for('bot_conversations.delete_message', phone=active_phone, message_id=m.id) }}" title="מחק מהיומן" aria-label="מחק הודעה מהיומן"><svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6M10 11v6M14 11v6"/></svg></button>
+                {%- if m.attachment_url -%}
+                    {%- if m.attachment_url.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.webp')) -%}
+                    <a href="{{ m.attachment_url }}" target="_blank" rel="noopener"><img src="{{ m.attachment_url }}" class="chat-attachment-image" alt="תמונה מצורפת"></a>
+                    {%- elif m.attachment_url.lower().endswith(('.mp4', '.3gp', '.mov', '.webm')) -%}
                     <video src="{{ m.attachment_url }}" class="chat-attachment-image" controls></video>
-                    {% else %}
+                    {%- else -%}
                     <a href="{{ m.attachment_url }}" target="_blank" rel="noopener" class="chat-attachment-file">📎 קובץ מצורף</a>
-                    {% endif %}
-                {% endif %}
-                {% if m.body %}{{ m.body | collapse_blank_lines }}{% endif %}<span class="chat-time">{{ m.created_at | format_lead_datetime }}</span>
+                    {%- endif -%}
+                {%- endif -%}
+                {%- if m.body %}{{ m.body | collapse_blank_lines }}{% endif %}<span class="chat-time">{{ m.created_at | format_lead_datetime }}</span>{# -#}
             </div>
             {% endfor %}
         </div>
@@ -266,6 +267,33 @@
     document.addEventListener('visibilitychange', function () {
         if (document.visibilityState === 'visible') tick(true);
     });
+
+    // מחיקת הודעה מהיומן: אישור (עם הסבר שזה לא מוחק מוואטסאפ של הלקוחה - ל-API אין אפשרות כזו),
+    // שליחה ברקע, ורענון מיידי. אם זו הייתה ההודעה האחרונה בשיחה - חוזרים לרשימה. האירוע מאזין
+    // על המכולה הקבועה (.chat-app-thread) כי הבועות עצמן מוחלפות ברענון האוטומטי
+    var threadWrap = document.querySelector('.chat-app-thread');
+    if (threadWrap) {
+        threadWrap.addEventListener('click', function (e) {
+            var btn = e.target.closest('.chat-msg-delete');
+            if (!btn) return;
+            e.preventDefault();
+            if (!confirm('למחוק את ההודעה מהיומן כאן?\n\nשים לב: ההודעה לא תימחק מוואטסאפ של הלקוחה - וואטסאפ לא מאפשר למחוק הודעה שכבר נשלחה. היא רק תוסתר מהיומן הזה.')) return;
+            btn.disabled = true;
+            fetch(btn.dataset.url, {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: { 'X-Requested-With': 'fetch' },
+                body: new URLSearchParams({ csrf_token: app.dataset.csrf }),
+            }).then(function (r) { return r.json(); }).then(function (res) {
+                if (res.ok && res.remaining === 0) {
+                    window.location.href = app.dataset.listUrl;
+                } else {
+                    inFlight = false;
+                    tick(true);
+                }
+            }).catch(function () { btn.disabled = false; });
+        });
+    }
 
     // "סמן כלא נקרא" מהרשימה: שולח ברקע ומרענן מיד, בלי לעבור עמוד (האירוע מאזין על המכולה, כך
     // שממשיך לעבוד גם אחרי שהרשימה מוחלפת ברענון אוטומטי)

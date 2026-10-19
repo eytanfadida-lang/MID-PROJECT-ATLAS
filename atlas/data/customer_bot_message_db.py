@@ -44,6 +44,8 @@ class CustomerBotMessageDB:
     #   bot_conversations.py) - להצגה בתוך בועת הצ'אט בממשק הניהול
     # wamid: מזהה ההודעה שהוחזר מוואטסאפ בזמן השליחה (רק להודעות יוצאות) - מפתח לקישור
     #   חזרה לעדכוני סטטוס משלוח (webhook נפרד, ראו extract_status_updates ב-bot.py)
+    # deleted_at: מתי המנהלת מחקה את ההודעה מהיומן בממשק (מחיקה רכה - לא נמחקת פיזית, כדי לא
+    #   לשבש את חישוב "חלון 24 השעות" בשליחת אוטומציות, ראו get_last_incoming_at). None = לא נמחקה
     # delivery_status: sent/delivered/read/failed - מתעדכן ע"י אותו webhook, None עד שמגיע
     #   עדכון ראשון (או להודעות ישנות שנשלחו לפני התכונה הזו)
     @staticmethod
@@ -52,6 +54,8 @@ class CustomerBotMessageDB:
         new_columns = {
             "bot_phone_number_id": "TEXT", "attachment_url": "TEXT",
             "wamid": "TEXT", "delivery_status": "TEXT",
+            # מחיקה "רכה" מהיומן שבממשק (ראו delete_message בריפוזיטורי) - ההודעה נשארת במסד
+            "deleted_at": "TEXT",
         }
         for name, column_type in new_columns.items():
             if name not in columns:
