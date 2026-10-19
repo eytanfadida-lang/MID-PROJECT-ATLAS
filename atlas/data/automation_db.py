@@ -286,6 +286,7 @@ class AutomationDB:
         self._seed_arbox_credit_refusal_automation(conn)
         self._seed_vip_roller_trial_automation(conn)
         self._seed_trial_no_show_automation(conn)
+        self._seed_trial_no_show_winback_manual_campaign(conn)
         self._seed_attendance_milestone_automation(conn)
         self._migrate_upgrade360_automations_to_templates(conn)
         return conn
@@ -531,6 +532,94 @@ class AutomationDB:
             "action_config) VALUES (?, 1, 0, 'send_whatsapp_message', ?)",
             (automation_id, json.dumps(_TRIAL_NO_SHOW_ACTION_CONFIG, ensure_ascii=False)),
         )
+        conn.commit()
+
+    # זורעת פעם אחת קמפיין חד-פעמי (לבקשת המשתמשת, 2026-10-19) לרשימה ידנית וקבועה של 42
+    # מתעניינות שלא הגיעו לשיעור/טיפול ניסיון ב-3 החודשים האחרונים (21/07-19/10), **לא**
+    # כולל מי שהניסיון האחרון שלהן היה ב-3 הימים האחרונים (16-19/10, הוחרגו במפורש לבקשתה).
+    # נוסח אישי משלה (לא נוסח ה-trial_no_show_winback הקיים) - הוגש כתבנית חדשה "trial_no_
+    # show_invite" לאישור מטא (MARKETING) ב-19/10, ממתינה לאישור (PENDING) בזמן הזריעה הזו.
+    # רשימה ידנית קפואה (automation_recipients), לא audience_source דינמי, כי זה קמפיין
+    # חד-פעמי לרשימה שסוננה ידנית, לא ריצה חוזרת. בדיקת קיום לפי שם (קמפיין ספציפי, לא קהל כללי)
+    @staticmethod
+    def _seed_trial_no_show_winback_manual_campaign(conn):
+        import datetime
+
+        name = "חזרה לניסיון - שליחה ידנית 19.10.26"
+        exists = conn.execute("SELECT 1 FROM automations WHERE name = ?", (name,)).fetchone()
+        if exists:
+            return
+
+        recipients = [
+            ("0542688309", "דלית אוסטר"),
+            ("0533411220", "מרים עווד"),
+            ("0504000741", "שילת אטיאס"),
+            ("0525707812", "לירון בנטוב"),
+            ("0508253813", "ליטל שני"),
+            ("0508331775", "סטלה בייצר"),
+            ("0542601242", "מלי שרבקוב"),
+            ("0506204297", "שלומית יפתח"),
+            ("0508445561", "סמדר פז"),
+            ("0527333413", "ענבר"),
+            ("0525833395", "לורין אלוז"),
+            ("0548313830", "נטלי כהן"),
+            ("0524820380", "אורלי בן אורי"),
+            ("0527525782", "הדס חיה הרוש"),
+            ("0547703889", "מלי יהודה"),
+            ("0527220212", "מורן אסף"),
+            ("0526663062", "אמה יהושוע"),
+            ("0507640412", "איריס מרקוביץ"),
+            ("0523060566", "שרית אלקובי"),
+            ("0545601743", "אור סלמן"),
+            ("0549900123", "סברינה אסאדו"),
+            ("0527567672", "ליה דימטרייב"),
+            ("0542685528", "שחף אוברס"),
+            ("0543411068", "תהילה שושן"),
+            ("0528162451", "חגית אלמליח"),
+            ("0529536178", "צופית פניוילוב"),
+            ("0544349755", "מישל גנרלוב"),
+            ("0529579145", "אגם סוויסה"),
+            ("0508789171", "אלמוג תוכמה"),
+            ("0537337879", "שירן סיסו"),
+            ("0528985258", "שיראל סויסה"),
+            ("0525824646", "נעמי"),
+            ("0584267188", "עינב שגב"),
+            ("0526140219", "Maytehila"),
+            ("0505802662", "עדי אליאנה גביש"),
+            ("0523728558", "אתי בן שטרית"),
+            ("0527365117", "מיטל בר סיני"),
+            ("0542815833", "לימור אנקרי"),
+            ("0526265132", "קרן לייבל"),
+            ("0549912838", "לימור ברבר"),
+            ("0529929199", "מאור שיטרית"),
+            ("0528308846", "אורי חלי"),
+        ]
+
+        action_config = {
+            "mode": "template",
+            "template_name": "trial_no_show_invite",
+            "template_language": "he",
+            "param_templates": ["{first_name}"],
+        }
+        now = datetime.datetime.now().isoformat(timespec="seconds")
+        trigger_config = {"schedule_type": "once", "run_at": "2026-10-19T18:40"}
+        cursor = conn.execute(
+            "INSERT INTO automations (tenant_id, name, trigger_type, trigger_config, enabled, "
+            "created_at, updated_at) VALUES (1, ?, 'scheduled', ?, 0, ?, ?)",
+            (name, json.dumps(trigger_config, ensure_ascii=False), now, now),
+        )
+        automation_id = cursor.lastrowid
+        conn.execute(
+            "INSERT INTO automation_steps (automation_id, step_order, delay_minutes, action_type, "
+            "action_config) VALUES (?, 1, 0, 'send_whatsapp_message', ?)",
+            (automation_id, json.dumps(action_config, ensure_ascii=False)),
+        )
+        for phone, full_name in recipients:
+            conn.execute(
+                "INSERT INTO automation_recipients (automation_id, phone, full_name, created_at) "
+                "VALUES (?, ?, ?, ?)",
+                (automation_id, phone, full_name, now),
+            )
         conn.commit()
 
     # זורעת פעם אחת את אוטומציית "ברכת מילסטון על נוכחות" (ראו _ATTENDANCE_MILESTONE_
