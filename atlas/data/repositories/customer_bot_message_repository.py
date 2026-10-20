@@ -156,6 +156,18 @@ class CustomerBotMessageRepository:
             f"SELECT COUNT(*) FROM {TABLE_NAME} WHERE phone = ? AND deleted_at IS NULL", (phone,)
         ).fetchone()[0]
 
+    # עורכת את טקסט ההודעה ביומן בממשק - רק התיעוד המקומי אצלנו, לא ההודעה עצמה שכבר
+    # נשלחה/התקבלה בוואטסאפ (לא קיים API למטא לערוך הודעה שכבר נשלחה/התקבלה). שימושי
+    # למשל לתקן טעות הקלדה בתיעוד או להבהיר הודעה לא-טקסטואלית. אותה בדיקת שייכות-לטלפון
+    # כמו delete_message. מחזירה True אם עודכן, False אם ההודעה לא נמצאה/כבר נמחקה
+    def edit_message(self, phone, message_id, new_body):
+        cursor = self.conn.execute(
+            f"UPDATE {TABLE_NAME} SET body = ? WHERE id = ? AND phone = ? AND deleted_at IS NULL",
+            (new_body, message_id, phone),
+        )
+        self.conn.commit()
+        return cursor.rowcount > 0
+
     # מוצאת את מספר-הבוט האחרון שבו נוהלה שיחה עם לקוח נתון - כדי שתגובה ידנית
     # (ראו bot_conversations.py) תישלח מאותו מספר, לא תמיד מברירת המחדל
     def get_latest_bot_phone_number_id(self, phone):

@@ -101,6 +101,21 @@ def delete_message(phone, message_id):
     return redirect(url_for("bot_conversations.view_conversation", phone=phone))
 
 
+# עורכת את טקסט ההודעה ביומן בממשק (תיעוד מקומי בלבד, ראו edit_message בריפוזיטורי) - לא
+# משנה את ההודעה שכבר נשלחה/התקבלה בוואטסאפ עצמה. נקראת ב-fetch מהעמוד, אותו דפוס בדיוק
+# כמו delete_message
+@bp.route("/<phone>/messages/<int:message_id>/edit", methods=["POST"])
+@admin_required
+def edit_message(phone, message_id):
+    new_body = (request.form.get("body") or "").strip()
+    ok = bool(new_body) and get_repos().customer_bot_messages.edit_message(phone, message_id, new_body)
+    if request.headers.get("X-Requested-With") == "fetch":
+        return jsonify(ok=ok)
+    if not ok:
+        flash("לא ניתן לערוך את ההודעה - היא לא נמצאה, כבר נמחקה, או שהטקסט ריק.", "error")
+    return redirect(url_for("bot_conversations.view_conversation", phone=phone))
+
+
 @bp.route("/<phone>")
 @admin_required
 def view_conversation(phone):
