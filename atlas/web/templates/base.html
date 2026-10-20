@@ -14,6 +14,7 @@
                     <button type="button" class="theme-toggle" id="theme-toggle" aria-label="החלף מצב צבע">🌙</button>
                     <span>{{ current_user.username }}</span>
                     <span class="badge {{ role_badge_class(current_user.role) }}">{{ current_user.role }}</span>
+                    <a href="{{ url_for('users.change_my_password') }}" class="link-button">שינוי סיסמה</a>
                     <form method="post" action="{{ url_for('auth.logout') }}">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                         <button type="submit" class="link-button">התנתקות</button>

@@ -3,11 +3,39 @@ import sqlite3
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 
 from atlas.data.context import get_repos
-from atlas.core.auth import admin_required, current_user
+from atlas.core.auth import admin_required, login_required, current_user
 from atlas.core.view_utils import to_records
 from atlas.core import roles
 
 bp = Blueprint("users", __name__, url_prefix="/users")
+
+
+# שינוי סיסמה עצמי - בכוונה *לא* דרך edit_user (זה חסום במפורש לעריכת החשבון של עצמך, ראו
+# למטה) כדי שלא יהיה אפשר לשנות לעצמך הרשאות/תפקיד דרך "דלת אחורית". דורשת את הסיסמה
+# הנוכחית (לא רק session פעיל) כהגנה נוספת - login_required ולא admin_required, כי כל
+# משתמש מחובר (לא רק מנהל) צריך להיות מסוגל לשנות את הסיסמה של עצמו
+@bp.route("/me/password", methods=["GET", "POST"])
+@login_required
+def change_my_password():
+    session_user = current_user()
+
+    if request.method == "POST":
+        current_password = request.form.get("current_password", "")
+        new_password = request.form.get("new_password", "")
+        confirm_password = request.form.get("confirm_password", "")
+
+        if get_repos().users.authenticate(session_user["username"], current_password) is None:
+            flash("הסיסמה הנוכחית שגויה.", "error")
+        elif not new_password:
+            flash("יש להזין סיסמה חדשה.", "error")
+        elif new_password != confirm_password:
+            flash("הסיסמה החדשה ואימות הסיסמה לא תואמים.", "error")
+        else:
+            get_repos().users.update_password(session_user["id"], new_password)
+            flash("הסיסמה עודכנה בהצלחה.", "success")
+            return redirect(url_for("index"))
+
+    return render_template("users/change_my_password.html")
 
 
 @bp.route("/")
