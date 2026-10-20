@@ -14,6 +14,7 @@ from atlas.integrations.arbox.sync import sync_arbox_clients, apply_arbox_users_
 from atlas.integrations.google import lead_forms as google_leads
 from atlas.integrations import landing_page as landing_page_leads
 from atlas.integrations.meta import lead_ads as meta_leads
+import llm_client
 from atlas.integrations.whatsapp import bot as whatsapp_bot
 from atlas.integrations.whatsapp import admin_assistant as crm_assistant
 from atlas.integrations.whatsapp import customer_assistant
@@ -54,7 +55,10 @@ def _save_incoming_document(phone, filename, file_bytes):
 
 # תמונה/וידאו שמגיעים מוואטסאפ לא נושאים filename (בניגוד למסמך) - רק mime_type.
 # מיפוי ידני לסוגים הנפוצים כי mimetypes.guess_extension לא תמיד עקבי בין סביבות
-_MEDIA_EXTENSION_OVERRIDES = {"image/jpeg": ".jpg", "video/mp4": ".mp4", "video/3gpp": ".3gp"}
+_MEDIA_EXTENSION_OVERRIDES = {
+    "image/jpeg": ".jpg", "video/mp4": ".mp4", "video/3gpp": ".3gp",
+    "audio/ogg": ".ogg", "audio/mpeg": ".mp3", "audio/aac": ".aac", "audio/amr": ".amr",
+}
 
 
 def _guess_media_extension(mime_type):
@@ -575,6 +579,42 @@ def whatsapp_customer_webhook():
 
         return jsonify({"status": "ok", "reason": f"{message_type}_received"})
 
+    # הודעה קולית - מורדת ונשמרת (להאזנה בעמוד שיחות בוט הלקוחות) ומתומללת (Gemini תומך
+    # באודיו ישירות, ראו llm_client.transcribe_audio) - אם התמלול הצליח, ממשיכים בדיוק
+    # כמו הודעת טקסט רגילה (אותו בדיקת-הסרה, אותו customer_assistant) כדי שהבוט יוכל
+    # להבין ולהשיב גם להודעות קוליות, לא רק הבעלים שתאזין. incoming_attachment_url
+    # מועבר הלאה לרישום ה"in" המשותף למטה כדי שגם שם יהיה קישור להאזנה
+    incoming_attachment_url = None
+    if message_type == "audio":
+        audio_info = text or {}
+        transcript = ""
+        try:
+            file_bytes, mime_type = whatsapp_bot.download_media(bot_config, audio_info.get("media_id"))
+            if file_bytes:
+                extension = _guess_media_extension(mime_type or audio_info.get("mime_type")) or ".ogg"
+                incoming_attachment_url = _save_incoming_document(caller_phone, f"audio{extension}", file_bytes)
+                transcript = llm_client.transcribe_audio(file_bytes, mime_type or audio_info.get("mime_type")) or ""
+        except Exception as exc:
+            print(f"[WhatsApp customer webhook] audio download/transcribe failed: {exc}", flush=True)
+
+        if not transcript:
+            repos.customer_bot_messages.log(
+                caller_phone, "in", "[הודעה קולית - תמלול נכשל]", reply_phone_number_id,
+                attachment_url=incoming_attachment_url,
+            )
+            fallback_text = "לא הצלחתי להבין את ההודעה הקולית - אפשר לכתוב לי? 🙏"
+            fallback_response = whatsapp_bot.send_text_message(
+                bot_config, from_number, fallback_text, phone_number_id=reply_phone_number_id
+            )
+            repos.customer_bot_messages.log(
+                caller_phone, "out", fallback_text, reply_phone_number_id,
+                wamid=whatsapp_bot.extract_wamid(fallback_response),
+            )
+            return jsonify({"status": "ok", "reason": "audio_transcribe_failed"})
+
+        text = transcript
+        message_type = "text"
+
     if message_type != "text":
         # תגובת אימוג'י (❤️/👍 וכו' על הודעה קודמת) - לא "הודעה" שדורשת מענה, רק מתעדים
         # לנראות בשיחה (כמו בוואטסאפ עצמו) ולא שולחים את הפולבק "אני לא קולטת טקסט"
@@ -603,7 +643,9 @@ def whatsapp_customer_webhook():
     # ומוסיפה לבלאקליסט הגלובלי (נבדק בכל שליחה מתוזמנת - ראו process_scheduled_automations
     # ב-engine.py) כדי שתפסיק לקבל הודעות תפוצה/שיווק באמת, לא רק הבטחה בטקסט ההודעה
     if _is_opt_out_message(text):
-        repos.customer_bot_messages.log(caller_phone, "in", text, reply_phone_number_id)
+        repos.customer_bot_messages.log(
+            caller_phone, "in", text, reply_phone_number_id, attachment_url=incoming_attachment_url
+        )
         repos.automations.add_to_global_blacklist(caller_phone, full_name=sender_name)
         confirm_text = "בוצע - לא תקבלי יותר הודעות תפוצה/שיווק מאיתנו. אם תרצי לחזור בעתיד, פשוט תכתבי לנו 💛"
         confirm_response = whatsapp_bot.send_text_message(
@@ -615,7 +657,9 @@ def whatsapp_customer_webhook():
         )
         return jsonify({"status": "ok", "reason": "opted_out"})
 
-    repos.customer_bot_messages.log(caller_phone, "in", text, reply_phone_number_id)
+    repos.customer_bot_messages.log(
+        caller_phone, "in", text, reply_phone_number_id, attachment_url=incoming_attachment_url
+    )
     try:
         reply_text = customer_assistant.answer_question(repos, caller_phone, text, sender_name=sender_name)
     except Exception as exc:

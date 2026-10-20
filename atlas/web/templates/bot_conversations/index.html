@@ -98,6 +98,8 @@
                     <a href="{{ m.attachment_url }}" target="_blank" rel="noopener"><img src="{{ m.attachment_url }}" class="chat-attachment-image" alt="תמונה מצורפת"></a>
                     {%- elif m.attachment_url.lower().endswith(('.mp4', '.3gp', '.mov', '.webm')) -%}
                     <video src="{{ m.attachment_url }}" class="chat-attachment-image" controls></video>
+                    {%- elif m.attachment_url.lower().endswith(('.ogg', '.oga', '.mp3', '.aac', '.amr', '.wav', '.m4a')) -%}
+                    <audio src="{{ m.attachment_url }}" controls></audio>
                     {%- else -%}
                     <a href="{{ m.attachment_url }}" target="_blank" rel="noopener" class="chat-attachment-file">📎 קובץ מצורף</a>
                     {%- endif -%}

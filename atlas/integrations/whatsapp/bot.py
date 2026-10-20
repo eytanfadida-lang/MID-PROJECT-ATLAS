@@ -331,6 +331,12 @@ def extract_incoming_event(payload):
                         "caption": media.get("caption") or "",
                         "mime_type": media.get("mime_type") or "application/octet-stream",
                     }
+                if message_type == "audio":
+                    audio = message.get("audio") or {}
+                    return from_number, message_id, "audio", {
+                        "media_id": audio.get("id"),
+                        "mime_type": audio.get("mime_type") or "audio/ogg",
+                    }
                 return from_number, message_id, message_type or "unknown", None
     return None, None, None, None
 

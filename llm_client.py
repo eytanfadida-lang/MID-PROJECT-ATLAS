@@ -1,3 +1,5 @@
+import base64
+
 import requests
 
 from atlas.paths import secret
@@ -61,3 +63,32 @@ def extract_text(response_json):
 def extract_function_calls(response_json):
     parts = extract_parts(response_json)
     return [part["functionCall"] for part in parts if "functionCall" in part]
+
+
+# מתמללת הודעה קולית נכנסת מוואטסאפ - Gemini תומך באודיו ישירות כ-inline_data (base64),
+# בלי צורך בשירות תמלול נפרד. mime_type של וואטסאפ מגיע לפעמים עם פרמטר קודק
+# ("audio/ogg; codecs=opus") - Gemini מצפה רק לסוג הבסיסי, אז חותכים לפני ה-";".
+# מחזירה None אם אין מפתח API/הקריאה נכשלה, כדי שהקורא יוכל ליפול חזרה בעדינות
+def transcribe_audio(file_bytes, mime_type):
+    api_key = load_api_key()
+    if not api_key:
+        return None
+
+    base_mime = (mime_type or "audio/ogg").split(";")[0].strip()
+    body = {
+        "contents": [{
+            "role": "user",
+            "parts": [
+                {"text": "תמלל/י את ההודעה הקולית הזו לעברית. החזר/י רק את התמלול עצמו, בלי שום הקדמה, הערה או סימון נוסף."},
+                {"inline_data": {"mime_type": base_mime, "data": base64.b64encode(file_bytes).decode("ascii")}},
+            ],
+        }],
+    }
+    response = requests.post(
+        f"{API_BASE}/models/{MODEL}:generateContent",
+        params={"key": api_key},
+        json=body,
+        timeout=60,
+    )
+    response.raise_for_status()
+    return extract_text(response.json())
