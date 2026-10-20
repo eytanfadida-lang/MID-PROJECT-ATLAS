@@ -343,6 +343,12 @@ def extract_incoming_event(payload):
                         "media_id": sticker.get("id"),
                         "mime_type": sticker.get("mime_type") or "image/webp",
                     }
+                if message_type == "reaction":
+                    reaction = message.get("reaction") or {}
+                    return from_number, message_id, "reaction", {
+                        "emoji": reaction.get("emoji") or "",
+                        "reacted_to_message_id": reaction.get("message_id"),
+                    }
                 return from_number, message_id, message_type or "unknown", None
     return None, None, None, None
 

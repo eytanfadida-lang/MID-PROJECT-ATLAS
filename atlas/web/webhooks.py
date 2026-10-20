@@ -639,11 +639,13 @@ def whatsapp_customer_webhook():
 
     if message_type != "text":
         # תגובת אימוג'י (❤️/👍 וכו' על הודעה קודמת) - לא "הודעה" שדורשת מענה, רק מתעדים
-        # לנראות בשיחה (כמו בוואטסאפ עצמו) ולא שולחים את הפולבק "אני לא קולטת טקסט"
+        # לנראות בשיחה (כמו בוואטסאפ עצמו) ולא שולחים את הפולבק "אני לא קולטת טקסט". emoji
+        # ריק פירושו שהלקוחה הסירה תגובה קודמת (לא הוסיפה אחת חדשה) - מאומת מול פורמט מטא
         if message_type == "reaction":
-            repos.customer_bot_messages.log(
-                caller_phone, "in", "[תגובת אימוג'י (reaction)]", reply_phone_number_id
-            )
+            reaction_info = text or {}
+            emoji = reaction_info.get("emoji") or ""
+            reaction_body = "[הסירה תגובת אימוג'י]" if not emoji else f"[תגובת אימוג'י: {emoji}]"
+            repos.customer_bot_messages.log(caller_phone, "in", reaction_body, reply_phone_number_id)
             return jsonify({"status": "ignored", "reason": "reaction"})
 
         fallback_text = "אני יכול לקרוא כרגע רק הודעות טקסט - אפשר לכתוב לי? 🙏"
