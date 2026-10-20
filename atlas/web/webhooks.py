@@ -58,6 +58,7 @@ def _save_incoming_document(phone, filename, file_bytes):
 _MEDIA_EXTENSION_OVERRIDES = {
     "image/jpeg": ".jpg", "video/mp4": ".mp4", "video/3gpp": ".3gp",
     "audio/ogg": ".ogg", "audio/mpeg": ".mp3", "audio/aac": ".aac", "audio/amr": ".amr",
+    "image/webp": ".webp",
 }
 
 
@@ -615,6 +616,27 @@ def whatsapp_customer_webhook():
         text = transcript
         message_type = "text"
 
+    # סטיקר - מתואר ע"י Gemini (תומך בתמונות, וסטיקר הוא קובץ תמונה) ומוזן לבוט כהקשר,
+    # לא כאילו הלקוחה הקלידה אותו - "[קיבלת סטיקר: ...]" כדי שיבין שזו תגובה ויזואלית,
+    # לא טקסט מהלקוחה עצמה, ויוכל להגיב בהתאם (או בלי להגיב בהרחבה, לפי שיקול דעתו).
+    # אם התיאור נכשל - נופלים בחזרה להתנהגות הרגילה (ה"אני יכול לקרוא רק טקסט" הכללי
+    # למטה), כי בניגוד להודעה קולית, סטיקר לא-מתואר הוא לא חסימה אמיתית לתקשורת
+    if message_type == "sticker":
+        sticker_info = text or {}
+        description = ""
+        try:
+            file_bytes, mime_type = whatsapp_bot.download_media(bot_config, sticker_info.get("media_id"))
+            if file_bytes:
+                extension = _guess_media_extension(mime_type or sticker_info.get("mime_type")) or ".webp"
+                incoming_attachment_url = _save_incoming_document(caller_phone, f"sticker{extension}", file_bytes)
+                description = llm_client.describe_sticker(file_bytes, mime_type or sticker_info.get("mime_type")) or ""
+        except Exception as exc:
+            print(f"[WhatsApp customer webhook] sticker download/describe failed: {exc}", flush=True)
+
+        if description:
+            text = f"[הלקוחה שלחה סטיקר: {description}]"
+            message_type = "text"
+
     if message_type != "text":
         # תגובת אימוג'י (❤️/👍 וכו' על הודעה קודמת) - לא "הודעה" שדורשת מענה, רק מתעדים
         # לנראות בשיחה (כמו בוואטסאפ עצמו) ולא שולחים את הפולבק "אני לא קולטת טקסט"
@@ -626,7 +648,8 @@ def whatsapp_customer_webhook():
 
         fallback_text = "אני יכול לקרוא כרגע רק הודעות טקסט - אפשר לכתוב לי? 🙏"
         repos.customer_bot_messages.log(
-            caller_phone, "in", f"[הודעה לא-טקסטואלית: {message_type}]", reply_phone_number_id
+            caller_phone, "in", f"[הודעה לא-טקסטואלית: {message_type}]", reply_phone_number_id,
+            attachment_url=incoming_attachment_url,
         )
         fallback_response = whatsapp_bot.send_text_message(
             bot_config, from_number, fallback_text, phone_number_id=reply_phone_number_id

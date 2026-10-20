@@ -337,6 +337,12 @@ def extract_incoming_event(payload):
                         "media_id": audio.get("id"),
                         "mime_type": audio.get("mime_type") or "audio/ogg",
                     }
+                if message_type == "sticker":
+                    sticker = message.get("sticker") or {}
+                    return from_number, message_id, "sticker", {
+                        "media_id": sticker.get("id"),
+                        "mime_type": sticker.get("mime_type") or "image/webp",
+                    }
                 return from_number, message_id, message_type or "unknown", None
     return None, None, None, None
 

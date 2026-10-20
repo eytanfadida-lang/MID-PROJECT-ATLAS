@@ -65,21 +65,21 @@ def extract_function_calls(response_json):
     return [part["functionCall"] for part in parts if "functionCall" in part]
 
 
-# מתמללת הודעה קולית נכנסת מוואטסאפ - Gemini תומך באודיו ישירות כ-inline_data (base64),
-# בלי צורך בשירות תמלול נפרד. mime_type של וואטסאפ מגיע לפעמים עם פרמטר קודק
-# ("audio/ogg; codecs=opus") - Gemini מצפה רק לסוג הבסיסי, אז חותכים לפני ה-";".
-# מחזירה None אם אין מפתח API/הקריאה נכשלה, כדי שהקורא יוכל ליפול חזרה בעדינות
-def transcribe_audio(file_bytes, mime_type):
+# קריאה גנרית ל-Gemini עם מדיה בודדת (אודיו/תמונה) כ-inline_data (base64) + הנחיה טקסטואלית -
+# הבסיס המשותף ל-transcribe_audio/describe_sticker למטה. מחזירה None אם אין מפתח API/הקריאה
+# נכשלה, כדי שהקורא יוכל ליפול חזרה בעדינות. mime_type לפעמים מגיע עם פרמטר נוסף מוואטסאפ
+# ("audio/ogg; codecs=opus") - Gemini מצפה רק לסוג הבסיסי, אז חותכים לפני ה-";"
+def _describe_media(file_bytes, mime_type, default_mime, instruction):
     api_key = load_api_key()
     if not api_key:
         return None
 
-    base_mime = (mime_type or "audio/ogg").split(";")[0].strip()
+    base_mime = (mime_type or default_mime).split(";")[0].strip()
     body = {
         "contents": [{
             "role": "user",
             "parts": [
-                {"text": "תמלל/י את ההודעה הקולית הזו לעברית. החזר/י רק את התמלול עצמו, בלי שום הקדמה, הערה או סימון נוסף."},
+                {"text": instruction},
                 {"inline_data": {"mime_type": base_mime, "data": base64.b64encode(file_bytes).decode("ascii")}},
             ],
         }],
@@ -92,3 +92,23 @@ def transcribe_audio(file_bytes, mime_type):
     )
     response.raise_for_status()
     return extract_text(response.json())
+
+
+# מתמללת הודעה קולית נכנסת מוואטסאפ - Gemini תומך באודיו ישירות כ-inline_data, בלי צורך
+# בשירות תמלול נפרד
+def transcribe_audio(file_bytes, mime_type):
+    return _describe_media(
+        file_bytes, mime_type, "audio/ogg",
+        "תמלל/י את ההודעה הקולית הזו לעברית. החזר/י רק את התמלול עצמו, בלי שום הקדמה, הערה או סימון נוסף.",
+    )
+
+
+# מתארת בקצרה סטיקר נכנס מוואטסאפ - Gemini תומך גם בתמונות כ-inline_data (סטיקר הוא קובץ
+# תמונה, בד"כ image/webp). התיאור מוזן לבוט כהקשר (לא כטקסט מהלקוח/ה עצמו/ה) כדי שיוכל
+# להבין את הכוונה/הרגש שהביעו בסטיקר ולהגיב בהתאם
+def describe_sticker(file_bytes, mime_type):
+    return _describe_media(
+        file_bytes, mime_type, "image/webp",
+        "תארי בעברית, במשפט קצר אחד, מה רואים בסטיקר הזה (הבעה/רגש/אימוג'י/טקסט אם יש) - "
+        "בלי שום הקדמה או הערה נוספת.",
+    )
