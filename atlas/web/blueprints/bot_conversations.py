@@ -101,14 +101,36 @@ def delete_message(phone, message_id):
     return redirect(url_for("bot_conversations.view_conversation", phone=phone))
 
 
-# עורכת את טקסט ההודעה ביומן בממשק (תיעוד מקומי בלבד, ראו edit_message בריפוזיטורי) - לא
-# משנה את ההודעה שכבר נשלחה/התקבלה בוואטסאפ עצמה. נקראת ב-fetch מהעמוד, אותו דפוס בדיוק
-# כמו delete_message
+# עורכת את טקסט ההודעה ביומן בממשק (תיעוד מקומי, ראו edit_message בריפוזיטורי) - אי אפשר
+# לשנות בפועל הודעה שכבר נשלחה/התקבלה בוואטסאפ (אין API למטא לכך, גם לא ל-WhatsApp Cloud API
+# שהבוט שלנו משתמש בו - עריכת הודעות היא תכונה של אפליקציית הצרכנים בלבד). לכן, רק להודעות
+# **יוצאות** (direction='out', מה שאנחנו שלחנו) - שולחים בנוסף הודעת "תיקון" אמיתית חדשה
+# ללקוחה (בועה נפרדת, לא מחליפה את המקורית), כדי שהיא בכל זאת תראה את השינוי. להודעות
+# **נכנסות** (מה שהלקוחה כתבה) אין שום שליחה - רק עריכת התיעוד אצלנו (אין טעם "לתקן" אותה)
 @bp.route("/<phone>/messages/<int:message_id>/edit", methods=["POST"])
 @admin_required
 def edit_message(phone, message_id):
     new_body = (request.form.get("body") or "").strip()
-    ok = bool(new_body) and get_repos().customer_bot_messages.edit_message(phone, message_id, new_body)
+    repos = get_repos()
+    message = repos.customer_bot_messages.get_by_id(phone, message_id)
+    ok = bool(new_body) and bool(message) and repos.customer_bot_messages.edit_message(phone, message_id, new_body)
+
+    if ok and message["direction"] == "out":
+        whatsapp_phone = to_whatsapp_format(phone)
+        if whatsapp_phone:
+            try:
+                correction_text = f"תיקון להודעה הקודמת:\n{new_body}"
+                response = whatsapp_bot.send_text_message(
+                    whatsapp_bot.CUSTOMER_BOT, whatsapp_phone, correction_text,
+                    phone_number_id=message["bot_phone_number_id"],
+                )
+                repos.customer_bot_messages.log(
+                    phone, "out", correction_text, message["bot_phone_number_id"],
+                    wamid=whatsapp_bot.extract_wamid(response),
+                )
+            except Exception as exc:
+                print(f"[bot_conversations] edit correction send failed: {exc}", flush=True)
+
     if request.headers.get("X-Requested-With") == "fetch":
         return jsonify(ok=ok)
     if not ok:

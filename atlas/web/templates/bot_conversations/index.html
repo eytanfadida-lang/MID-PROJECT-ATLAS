@@ -94,7 +94,7 @@
             <div class="chat-bubble {{ 'chat-bubble-in' if m.direction == 'in' else 'chat-bubble-out' }}">{# -#}
                 <button type="button" class="chat-msg-delete" data-url="{{ url_for('bot_conversations.delete_message', phone=active_phone, message_id=m.id) }}" title="מחק מהיומן" aria-label="מחק הודעה מהיומן"><svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6M10 11v6M14 11v6"/></svg></button>
                 {%- if m.body -%}
-                <button type="button" class="chat-msg-edit" data-url="{{ url_for('bot_conversations.edit_message', phone=active_phone, message_id=m.id) }}" data-body="{{ m.body }}" title="ערוך ביומן" aria-label="ערוך הודעה ביומן"><svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg></button>
+                <button type="button" class="chat-msg-edit" data-url="{{ url_for('bot_conversations.edit_message', phone=active_phone, message_id=m.id) }}" data-body="{{ m.body }}" data-direction="{{ m.direction }}" title="ערוך ביומן" aria-label="ערוך הודעה ביומן"><svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg></button>
                 {%- endif -%}
                 {%- if m.attachment_url -%}
                     {%- if m.attachment_url.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.webp')) -%}
@@ -299,14 +299,18 @@
             }).catch(function () { btn.disabled = false; });
         });
 
-        // עריכת טקסט הודעה ביומן: prompt עם הטקסט הנוכחי ממולא מראש, שליחה ברקע ורענון
-        // מיידי. עריכה משנה רק את התיעוד אצלנו - לא את ההודעה שכבר נשלחה/התקבלה בוואטסאפ
-        // עצמה (אין API למטא לכך, בדיוק כמו מחיקה)
+        // עריכת טקסט הודעה ביומן: prompt עם הטקסט הנוכחי ממולא מראש, שליחה ברקע ורענון מיידי.
+        // להודעה נכנסת (direction=in) - משנה רק את התיעוד אצלנו. להודעה יוצאת (direction=out) -
+        // גם שולחת ללקוחה הודעת "תיקון" אמיתית חדשה (אי אפשר לשנות בפועל הודעה שכבר נשלחה,
+        // ראו edit_message בבלופרינט) - הטקסט מבהיר את זה מראש כדי שלא תהיה הפתעה
         threadWrap.addEventListener('click', function (e) {
             var btn = e.target.closest('.chat-msg-edit');
             if (!btn) return;
             e.preventDefault();
-            var newBody = prompt('עריכת ההודעה ביומן כאן (לא משפיע על וואטסאפ של הלקוחה):', btn.dataset.body);
+            var promptText = btn.dataset.direction === 'out'
+                ? 'עריכת ההודעה - ישלח ללקוחה הודעת "תיקון להודעה הקודמת" חדשה עם הטקסט הבא (לא ניתן לשנות בפועל את ההודעה המקורית שכבר נשלחה):'
+                : 'עריכת ההודעה ביומן כאן (לא משפיע על וואטסאפ של הלקוחה - זו הודעה שהיא שלחה):';
+            var newBody = prompt(promptText, btn.dataset.body);
             if (newBody === null) return;
             newBody = newBody.trim();
             if (!newBody || newBody === btn.dataset.body) return;

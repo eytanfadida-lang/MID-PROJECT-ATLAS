@@ -156,6 +156,19 @@ class CustomerBotMessageRepository:
             f"SELECT COUNT(*) FROM {TABLE_NAME} WHERE phone = ? AND deleted_at IS NULL", (phone,)
         ).fetchone()[0]
 
+    # שולפת הודעה בודדת (לפי שייכות לטלפון, אותה בדיקה כמו edit_message/delete_message) -
+    # נחוצה לפני עריכה כדי לדעת את ה-direction וממנה לענות (bot_phone_number_id), כדי
+    # להחליט אם לשלוח גם תיקון אמיתי בוואטסאפ (רק להודעות יוצאות, ראו edit_message בבלופרינט)
+    def get_by_id(self, phone, message_id):
+        row = self.conn.execute(
+            f"SELECT id, direction, body, bot_phone_number_id FROM {TABLE_NAME} "
+            "WHERE id = ? AND phone = ? AND deleted_at IS NULL",
+            (message_id, phone),
+        ).fetchone()
+        if not row:
+            return None
+        return {"id": row[0], "direction": row[1], "body": row[2], "bot_phone_number_id": row[3]}
+
     # עורכת את טקסט ההודעה ביומן בממשק - רק התיעוד המקומי אצלנו, לא ההודעה עצמה שכבר
     # נשלחה/התקבלה בוואטסאפ (לא קיים API למטא לערוך הודעה שכבר נשלחה/התקבלה). שימושי
     # למשל לתקן טעות הקלדה בתיעוד או להבהיר הודעה לא-טקסטואלית. אותה בדיקת שייכות-לטלפון
