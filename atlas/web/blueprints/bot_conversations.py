@@ -47,6 +47,7 @@ def _with_names(conversations, repos):
         # ב-Arbox" לבין "מופיעה אבל המנוי שלה לא פעיל כרגע"
         conversation["active"] = bool(member["active"]) if member else None
         conversation["synced_at"] = (member or {}).get("synced_at") or None
+        conversation["bot_paused"] = repos.customer_bot_messages.is_bot_paused(conversation["phone"])
     return conversations
 
 
@@ -135,6 +136,20 @@ def edit_message(phone, message_id):
         return jsonify(ok=ok)
     if not ok:
         flash("לא ניתן לערוך את ההודעה - היא לא נמצאה, כבר נמחקה, או שהטקסט ריק.", "error")
+    return redirect(url_for("bot_conversations.view_conversation", phone=phone))
+
+
+# משהה/מפעילה מחדש את הבוט לשיחה הזו (ראו set_bot_paused בריפוזיטורי) - כשמושהה, הבוט
+# ממשיך לתעד הודעות נכנסות ביומן (כדי שהשיחה תישאר שלמה) אבל לא שולח שום תגובה אוטומטית,
+# כולל לא ה-fallback הרגיל של "אני יכול לקרוא רק טקסט" (ראו whatsapp_customer_webhook)
+@bp.route("/<phone>/bot-pause", methods=["POST"])
+@admin_required
+def toggle_bot_pause(phone):
+    repos = get_repos()
+    paused = not repos.customer_bot_messages.is_bot_paused(phone)
+    repos.customer_bot_messages.set_bot_paused(phone, paused)
+    if request.headers.get("X-Requested-With") == "fetch":
+        return jsonify(ok=True, paused=paused)
     return redirect(url_for("bot_conversations.view_conversation", phone=phone))
 
 

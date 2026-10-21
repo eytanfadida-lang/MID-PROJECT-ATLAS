@@ -169,6 +169,27 @@ class CustomerBotMessageRepository:
             return None
         return {"id": row[0], "direction": row[1], "body": row[2], "bot_phone_number_id": row[3]}
 
+    # בודקת אם הבוט מושהה לשיחה הזו (נציגה אנושית כותבת ישירות) - ראו set_bot_paused.
+    # נבדקת ב-webhooks.py לפני כל טיפול בבוט (גם לפני fallback של הודעה לא-טקסטואלית)
+    def is_bot_paused(self, phone):
+        row = self.conn.execute(
+            "SELECT 1 FROM bot_paused_conversations WHERE phone = ?", (phone,)
+        ).fetchone()
+        return row is not None
+
+    # משהה/מפעילה מחדש את הבוט לשיחה נתונה - נוכחות שורה בטבלה = מושהה. נקראת מכפתור
+    # "השהה בוט"/"הפעל בוט" בראש השיחה בממשק, כשנציגה מתכתבת ישירות עם הלקוחה והתערבות
+    # אוטומטית של הבוט מפריעה לשיחה
+    def set_bot_paused(self, phone, paused):
+        if paused:
+            self.conn.execute(
+                "INSERT OR REPLACE INTO bot_paused_conversations (phone, paused_at) VALUES (?, ?)",
+                (phone, datetime.datetime.now().isoformat(timespec="seconds")),
+            )
+        else:
+            self.conn.execute("DELETE FROM bot_paused_conversations WHERE phone = ?", (phone,))
+        self.conn.commit()
+
     # עורכת את טקסט ההודעה ביומן בממשק - רק התיעוד המקומי אצלנו, לא ההודעה עצמה שכבר
     # נשלחה/התקבלה בוואטסאפ (לא קיים API למטא לערוך הודעה שכבר נשלחה/התקבלה). שימושי
     # למשל לתקן טעות הקלדה בתיעוד או להבהיר הודעה לא-טקסטואלית. אותה בדיקת שייכות-לטלפון

@@ -35,6 +35,14 @@ class CustomerBotMessageDB:
                 last_read_message_id INTEGER NOT NULL
             )
         """)
+        # שיחות שבהן הבוט מושהה (נציגה אנושית מתכתבת ישירות) - נוכחות שורה = מושהה, אין
+        # שורה = פעיל כרגיל (ברירת מחדל). ראו set_bot_paused/is_bot_paused בריפוזיטורי
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS bot_paused_conversations (
+                phone TEXT PRIMARY KEY,
+                paused_at TEXT NOT NULL
+            )
+        """)
         return conn
 
     # מיגרציה קלה: מוסיפה עמודות חדשות אם עוד לא קיימות -

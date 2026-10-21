@@ -3684,6 +3684,9 @@ body.dark .bulk-actions-bar:not(.has-selection) .bulk-count {
 .chat-header-actions {
     margin: 0;
     margin-inline-start: auto;
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 
 .chat-thread-header .chat-header-main {

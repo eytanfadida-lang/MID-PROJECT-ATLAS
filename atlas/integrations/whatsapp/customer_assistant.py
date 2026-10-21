@@ -375,12 +375,14 @@ def _build_tool_executors(repos, caller_phone, last_user_text):
 
         location_id = schedule.get("location_id") or 856
 
-        # פתרון זמני עד 20/10/2026: מנויה קיימת שמבקשת שיעור ניסיון (למשל רולר מטריקס) -
-        # endpoint ה"שיעור ניסיון" של Arbox דוחה את ה-user_id שלה עם "user_id is not valid"
-        # (מאומת בפועל 18/10 - ה-endpoint הזה מיועד רק ללידים חדשים). עד שתתקבל החלטה עסקית
-        # קבועה מול אפרת, מנויה קיימת נרשמת בחינם דרך הזמנת שיעור רגילה, שכן מקבלת user_id
-        # של מנוי. אחרי התאריך הזה חוזרים להתנהגות הרגילה (ותידרש החלטה לטווח ארוך).
-        if datetime.date.today() <= datetime.date(2026, 10, 20):
+        # פתרון זמני, הוארך עד 28/10/2026 (לבקשת המשתמשת 21/10 - עוד שבוע מהיום; פג תוקף
+        # בפעם הראשונה ב-20/10 וגרם לאותה שגיאה שוב בדיוק, ראו תקרית 21/10 עם נופר אזולאי):
+        # מנויה קיימת שמבקשת שיעור ניסיון (למשל רולר מטריקס) - endpoint ה"שיעור ניסיון" של
+        # Arbox דוחה את ה-user_id שלה עם "user_id is not valid" (מאומת בפועל 18/10 ו-21/10 -
+        # ה-endpoint הזה מיועד רק ללידים חדשים). עד שתתקבל החלטה עסקית קבועה מול אפרת, מנויה
+        # קיימת נרשמת בחינם דרך הזמנת שיעור רגילה, שכן מקבלת user_id של מנוי. אחרי התאריך הזה
+        # חוזרים להתנהגות הרגילה (ותידרש החלטה לטווח ארוך - שוב).
+        if datetime.date.today() <= datetime.date(2026, 10, 28):
             member = repos.arbox_member_cache.get_by_phone(caller_phone)
             if member and member.get("user_id") and member.get("membership_user_id"):
                 response = arbox_client.book_arbox_session(

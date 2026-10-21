@@ -69,6 +69,69 @@ def _guess_media_extension(mime_type):
     return mimetypes.guess_extension(base_mime) or ""
 
 
+# בונה (body, attachment_url) לרישום הודעה נכנסת ביומן **כשהבוט מושהה** לשיחה (ראו
+# is_bot_paused/set_bot_paused) - עדיין מורידה/שומרת מדיה ומתמללת/מתארת (כדי שהרישום
+# יהיה קריא לנציגה בלי לצאת מהעמוד), אבל לעולם לא שולחת שום דבר ללקוחה ולא קוראת
+# ל-customer_assistant.answer_question (שיכול להפעיל כלים עם תופעות לוואי אמיתיות,
+# כמו הזמנת שיעור - אסור שיקרה בזמן שנציגה מטפלת ידנית). נתיב נפרד ומבודד מהזרימה
+# הרגילה למטה, בכוונה - כדי שלא יהיה סיכוי "לשכוח" לחסום שליחה באחד הענפים
+def _describe_paused_incoming(bot_config, caller_phone, message_type, info):
+    if message_type == "text":
+        return info or "", None
+
+    if message_type == "reaction":
+        reaction_info = info or {}
+        emoji = reaction_info.get("emoji") or ""
+        body = "[הסירה תגובת אימוג'י]" if not emoji else f"[תגובת אימוג'י: {emoji}]"
+        return body, None
+
+    if message_type not in ("document", "image", "video", "audio", "sticker"):
+        return f"[הודעה לא-טקסטואלית: {message_type}]", None
+
+    media_info = info or {}
+    attachment_url = None
+    try:
+        file_bytes, mime_type = whatsapp_bot.download_media(bot_config, media_info.get("media_id"))
+    except Exception as exc:
+        print(f"[WhatsApp customer webhook] paused {message_type} download failed: {exc}", flush=True)
+        file_bytes, mime_type = None, None
+
+    if file_bytes:
+        if message_type == "document":
+            attachment_url = _save_incoming_document(
+                caller_phone, media_info.get("filename") or "מסמך", file_bytes
+            )
+        else:
+            extension = _guess_media_extension(mime_type or media_info.get("mime_type")) or ""
+            attachment_url = _save_incoming_document(caller_phone, f"{message_type}{extension}", file_bytes)
+
+    if message_type == "document":
+        return f"[קובץ: {media_info.get('filename') or 'מסמך'}]", attachment_url
+    if message_type in ("image", "video"):
+        label = "תמונה" if message_type == "image" else "סרטון"
+        body = f"[{label}]"
+        if media_info.get("caption"):
+            body += f" {media_info['caption']}"
+        return body, attachment_url
+    if message_type == "audio":
+        transcript = ""
+        if file_bytes:
+            try:
+                transcript = llm_client.transcribe_audio(file_bytes, mime_type or media_info.get("mime_type")) or ""
+            except Exception as exc:
+                print(f"[WhatsApp customer webhook] paused audio transcribe failed: {exc}", flush=True)
+        return (f"[הודעה קולית] {transcript}" if transcript else "[הודעה קולית - תמלול נכשל]"), attachment_url
+    if message_type == "sticker":
+        description = ""
+        if file_bytes:
+            try:
+                description = llm_client.describe_sticker(file_bytes, mime_type or media_info.get("mime_type")) or ""
+            except Exception as exc:
+                print(f"[WhatsApp customer webhook] paused sticker describe failed: {exc}", flush=True)
+        return (f"[סטיקר: {description}]" if description else "[סטיקר]"), attachment_url
+    return f"[הודעה לא-טקסטואלית: {message_type}]", attachment_url
+
+
 # בקשת הסרה מרשימות תפוצה - מזוהה ישירות (לא דרך ה-LLM) כדי שתמיד תעבוד באופן עקבי,
 # בלי תלות בהבנת המודל. בכוונה התאמה מדויקת (אחרי הסרת פיסוק/רווחים) ולא "מכילה" - כדי לא
 # לתפוס בטעות הודעה אמיתית שרק מזכירה את המילה בהקשר אחר
@@ -473,6 +536,16 @@ def whatsapp_customer_webhook():
         repos.whatsapp_state.mark_processed(message_id)
 
     caller_phone = normalize_phone(from_number)
+
+    # בוט מושהה לשיחה הזו (נציגה כותבת ישירות, ראו bot_conversations.toggle_bot_pause) -
+    # עדיין מתעדים ביומן (כולל מדיה/תמלול, ראו _describe_paused_incoming) אבל לא שולחים
+    # שום דבר ולא מפעילים כלים - נתיב מבודד לגמרי מהזרימה הרגילה למטה
+    if repos.customer_bot_messages.is_bot_paused(caller_phone):
+        log_body, attachment_url = _describe_paused_incoming(bot_config, caller_phone, message_type, text)
+        repos.customer_bot_messages.log(
+            caller_phone, "in", log_body, reply_phone_number_id, attachment_url=attachment_url
+        )
+        return jsonify({"status": "ignored", "reason": "bot_paused"})
 
     # מסמך שהתקבל (למשל קורות חיים בתגובה לפנייה בנושא משרה) - מתקבל ונשמר בנפרד
     # מההודעות הלא-טקסטואליות הכלליות למטה, כי כאן יש התנהגות ייעודית: לשמור את

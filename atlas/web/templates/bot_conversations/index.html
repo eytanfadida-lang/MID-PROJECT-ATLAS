@@ -60,12 +60,22 @@
                     <strong>{{ active_conversation.full_name or active_phone }}</strong>
                     <span class="chat-header-sub">{% if active_conversation.full_name %}<bdi dir="ltr">{{ active_phone }}</bdi> · {% endif %}דרך: {{ active_bot_label }}</span>
                 </div>
-                {% if active_conversation.last_incoming_message_id %}
-                <form method="post" action="{{ url_for('bot_conversations.mark_unread', phone=active_phone) }}" class="chat-header-actions">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                    <button type="submit" class="btn btn-ghost btn-sm" title="חוזר לרשימה ומסמן את השיחה כלא נקראה">● סמן כלא נקרא</button>
-                </form>
-                {% endif %}
+                <div class="chat-header-actions">
+                    <form method="post" action="{{ url_for('bot_conversations.toggle_bot_pause', phone=active_phone) }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                        {% if active_conversation.bot_paused %}
+                        <button type="submit" class="btn btn-sm" title="הבוט לא עונה כרגע בשיחה הזו - לחצי כדי להחזיר אותו">⏸️ בוט מושהה - הפעלה מחדש</button>
+                        {% else %}
+                        <button type="submit" class="btn btn-ghost btn-sm" title="משהה את תגובות הבוט בשיחה הזו, כדי שלא יפריע כשאת מתכתבת ישירות">⏸️ השהה בוט</button>
+                        {% endif %}
+                    </form>
+                    {% if active_conversation.last_incoming_message_id %}
+                    <form method="post" action="{{ url_for('bot_conversations.mark_unread', phone=active_phone) }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                        <button type="submit" class="btn btn-ghost btn-sm" title="חוזר לרשימה ומסמן את השיחה כלא נקראה">● סמן כלא נקרא</button>
+                    </form>
+                    {% endif %}
+                </div>
             </div>
             {% if active_conversation.membership_type_name %}
             <div class="hint">
