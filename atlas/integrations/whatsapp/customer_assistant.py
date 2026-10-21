@@ -355,9 +355,29 @@ def _build_tool_executors(repos, caller_phone, last_user_text):
     # קיים שם (בלי קשר לקאש המקומי, שמכיל רק לקוחות פעילים/לא-פעילים, לא לידים
     # חדשים), ואם לא - יוצרת עבורו ליד חדש. משמש רק לשיעורי ניסיון (§3.8)
     def _resolve_or_create_trial_user_id(api_key, full_name, location_id):
-        existing_user_id = arbox_client.search_arbox_user_by_phone(api_key, caller_phone)
-        if existing_user_id:
-            return existing_user_id
+        # עד 28/10/2026 (לבקשת המשתמשת 22/10, אותו תאריך כמו הפתרון למנויות פעילות למעלה):
+        # בודקים את user_role של המשתמשת שנמצאה, לא רק user_id - מאומת בפועל (22/10, מריאנה
+        # חורי, לקוחה שעזבה בטירת הכרמל) ש-endpoint שיעור-הניסיון דוחה גם user_role="client"
+        # לא-פעיל (לקוחה לשעבר) בדיוק כמו client פעיל - "user_id is not valid", לא רק מנויות
+        # פעילות כמו שחשבנו קודם. ונוסה גם book_arbox_session עם membership_user_id ישן שלה -
+        # 500 "unexpected server error" עקבי (לא זמני), אז זה גם לא פתרון עבורה. רק
+        # user_role="lead" תקין לשימוש חוזר ב-trial - אחרת (client, פעיל או לא) יוצרים ליד
+        # חדש, בדיוק כמו למתעניינת חדשה שלא נמצאה בכלל
+        if datetime.date.today() <= datetime.date(2026, 10, 28):
+            existing_record = arbox_client.search_arbox_user_record_by_phone(api_key, caller_phone)
+            if existing_record and existing_record.get("user_role") == "lead":
+                return existing_record["user_id"]
+            if existing_record:
+                print(
+                    f"[customer_assistant] trial booking: ignoring existing user_role="
+                    f"{existing_record.get('user_role')!r} (active={existing_record.get('active')}) "
+                    f"for {caller_phone}, creating new lead instead",
+                    flush=True,
+                )
+        else:
+            existing_user_id = arbox_client.search_arbox_user_by_phone(api_key, caller_phone)
+            if existing_user_id:
+                return existing_user_id
 
         name_parts = (full_name or "לקוחה חדשה").split(maxsplit=1)
         first_name = name_parts[0]

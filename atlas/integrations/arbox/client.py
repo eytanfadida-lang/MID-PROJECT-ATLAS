@@ -282,6 +282,23 @@ def search_arbox_user_by_phone(api_key, phone):
     return results[0]["user_id"] if results else None
 
 
+# כמו search_arbox_user_by_phone, אבל מחזירה את הרשומה המלאה (לא רק user_id) - נחוץ כדי
+# להבחין בין user_role="client" (מנוי, פעיל או לא) ל-user_role="lead" (ליד אמיתי). מאומת
+# בפועל (21/10): /schedule/booking/trial דוחה עם "user_id is not valid" גם client פעיל
+# וגם client לא-פעיל (לא רק פעיל כמו שחשבנו קודם) - מקבל רק user_id שנוצר דרך /leads.
+# ראו _resolve_or_create_trial_user_id ב-customer_assistant.py
+def search_arbox_user_record_by_phone(api_key, phone):
+    response = requests.get(
+        f"{API_BASE_URL}/users/searchUser",
+        headers={"Accept": "application/json", "api-key": api_key},
+        params={"type": "phone", "value": phone},
+        timeout=30,
+    )
+    response.raise_for_status()
+    results = response.json().get("data", []) or []
+    return results[0] if results else None
+
+
 # יוצרת ליד חדש ב-Arbox (POST /v3/users נבדק ולא הצליח - השיעור-ניסיון דוחה את
 # ה-user_id שהוא מחזיר עם "not valid"; רק לידים שנוצרו דרך /leads עובדים) - למשל
 # מתעניינת חדשה שרוצה שיעור ניסיון ועדיין לא קיימת ב-Arbox בכלל. מחזירה את ה-user_id
