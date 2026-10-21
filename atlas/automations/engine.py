@@ -177,6 +177,12 @@ def _send_template_action(repos, due_action, action_config):
     template_name = action_config.get("template_name")
     template_language = action_config.get("template_language") or "he"
     param_templates = action_config.get("param_templates") or []
+    # מדיה בכותרת (תבנית עם HEADER מסוג VIDEO/IMAGE/DOCUMENT) - media_id יחיד שהועלה פעם
+    # אחת מראש (ראו _seed_* ב-automation_db.py) ומשמש לכל הנמענות באותו שידור, לא מועלה
+    # מחדש לכל due_action (בזבוז מיותר - אותו media_id תקף לכמה שליחות)
+    header_media_type = action_config.get("header_media_type")
+    header_media_id = action_config.get("header_media_id")
+    header_media = {"type": header_media_type, "id": header_media_id} if header_media_type and header_media_id else None
 
     try:
         params = [fragment.format(**due_action["context"]) for fragment in param_templates]
@@ -193,6 +199,7 @@ def _send_template_action(repos, due_action, action_config):
     try:
         response = whatsapp_bot.send_template_message(
             whatsapp_bot.CUSTOMER_BOT, whatsapp_to, template_name, template_language, body_params=params,
+            header_media=header_media,
         )
     except Exception as exc:
         repos.automations.mark_failed(due_action["id"])

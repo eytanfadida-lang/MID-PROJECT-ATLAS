@@ -156,17 +156,28 @@ def send_media_message(config, to, media_id, media_type, phone_number_id=None, c
 # להגיע גם מחוץ לחלון 24 השעות מההודעה האחרונה של הנמען (למשל התראה יזומה לבעלים
 # שלא בהכרח כתבה לבוט לאחרונה). body_params הן רשימת המחרוזות שממלאות את ה-{{1}},
 # {{2}} וכו' בגוף התבנית, לפי הסדר שבו הוגדרו כשהתבנית נוצרה ב-WhatsApp Manager
-def send_template_message(config, to, template_name, language_code, body_params=None, phone_number_id=None):
+# header_media: {"type": "video"/"image"/"document", "id": media_id} אופציונלי - לתבנית
+# עם כותרת מדיה (ראו create_message_template עם components מסוג HEADER). ה-media_id
+# מגיע מ-upload_media, מועלה פעם אחת ומשמש לכל הנמענות באותו שידור (ראו engine.py)
+def send_template_message(config, to, template_name, language_code, body_params=None, phone_number_id=None, header_media=None):
     access_token = load_access_token(config)
     if not access_token:
         return None
     target_phone_number_id = phone_number_id or config.phone_number_id
     template_payload = {"name": template_name, "language": {"code": language_code}}
+    components = []
+    if header_media:
+        components.append({
+            "type": "header",
+            "parameters": [{"type": header_media["type"], header_media["type"]: {"id": header_media["id"]}}],
+        })
     if body_params:
-        template_payload["components"] = [{
+        components.append({
             "type": "body",
             "parameters": [{"type": "text", "text": value} for value in body_params],
-        }]
+        })
+    if components:
+        template_payload["components"] = components
     response = requests.post(
         f"https://graph.facebook.com/{GRAPH_API_VERSION}/{target_phone_number_id}/messages",
         headers={"Authorization": f"Bearer {access_token}"},
