@@ -55,6 +55,7 @@
         {% if messages %}
         <div class="chat-thread-header">
             <div class="chat-header-main">
+                <a href="{{ url_for('bot_conversations.list_conversations') }}" class="chat-back" aria-label="חזרה לרשימת השיחות">→</a>
                 <span class="chat-list-avatar chat-header-avatar">{{ (active_conversation.full_name or active_phone or '?')[:1] }}</span>
                 <div class="chat-header-title">
                     <strong>{{ active_conversation.full_name or active_phone }}</strong>
@@ -130,7 +131,7 @@
                 <input type="file" name="attachment" id="chat-attachment" hidden>
             </label>
             <span class="chat-attach-name" id="chat-attach-name" hidden></span>
-            <textarea name="body" id="chat-body" rows="1" placeholder="כתוב הודעה... (Ctrl+Enter לשליחה)"></textarea>
+            <textarea name="body" id="chat-body" rows="1" placeholder="כתוב הודעה..." title="Ctrl+Enter לשליחה"></textarea>
             <button type="submit" class="btn" id="chat-send">שלח ➤</button>
         </form>
         {% else %}

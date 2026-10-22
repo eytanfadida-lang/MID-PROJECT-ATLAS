@@ -40,17 +40,17 @@
     <h3 class="af-section-title"><span class="af-step">🗓</span> תורים</h3>
     {% if appointments %}
     <div class="automations-table-wrap cust-table-wrap">
-    <table class="cust-table">
+    <table class="cust-table mobile-cards">
         <thead>
             <tr><th>מזהה</th><th>סניף</th><th>תאריך</th><th>שעה</th></tr>
         </thead>
         <tbody>
             {% for a in appointments %}
             <tr>
-                <td class="cust-muted">{{ a.id_client }}</td>
-                <td>{{ a.name_of_store }}</td>
-                <td>{{ a.appointment_date or "-" }}</td>
-                <td>{{ a.appointment_time or "-" }}</td>
+                <td class="cust-muted" data-label="מזהה">{{ a.id_client }}</td>
+                <td data-label="סניף">{{ a.name_of_store }}</td>
+                <td data-label="תאריך">{{ a.appointment_date or "-" }}</td>
+                <td data-label="שעה">{{ a.appointment_time or "-" }}</td>
             </tr>
             {% endfor %}
         </tbody>
@@ -65,17 +65,17 @@
     <h3 class="af-section-title"><span class="af-step">🧾</span> חשבוניות</h3>
     {% if invoices %}
     <div class="automations-table-wrap cust-table-wrap">
-    <table class="cust-table">
+    <table class="cust-table mobile-cards">
         <thead>
             <tr><th>מספר חשבונית</th><th>סכום</th><th>תאריך</th><th>מנוי</th></tr>
         </thead>
         <tbody>
             {% for inv in invoices %}
             <tr>
-                <td class="cust-muted">{{ inv.invoice_number }}</td>
-                <td><strong>{{ inv.amount }}</strong></td>
-                <td>{{ inv.invoice_date }}</td>
-                <td>{{ inv.membership_type or "-" }}</td>
+                <td class="cust-muted" data-label="מספר חשבונית">{{ inv.invoice_number }}</td>
+                <td data-label="סכום"><strong>{{ inv.amount }}</strong></td>
+                <td data-label="תאריך">{{ inv.invoice_date }}</td>
+                <td data-label="מנוי">{{ inv.membership_type or "-" }}</td>
             </tr>
             {% endfor %}
         </tbody>

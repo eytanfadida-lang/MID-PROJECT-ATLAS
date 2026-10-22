@@ -22,7 +22,7 @@
 <div class="appt-count"><span class="category-pill">{{ appointments | length }} תורים{% if today_only %} להיום{% endif %}{% if phone %} לטלפון {{ phone }}{% endif %}</span></div>
 
 <div class="automations-table-wrap cust-table-wrap">
-<table class="cust-table">
+<table class="cust-table mobile-cards">
     <thead>
         <tr>
             <th>מתי</th>
@@ -37,27 +37,27 @@
     <tbody>
         {% for a in appointments %}
         <tr>
-            <td class="appt-when">
+            <td class="appt-when m-title">
                 <strong>{{ a.appointment_time or "-" }}</strong>
                 <small>{{ a.appointment_date or "-" }}</small>
             </td>
-            <td class="cust-name-cell-plain"><strong>{{ a.name_of_client }}</strong></td>
-            <td>
+            <td class="cust-name-cell-plain" data-label="שם"><strong>{{ a.name_of_client }}</strong></td>
+            <td data-label="טלפון">
                 {% if a.phone_client %}
-                <span class="phone-cell"><bdi dir="ltr">{{ a.phone_client }}</bdi>
+                <span class="phone-cell"><a href="tel:{{ a.phone_client }}" class="tel-link"><bdi dir="ltr">{{ a.phone_client }}</bdi></a>
                     <a href="{{ a.phone_client | whatsapp_link }}" target="_blank" rel="noopener" class="whatsapp-icon" title="פתח בוואטסאפ" aria-label="פתח בוואטסאפ">
                         <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/></svg>
                     </a>
                 </span>
                 {% else %}-{% endif %}
             </td>
-            <td><span class="category-pill">{{ a.name_of_store }}</span></td>
-            <td>
+            <td data-label="סניף"><span class="category-pill">{{ a.name_of_store }}</span></td>
+            <td data-label="לקוח">
                 {% if a.customer_id is not none %}
                 <a href="{{ url_for('customers.detail', customer_id=a.customer_id|int) }}" class="cust-link">#{{ a.customer_id|int }}</a>
                 {% else %}<span class="cust-empty">—</span>{% endif %}
             </td>
-            <td class="cust-muted">{{ a.id_client }}</td>
+            <td class="cust-muted" data-label="מזהה">{{ a.id_client }}</td>
             <td class="automations-row-actions">
                 <div class="cust-actions">
                     <a href="{{ url_for('appointments.edit', id_client=a.id_client) }}" class="btn btn-ghost btn-sm">✏️ ערוך</a>

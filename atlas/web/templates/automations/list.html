@@ -64,7 +64,7 @@
         </span>
     </summary>
 <div class="automations-table-wrap">
-<table class="automations-table">
+<table class="automations-table mobile-cards">
     <thead>
         <tr>
             <th>שם</th>
@@ -86,8 +86,8 @@
         {% else %}
         {% set a = row.automation %}
         <tr id="automation-{{ a.id }}" class="automations-row{{ '' if a.enabled else ' is-off' }}{{ ' automations-group-member' if row.group_id else '' }}" {% if row.group_id %}data-group="{{ row.group_id }}" hidden{% endif %}>
-            <td class="automations-name">{{ a.name }}</td>
-            <td class="automations-schedule-summary">
+            <td class="automations-name m-title">{{ a.name }}</td>
+            <td class="automations-schedule-summary" data-label="תזמון">
                 {% if a.trigger_type == 'scheduled' %}
                     {% set tc = a.trigger_config %}
                     {% if tc.audience_source == 'arbox_birthday' %}
@@ -134,9 +134,9 @@
                     {{ 'הרשמה לשיעור ניסיון' if a.trigger_type == 'trial_booked' else a.trigger_type }}
                 {% endif %}
             </td>
-            <td class="automations-message-preview">{{ (a.steps[0].action_config.text_template or '')[:60] if a.steps else '' }}</td>
-            <td class="automations-num">{{ a.expected_recipient_count if a.expected_recipient_count is not none else '-' }}</td>
-            <td>
+            <td class="automations-message-preview" data-label="הודעה">{{ (a.steps[0].action_config.text_template or '')[:60] if a.steps else '' }}</td>
+            <td class="automations-num" data-label="נמענים צפויים">{{ a.expected_recipient_count if a.expected_recipient_count is not none else '-' }}</td>
+            <td data-label="סטטוס">
                 <form method="post" action="{{ url_for('automations.toggle_automation', automation_id=a.id) }}" class="automations-toggle-form">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                     <button type="submit" class="switch {{ 'on' if a.enabled else '' }}" role="switch"
@@ -147,8 +147,8 @@
                     <span class="switch-label">{{ 'פעילה' if a.enabled else 'כבויה' }}</span>
                 </form>
             </td>
-            <td class="automations-num"><span class="num-pill {{ 'num-ok' if a.success_count else 'num-zero' }}">{{ a.success_count }}</span></td>
-            <td class="automations-num"><span class="num-pill {{ 'num-fail' if a.failed_count else 'num-zero' }}">{{ a.failed_count }}</span></td>
+            <td class="automations-num" data-label="הצלחות"><span class="num-pill {{ 'num-ok' if a.success_count else 'num-zero' }}">{{ a.success_count }}</span></td>
+            <td class="automations-num" data-label="כשלונות"><span class="num-pill {{ 'num-fail' if a.failed_count else 'num-zero' }}">{{ a.failed_count }}</span></td>
             <td class="automations-row-actions">
                 <button type="button" class="btn btn-ghost btn-sm" aria-expanded="false"
                         onclick="automationsToggleDetails({{ a.id }}, this)">✏️ עריכה</button>
@@ -241,13 +241,13 @@
                         <button type="submit" class="btn">ייבוא מקובץ</button>
                     </form>
                     {% if a.recipients %}
-                    <table>
+                    <table class="mobile-cards">
                         <thead><tr><th>טלפון</th><th>שם</th><th></th></tr></thead>
                         <tbody>
                             {% for r in a.recipients %}
                             <tr>
-                                <td>{{ r.phone }}</td>
-                                <td>{{ r.full_name or '' }}</td>
+                                <td class="m-title" dir="ltr">{{ r.phone }}</td>
+                                <td data-label="שם">{{ r.full_name or '' }}</td>
                                 <td>
                                     <form method="post" action="{{ url_for('automations.remove_recipient', automation_id=a.id, recipient_id=r.id) }}" style="display:inline;">
                                         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
@@ -269,15 +269,15 @@
 
                     <div class="automations-tab-panel" data-tab="executions" hidden>
                     {% if a.executions %}
-                    <table>
+                    <table class="mobile-cards">
                         <thead><tr><th>תאריך</th><th>טלפון</th><th>סטטוס</th><th>פרטים</th></tr></thead>
                         <tbody>
                             {% for e in a.executions %}
                             <tr>
-                                <td>{{ e.created_at | format_lead_datetime }}</td>
-                                <td>{{ e.target_phone }}</td>
-                                <td><span class="badge {{ 'badge-green' if e.status == 'success' else 'badge-red' }}">{{ 'הצלחה' if e.status == 'success' else 'כישלון' }}</span></td>
-                                <td>{{ e.detail }}</td>
+                                <td class="m-title">{{ e.created_at | format_lead_datetime }}</td>
+                                <td data-label="טלפון">{{ e.target_phone }}</td>
+                                <td data-label="סטטוס"><span class="badge {{ 'badge-green' if e.status == 'success' else 'badge-red' }}">{{ 'הצלחה' if e.status == 'success' else 'כישלון' }}</span></td>
+                                <td data-label="פרטים">{{ e.detail }}</td>
                             </tr>
                             {% endfor %}
                         </tbody>

@@ -1,7 +1,8 @@
+import os
 import threading
 import time
 
-from flask import Flask, redirect, render_template, url_for
+from flask import Flask, redirect, render_template, send_from_directory, url_for
 
 from atlas.core import roles
 from atlas.data import context as db_context
@@ -57,6 +58,15 @@ def start_arbox_sync_scheduler(app):
     threading.Thread(target=_run_arbox_sync_loop, args=(app,), daemon=True).start()
 
 
+# גרסת קובץ העיצוב (זמן שינוי) - מצורפת ל-URL של style.css כדי שהדפדפן/הטלפון לא ישתמשו בגרסה ישנה
+# מהמטמון אחרי כל עדכון (חשוב במיוחד באפליקציה מותקנת, שמחזיקה מטמון אגרסיבי)
+def _static_asset_version(app):
+    try:
+        return int(os.path.getmtime(os.path.join(app.static_folder, "style.css")))
+    except OSError:
+        return 0
+
+
 def create_app():
     # יוצר/ממגר את כל הטבלאות פעם אחת בזמן יצירת האפליקציה (רץ גם תחת flask run וגם תחת python app.py)
     db_context.bootstrap_databases()
@@ -94,7 +104,28 @@ def create_app():
             "current_user": current_user(),
             "ROLE_ADMIN": roles.ADMIN,
             "ROLE_USER": roles.USER,
+            "asset_version": _static_asset_version(app),
         }
+
+    # --- PWA: מאפשר "התקנה" למסך הבית בטלפון. ה-manifest וה-service worker חייבים להיות מוגשים
+    # מהשורש (לא מ-/static) כדי שה-scope יכסה את כל האתר; הם ציבוריים (בלי מידע רגיש) ולכן ללא התחברות ---
+    @app.route("/manifest.webmanifest")
+    def pwa_manifest():
+        response = send_from_directory(app.static_folder, "manifest.webmanifest", mimetype="application/manifest+json")
+        response.headers["Cache-Control"] = "no-cache"
+        return response
+
+    @app.route("/sw.js")
+    def pwa_service_worker():
+        response = send_from_directory(app.static_folder, "sw.js", mimetype="application/javascript")
+        # ה-SW עצמו לא נשמר במטמון - כדי שעדכון שלו ייקלט מיד אחרי פריסה
+        response.headers["Cache-Control"] = "no-cache"
+        response.headers["Service-Worker-Allowed"] = "/"
+        return response
+
+    @app.route("/offline")
+    def pwa_offline():
+        return send_from_directory(app.static_folder, "offline.html", mimetype="text/html")
 
     @app.route("/")
     def index():

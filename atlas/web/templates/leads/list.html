@@ -62,7 +62,7 @@
     {% endif %}
 </div>
 <div class="table-scroll">
-    <table class="leads-table">
+    <table class="leads-table mobile-cards">
         <thead>
             <tr>
                 <th class="col-select"><input type="checkbox" id="select-all-checkbox"></th>
@@ -84,7 +84,7 @@
             {% for lead in leads %}
             <tr>
                 <td class="col-select"><input type="checkbox" class="lead-select-checkbox" value="{{ lead.id }}"></td>
-                <td class="col-created">{{ lead.created_datetime_stamp | format_lead_datetime }}</td>
+                <td class="col-created" data-label="תאריך">{{ lead.created_datetime_stamp | format_lead_datetime }}</td>
                 <td class="col-status">
                     <form method="post" action="{{ url_for('leads.update_status', lead_id=lead.id) }}">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
@@ -95,7 +95,7 @@
                         </select>
                     </form>
                 </td>
-                <td class="col-assigned">
+                <td class="col-assigned" data-label="מנהל לקוח">
                     <form method="post" action="{{ url_for('leads.assign_lead', lead_id=lead.id) }}" class="inline-form">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                         <select name="assigned_user" class="assigned-select" onchange="this.form.submit()">
@@ -107,11 +107,11 @@
                     </form>
                 </td>
                 <td class="col-updated">{{ lead.last_updated_datetime_stamp | format_lead_datetime }}</td>
-                <td class="col-channel">{{ lead.channel }}</td>
+                <td class="col-channel" data-label="ערוץ">{{ lead.channel }}</td>
                 <td class="col-name">{{ lead.full_name }}</td>
                 <td class="col-phone">
                     <span class="phone-cell">
-                        <span>{{ lead.phone }}</span>
+                        <a href="tel:{{ lead.phone }}" class="tel-link">{{ lead.phone }}</a>
                         {% if lead.phone %}
                         <a href="{{ lead.phone | whatsapp_link }}" target="_blank" rel="noopener" class="whatsapp-icon" title="פתח בוואטסאפ" aria-label="פתח בוואטסאפ">
                             <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true">
@@ -128,7 +128,7 @@
                 <td class="col-notes {{ 'has-notes' if lead.notes else '' }}"
                     {% if lead.notes %}data-full-notes="{{ lead.notes }}" data-lead-name="{{ lead.full_name }}" title="לחץ להצגת ההערה המלאה"{% endif %}>{{ lead.notes }}</td>
                 <td class="col-routings">{{ lead.routings_count or 0 }}</td>
-                <td class="col-branch">{{ lead.branch or '-' }}</td>
+                <td class="col-branch" data-label="סניף">{{ lead.branch or '-' }}</td>
                 <td class="col-id">{{ lead.id }}</td>
                 <td class="col-actions actions-row">
                     <a href="{{ url_for('leads.edit', lead_id=lead.id) }}" class="btn btn-secondary icon-btn" title="ערוך" aria-label="ערוך">✎</a>

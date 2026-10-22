@@ -8,15 +8,15 @@
 </div>
 
 {% if statuses %}
-<table>
+<table class="mobile-cards">
     <thead>
         <tr><th>סטטוס</th><th>צבע</th><th>פעולות</th></tr>
     </thead>
     <tbody>
         {% for s in statuses %}
         <tr>
-            <td><span class="status-chip" style="--status-color: {{ s.color }};">{{ s.name }}</span></td>
-            <td>
+            <td class="m-title"><span class="status-chip" style="--status-color: {{ s.color }};">{{ s.name }}</span></td>
+            <td data-label="צבע">
                 <form method="post" action="{{ url_for('leads.update_status_color', status_id=s.id) }}">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                     <input type="color" name="color" value="{{ s.color }}" onchange="this.form.submit()">

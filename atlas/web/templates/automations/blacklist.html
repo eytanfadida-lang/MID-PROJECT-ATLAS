@@ -37,15 +37,15 @@
 </div>
 
 <div class="automations-table-wrap bl-table-wrap">
-<table class="bl-table">
+<table class="bl-table mobile-cards">
     <thead>
         <tr><th>טלפון</th><th>שם</th><th></th></tr>
     </thead>
     <tbody>
         {% for e in entries %}
         <tr class="bl-row" data-search="{{ (e.phone ~ ' ' ~ (e.full_name or '')) | lower }}">
-            <td class="bl-phone" dir="ltr">{{ e.phone }}</td>
-            <td>{{ e.full_name or '—' }}</td>
+            <td class="bl-phone m-title" dir="ltr">{{ e.phone }}</td>
+            <td data-label="שם">{{ e.full_name or '—' }}</td>
             <td class="automations-row-actions">
                 <form method="post" action="{{ url_for('automations.remove_from_blacklist', blacklist_id=e.id) }}" style="display:inline;">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">

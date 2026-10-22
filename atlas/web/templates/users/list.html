@@ -13,21 +13,21 @@
 <div class="appt-count"><span class="category-pill">{{ users | length }} משתמשים</span></div>
 
 <div class="automations-table-wrap cust-table-wrap">
-<table class="cust-table">
+<table class="cust-table mobile-cards">
     <thead>
         <tr><th>משתמש</th><th>תפקיד</th><th>מזהה</th><th></th></tr>
     </thead>
     <tbody>
         {% for u in users %}
         <tr>
-            <td>
+            <td class="m-title">
                 <a href="{{ url_for('users.edit_user', user_id=u.id) }}" class="cust-name-cell">
                     <span class="recent-avatar" aria-hidden="true">{{ (u.username or '?')[:1] | upper }}</span>
                     <span class="cust-name">{{ u.username }}</span>
                 </a>
             </td>
-            <td><span class="badge {{ role_badge_class(u.role) }}">{{ u.role }}</span></td>
-            <td class="cust-muted">{{ u.id }}</td>
+            <td data-label="תפקיד"><span class="badge {{ role_badge_class(u.role) }}">{{ u.role }}</span></td>
+            <td class="cust-muted" data-label="מזהה">{{ u.id }}</td>
             <td class="automations-row-actions">
                 <div class="cust-actions">
                     <a href="{{ url_for('users.edit_user', user_id=u.id) }}" class="btn btn-ghost btn-sm">✏️ ערוך</a>
