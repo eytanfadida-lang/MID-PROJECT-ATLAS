@@ -181,6 +181,10 @@
     // שיחה פתוחה: גלילה להודעה האחרונה, והשיחה הפעילה נראית ברשימה
     var thread = document.querySelector('.chat-app-thread .chat-thread');
     if (thread) thread.scrollTop = thread.scrollHeight;
+    // ה-HTML של השיחה כפי שהשרת סיפק אותו (לא כולל בועות "שולח…" שנוספו כאן) - מולו משווים ברענון
+    var lastThreadHtml = thread ? thread.innerHTML : null;
+    // בועות של הודעות שנשלחות/נכשלו ועוד לא אושרו ע"י השרת - מוצמדות מחדש אחרי כל רענון של השיחה
+    var pendingBubbles = [];
     var active = document.querySelector('.chat-list-item.active');
     if (active && active.scrollIntoView) active.scrollIntoView({ block: 'nearest' });
 
@@ -199,7 +203,13 @@
             fileName.hidden = !hasFile;
             fileName.textContent = hasFile ? '📎 ' + file.files[0].name : '';
         }
+        // תיבת הכתיבה גדלה עם הטקסט (עד גובה מסוים) במקום להישאר שורה אחת
+        function autoGrow() {
+            body.style.height = 'auto';
+            body.style.height = Math.min(body.scrollHeight, 120) + 'px';
+        }
         body.addEventListener('input', refresh);
+        body.addEventListener('input', autoGrow);
         file.addEventListener('change', refresh);
         body.addEventListener('keydown', function (e) {
             if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && !send.disabled) {
@@ -207,6 +217,100 @@
                 form.requestSubmit();
             }
         });
+
+        // שליחה ברקע: ההודעה מופיעה מיד בבועה "שולח…" (בלי לחכות לשרתי וואטסאפ ולטעינת כל העמוד
+        // מחדש), ובהצלחה מוחלפת בהודעה האמיתית מהשרת. בכישלון הבועה נשארת אדומה עם "נסה שוב"
+        form.addEventListener('submit', function (e) {
+            e.preventDefault();
+            if (send.disabled) return;
+            var text = body.value.trim();
+            var attached = file.files && file.files.length > 0 ? file.files[0] : null;
+            var data = new FormData(form);
+            var bubble = addPendingBubble(text, attached ? attached.name : '');
+            body.value = '';
+            file.value = '';
+            refresh();
+            autoGrow();
+            body.focus();
+            sendInBackground(data, bubble);
+        });
+
+        function addPendingBubble(text, attachmentName) {
+            var threadEl = document.querySelector('.chat-app-thread .chat-thread');
+            var el = document.createElement('div');
+            el.className = 'chat-bubble chat-bubble-out chat-bubble-pending';
+            if (attachmentName) {
+                var att = document.createElement('div');
+                att.className = 'chat-attachment-file';
+                att.textContent = '📎 ' + attachmentName;
+                el.appendChild(att);
+            }
+            if (text) el.appendChild(document.createTextNode(text));
+            var status = document.createElement('span');
+            status.className = 'chat-time chat-pending-status';
+            el.appendChild(status);
+            threadEl.appendChild(el);
+            threadEl.scrollTop = threadEl.scrollHeight;
+            pendingBubbles.push(el);
+            return el;
+        }
+
+        function dropPending(el) {
+            var i = pendingBubbles.indexOf(el);
+            if (i !== -1) pendingBubbles.splice(i, 1);
+        }
+
+        function sendInBackground(data, el) {
+            var status = el.querySelector('.chat-pending-status');
+            var old = el.querySelector('.chat-failed-box');
+            if (old) old.remove();
+            el.classList.remove('chat-bubble-failed');
+            status.textContent = 'שולח…';
+            fetch(form.action, {
+                method: 'POST',
+                body: data,
+                credentials: 'same-origin',
+                headers: { 'X-Requested-With': 'fetch' },
+            }).then(function (r) {
+                return r.json().catch(function () { return { ok: false, error: 'תשובה לא צפויה מהשרת' }; });
+            }).then(function (res) {
+                if (res.ok) {
+                    dropPending(el);
+                    status.textContent = 'נשלח ✓';
+                    inFlight = false;
+                    tick(true);  // מביא את ההודעה האמיתית ומחליף בה את הבועה הזמנית
+                } else {
+                    failBubble(el, data, res.error);
+                }
+            }).catch(function () {
+                failBubble(el, data, 'אין חיבור לשרת - בדוק את האינטרנט ונסה שוב');
+            });
+        }
+
+        function failBubble(el, data, message) {
+            el.classList.add('chat-bubble-failed');
+            el.querySelector('.chat-pending-status').textContent = 'לא נשלח';
+            var box = document.createElement('div');
+            box.className = 'chat-failed-box';
+            var msg = document.createElement('div');
+            msg.className = 'chat-failed-msg';
+            msg.textContent = message || 'השליחה נכשלה';
+            var retry = document.createElement('button');
+            retry.type = 'button';
+            retry.className = 'chat-failed-btn';
+            retry.textContent = 'נסה שוב';
+            retry.addEventListener('click', function () { sendInBackground(data, el); });
+            var drop = document.createElement('button');
+            drop.type = 'button';
+            drop.className = 'chat-failed-btn';
+            drop.textContent = 'הסר';
+            drop.addEventListener('click', function () { dropPending(el); el.remove(); });
+            box.appendChild(msg);
+            box.appendChild(retry);
+            box.appendChild(drop);
+            el.appendChild(box);
+        }
+
         refresh();
     }
 
@@ -246,11 +350,13 @@
 
             var curThread = document.querySelector('.chat-app-thread .chat-thread');
             var freshThread = doc.querySelector('.chat-app-thread .chat-thread');
-            if (curThread && freshThread && curThread.innerHTML !== freshThread.innerHTML) {
+            if (curThread && freshThread && freshThread.innerHTML !== lastThreadHtml) {
+                lastThreadHtml = freshThread.innerHTML;
                 var nearBottom = curThread.scrollHeight - curThread.scrollTop - curThread.clientHeight < 80;
                 var keep = curThread.scrollTop;
                 curThread.innerHTML = freshThread.innerHTML;
-                curThread.scrollTop = nearBottom ? curThread.scrollHeight : keep;
+                pendingBubbles.forEach(function (el) { curThread.appendChild(el); });
+                curThread.scrollTop = nearBottom || pendingBubbles.length ? curThread.scrollHeight : keep;
             }
             swapHtml(document.querySelector('.chat-thread-header'), doc.querySelector('.chat-thread-header'));
         });

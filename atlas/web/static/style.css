@@ -3843,3 +3843,78 @@ body.dark .chat-msg-edit:hover {
 body.dark .chat-msg-edit svg {
     stroke: #93c5fd;
 }
+
+/* --- שליחת הודעה ברקע: בועת "שולח…", בועה שנכשלה עם "נסה שוב", ותיבת כתיבה שגדלה --- */
+.chat-bubble-pending {
+    opacity: 0.8;
+}
+
+.chat-bubble-pending .chat-pending-status {
+    font-style: italic;
+}
+
+.chat-bubble-failed {
+    opacity: 1;
+    background: #fee2e2;
+    border: 1px solid #fca5a5;
+    color: #7f1d1d;
+}
+
+.chat-failed-box {
+    margin-top: 6px;
+    padding-top: 6px;
+    border-top: 1px dashed #fca5a5;
+    white-space: normal;
+}
+
+.chat-failed-msg {
+    margin-bottom: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.4;
+    word-break: break-word;
+}
+
+.chat-failed-btn {
+    margin-inline-end: 6px;
+    padding: 3px 12px;
+    border: 1px solid #dc2626;
+    border-radius: 999px;
+    background: #fff;
+    color: #b91c1c;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.chat-failed-btn:hover {
+    background: #dc2626;
+    color: #fff;
+}
+
+body.dark .chat-bubble-failed {
+    background: #450a0a;
+    border-color: #7f1d1d;
+    color: #fecaca;
+}
+
+body.dark .chat-failed-box {
+    border-top-color: #7f1d1d;
+}
+
+body.dark .chat-failed-btn {
+    background: transparent;
+    color: #fca5a5;
+    border-color: #f87171;
+}
+
+/* תיבת הכתיבה גדלה עם הטקסט (ראו autoGrow בסקריפט) */
+.chat-reply-form {
+    align-items: flex-end;
+}
+
+.chat-reply-form textarea {
+    max-height: 120px;
+    overflow-y: auto;
+}

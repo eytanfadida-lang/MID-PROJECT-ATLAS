@@ -206,6 +206,16 @@ def _save_upload_locally(phone, uploaded_file):
 # request_human_callback) - לא עוברת דרך ה-LLM, ולכן גם לא נכנסת להיסטוריה הקצרה
 # שהבוט משתמש בה (customer_assistant.py). זה בסדר - התיעוד המלא נשאר כאן, ביומן הקבוע.
 # תומכת גם בצירוף תמונה/קובץ (נשלח כ-caption על גבי המדיה אם יש גם טקסט וגם קובץ)
+# הממשק שולח את התשובה ברקע (fetch, ראו bot_conversations/index.html) כדי שהבועה תופיע מיד ולא
+# נחכה לשרתי מטא ולטעינה מחדש של כל העמוד - אז מחזירים JSON. בלי fetch (דפדפן בלי JS) ההתנהגות
+# הישנה נשמרת: הודעת flash וחזרה לשיחה
+def _reply_failed(phone, message, status=400):
+    if request.headers.get("X-Requested-With") == "fetch":
+        return jsonify(ok=False, error=message[:300]), status
+    flash(message, "error")
+    return redirect(url_for("bot_conversations.view_conversation", phone=phone))
+
+
 @bp.route("/<phone>/reply", methods=["POST"])
 @admin_required
 def reply(phone):
@@ -214,13 +224,11 @@ def reply(phone):
     has_attachment = bool(uploaded_file and uploaded_file.filename)
 
     if not body and not has_attachment:
-        flash("יש להזין תוכן הודעה או לצרף קובץ.", "error")
-        return redirect(url_for("bot_conversations.view_conversation", phone=phone))
+        return _reply_failed(phone, "יש להזין תוכן הודעה או לצרף קובץ.")
 
     whatsapp_phone = to_whatsapp_format(phone)
     if not whatsapp_phone:
-        flash("מספר טלפון לא תקין לשליחה.", "error")
-        return redirect(url_for("bot_conversations.view_conversation", phone=phone))
+        return _reply_failed(phone, "מספר טלפון לא תקין לשליחה.")
 
     repos = get_repos()
     # עונה מאותו מספר שבו התנהלה השיחה עד כה - רלוונטי מרגע שכמה מספרים מחוברים
@@ -247,10 +255,11 @@ def reply(phone):
                 bot_config, whatsapp_phone, body, phone_number_id=bot_phone_number_id
             )
     except Exception as exc:
-        flash(f"שליחת ההודעה נכשלה: {exc}", "error")
-        return redirect(url_for("bot_conversations.view_conversation", phone=phone))
+        return _reply_failed(phone, f"שליחת ההודעה נכשלה: {exc}", status=502)
 
     log_body = body or ("📎 " + uploaded_file.filename if has_attachment else "")
     wamid = whatsapp_bot.extract_wamid(response)
     repos.customer_bot_messages.log(phone, "out", log_body, bot_phone_number_id, attachment_url, wamid=wamid)
+    if request.headers.get("X-Requested-With") == "fetch":
+        return jsonify(ok=True)
     return redirect(url_for("bot_conversations.view_conversation", phone=phone))
