@@ -6,6 +6,7 @@
        בלי התג הזה הטלפון מציג את האתר ברוחב של מחשב (980px) ומכווץ אותו, ושום התאמה למובייל לא פועלת #}
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#16253f">
+    {% if current_user and current_user.role == ROLE_ADMIN %}<meta name="csrf-token" content="{{ csrf_token }}">{% endif %}
     <meta name="format-detection" content="telephone=no">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -25,6 +26,7 @@
             <div class="brand">מנהל תורים</div>
             <div class="topbar-user">
                 {% if current_user %}
+                    {% if current_user.role == ROLE_ADMIN %}<button type="button" class="theme-toggle desktop-only" id="push-bell" aria-label="התראות על הודעות חדשות" hidden>🔔</button>{% endif %}
                     <button type="button" class="theme-toggle js-theme-toggle" id="theme-toggle" aria-label="החלף מצב צבע">🌙</button>
                     <span class="desktop-only">{{ current_user.username }}</span>
                     <span class="badge desktop-only {{ role_badge_class(current_user.role) }}">{{ current_user.role }}</span>
@@ -158,6 +160,10 @@
         <div class="more-actions">
             <a href="{{ url_for('users.change_my_password') }}" class="more-row">🔑 שינוי סיסמה</a>
             <button type="button" class="more-row js-theme-toggle-row" id="theme-row">🌙 מצב כהה</button>
+            {% if is_admin %}
+            <button type="button" class="more-row" id="push-row" hidden></button>
+            <button type="button" class="more-row" id="push-test-row" hidden>📨 שליחת התראת בדיקה</button>
+            {% endif %}
             <button type="button" class="more-row" id="install-app" hidden>📲 התקנה למסך הבית</button>
             <p class="more-hint" id="ios-install-hint" hidden>להתקנה באייפון: לחצו על כפתור השיתוף ⎙ בתחתית הדפדפן ובחרו "הוסף למסך הבית".</p>
             <form method="post" action="{{ url_for('auth.logout') }}">
@@ -168,6 +174,7 @@
     </div>
     {% endif %}
 
+    {% if current_user and current_user.role == ROLE_ADMIN %}<script src="{{ url_for('static', filename='push.js', v=asset_version) }}" defer></script>{% endif %}
     <script>
     (function () {
         const savedTheme = localStorage.getItem('theme');

@@ -2,6 +2,12 @@ import datetime
 
 TABLE_NAME = "customer_bot_messages"
 
+# פונקציות שנקראות על כל הודעה *נכנסת* (מהלקוחה) מיד אחרי שנרשמה ביומן: (phone, body, attachment_url).
+# נרשמות באתחול האפליקציה (ראו factory.py) - כך התראות דחיפה (atlas/services/web_push.py) מקבלות כל
+# הודעה נכנסת ממקום אחד, בלי להוסיף קריאה בכל אחד מהמסלולים השונים ב-webhook (טקסט/תמונה/קולית/תגובה...).
+# כשל בפונקציה כזו לעולם לא מפיל את רישום ההודעה
+incoming_listeners = []
+
 
 # אחראית על יומן ההודעות הקבוע של בוט הלקוחות - לצפייה בממשק הניהול (ראו
 # customer_bot_message_db.py). "direction" הוא "in" (מהלקוח) או "out" (מהבוט).
@@ -29,6 +35,12 @@ class CustomerBotMessageRepository:
             ),
         )
         self.conn.commit()
+        if direction == "in":
+            for listener in incoming_listeners:
+                try:
+                    listener(phone, body, attachment_url)
+                except Exception:  # noqa: BLE001
+                    pass
 
     # מעדכנת את סטטוס המשלוח (sent/delivered/read/failed) לפי wamid - נקראת מ-webhook עדכוני
     # סטטוס אמיתי מוואטסאפ (ראו atlas/web/webhooks.py, whatsapp_customer_webhook). לא כל

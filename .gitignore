@@ -272,3 +272,7 @@ appointments_backup_*.db
 # קבצים/תמונות שהועלו דרך בוט הלקוחות (ראו bot_conversations.py) - נתוני לקוחות
 # אמיתיים, לא צריכים להיות בגיט
 atlas/web/static/uploads/
+
+# Web Push (VAPID) private key - נוצר אוטומטית בשימוש הראשון (ראו atlas/services/web_push.py)
+.vapid_private_key
+.vapid_private_key.*.tmp

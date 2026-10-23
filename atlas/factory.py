@@ -7,6 +7,8 @@ from flask import Flask, redirect, render_template, send_from_directory, url_for
 from atlas.core import roles
 from atlas.data import context as db_context
 from atlas.integrations.arbox.sync import sync_arbox_clients
+from atlas.data.repositories.customer_bot_message_repository import incoming_listeners
+from atlas.services import web_push
 from atlas.core.auth import load_secret_key, generate_csrf_token, validate_csrf, current_user
 from atlas.core.view_utils import (
     role_badge_class,
@@ -21,6 +23,7 @@ from atlas.web.blueprints.appointments import bp as appointments_bp
 from atlas.web.blueprints.leads import bp as leads_bp
 from atlas.web.blueprints.customers import bp as customers_bp
 from atlas.web.blueprints.users import bp as users_bp
+from atlas.web.blueprints.push import bp as push_bp
 from atlas.web.blueprints.bot_conversations import bp as bot_conversations_bp
 from atlas.web.blueprints.automations import bp as automations_bp
 from atlas.web.blueprints.whatsapp_templates import bp as whatsapp_templates_bp
@@ -61,10 +64,13 @@ def start_arbox_sync_scheduler(app):
 # גרסת קובץ העיצוב (זמן שינוי) - מצורפת ל-URL של style.css כדי שהדפדפן/הטלפון לא ישתמשו בגרסה ישנה
 # מהמטמון אחרי כל עדכון (חשוב במיוחד באפליקציה מותקנת, שמחזיקה מטמון אגרסיבי)
 def _static_asset_version(app):
-    try:
-        return int(os.path.getmtime(os.path.join(app.static_folder, "style.css")))
-    except OSError:
-        return 0
+    newest = 0
+    for name in ("style.css", "push.js"):
+        try:
+            newest = max(newest, int(os.path.getmtime(os.path.join(app.static_folder, name))))
+        except OSError:
+            pass
+    return newest
 
 
 def create_app():
@@ -86,6 +92,7 @@ def create_app():
     app.register_blueprint(customers_bp)
     app.register_blueprint(users_bp)
     app.register_blueprint(bot_conversations_bp)
+    app.register_blueprint(push_bp)
     app.register_blueprint(automations_bp)
     app.register_blueprint(whatsapp_templates_bp)
     app.register_blueprint(webhooks_bp)
@@ -96,6 +103,15 @@ def create_app():
     app.jinja_env.filters["format_lead_datetime"] = format_lead_datetime
     app.jinja_env.filters["whatsapp_link"] = whatsapp_link
     app.jinja_env.filters["collapse_blank_lines"] = collapse_blank_lines
+
+    # התראות דחיפה על הודעה נכנסת חדשה מלקוחה (ראו atlas/services/web_push.py). רושמים פעם אחת
+    # לכל תהליך - לא מכפילים אם create_app נקראת שוב (למשל בבדיקות)
+    if not any(getattr(fn, "_is_web_push_listener", False) for fn in incoming_listeners):
+        def _push_on_incoming(phone, body, attachment_url=None):
+            web_push.notify_incoming_async(app, phone, body, attachment_url)
+
+        _push_on_incoming._is_web_push_listener = True
+        incoming_listeners.append(_push_on_incoming)
 
     @app.context_processor
     def inject_template_globals():
