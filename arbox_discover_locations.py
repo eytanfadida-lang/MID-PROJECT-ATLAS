@@ -1,7 +1,7 @@
 import sys
 from collections import Counter
 
-from arbox_client import fetch_arbox_users, load_arbox_api_key
+from atlas.integrations.arbox.client import fetch_arbox_users, load_arbox_api_key
 
 if sys.stdout.encoding != "utf-8":
     sys.stdout.reconfigure(encoding="utf-8")

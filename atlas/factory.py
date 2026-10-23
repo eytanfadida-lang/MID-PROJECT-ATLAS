@@ -1,0 +1,186 @@
+import datetime
+import os
+import threading
+import time
+
+from flask import Flask, redirect, render_template, send_from_directory, session, url_for
+
+from atlas.core import roles
+from atlas.data import context as db_context
+from atlas.integrations.arbox.sync import sync_arbox_clients
+from atlas.data.repositories.customer_bot_message_repository import incoming_listeners
+from atlas.services import web_push
+from atlas.core.auth import load_secret_key, generate_csrf_token, validate_csrf, current_user
+from atlas.core.view_utils import (
+    role_badge_class,
+    format_lead_datetime,
+    whatsapp_link,
+    to_records,
+    collapse_blank_lines,
+)
+
+from atlas.web.blueprints.auth import bp as auth_bp
+from atlas.web.blueprints.appointments import bp as appointments_bp
+from atlas.web.blueprints.leads import bp as leads_bp
+from atlas.web.blueprints.customers import bp as customers_bp
+from atlas.web.blueprints.users import bp as users_bp
+from atlas.web.blueprints.push import bp as push_bp
+from atlas.web.blueprints.bot_conversations import bp as bot_conversations_bp
+from atlas.web.blueprints.automations import bp as automations_bp
+from atlas.web.blueprints.whatsapp_templates import bp as whatsapp_templates_bp
+from atlas.web.webhooks import bp as webhooks_bp
+
+# אין אישור על תמיכת Arbox ב-webhook, לכן זו קירוב בפולינג תדיר (לא טריגר אמיתי בזמן אמת)
+ARBOX_SYNC_INTERVAL_SECONDS = 300
+ARBOX_AUTO_SYNC_ENABLED = True
+
+
+# בודקת מ-Arbox את כל מי שהפך ללקוח, ומעדכנת סטטוס ללידים קיימים אצלנו בלבד (לא מייבאת/יוצרת לידים חדשים)
+def _run_arbox_sync_loop(app):
+    while True:
+        try:
+            with app.app_context():
+                result = sync_arbox_clients(db_context.get_repos())
+            if result.get("skipped"):
+                print(f"[Arbox sync] skipped: {result.get('reason')}")
+            else:
+                print(
+                    f"[Arbox sync] updated {result['updated_to_converted']} leads to 'הפך ללקוח', "
+                    f"{result['already_converted']} already converted, "
+                    f"{result['not_found']} not found in leads, "
+                    f"{result['no_phone']} without phone "
+                    f"(fetched {result['total_fetched']} clients from Arbox)"
+                )
+        except Exception as exc:
+            print(f"[Arbox sync] failed: {exc}")
+        time.sleep(ARBOX_SYNC_INTERVAL_SECONDS)
+
+
+# מיועד לשימוש מקומי בלבד (python app.py) - בסביבת אירוח WSGI (PythonAnywhere) אין thread
+# רקע לתהליך, ולכן שם משתמשים ב-/tasks/arbox-sync* דרך cron חיצוני (GitHub Actions) במקום
+def start_arbox_sync_scheduler(app):
+    threading.Thread(target=_run_arbox_sync_loop, args=(app,), daemon=True).start()
+
+
+# גרסת קובץ העיצוב (זמן שינוי) - מצורפת ל-URL של style.css כדי שהדפדפן/הטלפון לא ישתמשו בגרסה ישנה
+# מהמטמון אחרי כל עדכון (חשוב במיוחד באפליקציה מותקנת, שמחזיקה מטמון אגרסיבי)
+def _static_asset_version(app):
+    newest = 0
+    for name in ("style.css", "push.js"):
+        try:
+            newest = max(newest, int(os.path.getmtime(os.path.join(app.static_folder, name))))
+        except OSError:
+            pass
+    return newest
+
+
+def create_app():
+    # יוצר/ממגר את כל הטבלאות פעם אחת בזמן יצירת האפליקציה (רץ גם תחת flask run וגם תחת python app.py)
+    db_context.bootstrap_databases()
+
+    app = Flask(
+        __name__,
+        template_folder="web/templates",
+        static_folder="web/static",
+    )
+    app.secret_key = load_secret_key()
+
+    # התחברות קבועה: בלי זה ה-session הוא קוקי "זמני" שנמחק כשסוגרים את הדפדפן/האפליקציה, ובאפליקציה
+    # מותקנת בטלפון המשתמשת הייתה מתנתקת בכל פתיחה מחדש. עם session קבוע הקוקי נשמר 30 יום, ו-Flask
+    # מחדש אותו בכל בקשה (SESSION_REFRESH_EACH_REQUEST) - כלומר "30 ימים מהשימוש האחרון", לא מההתחברות.
+    # SameSite=Lax: הקוקי לא נשלח בבקשות חוצות-אתרים (הגנה נוספת מפני CSRF) אבל כן בניווט רגיל לאתר
+    app.config["PERMANENT_SESSION_LIFETIME"] = datetime.timedelta(days=30)
+    app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+
+    @app.before_request
+    def keep_logged_in_sessions_persistent():
+        # גם מי שכבר מחוברת עם קוקי זמני (לפני העדכון) הופכת לקבועה בבקשה הבאה - בלי להתחבר מחדש
+        if session.get("user") is not None and not session.permanent:
+            session.permanent = True
+
+    db_context.init_app(app)
+
+    app.register_blueprint(auth_bp)
+    app.register_blueprint(appointments_bp)
+    app.register_blueprint(leads_bp)
+    app.register_blueprint(customers_bp)
+    app.register_blueprint(users_bp)
+    app.register_blueprint(bot_conversations_bp)
+    app.register_blueprint(push_bp)
+    app.register_blueprint(automations_bp)
+    app.register_blueprint(whatsapp_templates_bp)
+    app.register_blueprint(webhooks_bp)
+
+    app.before_request(validate_csrf)
+
+    app.jinja_env.globals["role_badge_class"] = role_badge_class
+    app.jinja_env.filters["format_lead_datetime"] = format_lead_datetime
+    app.jinja_env.filters["whatsapp_link"] = whatsapp_link
+    app.jinja_env.filters["collapse_blank_lines"] = collapse_blank_lines
+
+    # התראות דחיפה על הודעה נכנסת חדשה מלקוחה (ראו atlas/services/web_push.py). רושמים פעם אחת
+    # לכל תהליך - לא מכפילים אם create_app נקראת שוב (למשל בבדיקות)
+    if not any(getattr(fn, "_is_web_push_listener", False) for fn in incoming_listeners):
+        def _push_on_incoming(phone, body, attachment_url=None):
+            web_push.notify_incoming_async(app, phone, body, attachment_url)
+
+        _push_on_incoming._is_web_push_listener = True
+        incoming_listeners.append(_push_on_incoming)
+
+    @app.context_processor
+    def inject_template_globals():
+        return {
+            "csrf_token": generate_csrf_token(),
+            "current_user": current_user(),
+            "ROLE_ADMIN": roles.ADMIN,
+            "ROLE_USER": roles.USER,
+            "asset_version": _static_asset_version(app),
+        }
+
+    # --- PWA: מאפשר "התקנה" למסך הבית בטלפון. ה-manifest וה-service worker חייבים להיות מוגשים
+    # מהשורש (לא מ-/static) כדי שה-scope יכסה את כל האתר; הם ציבוריים (בלי מידע רגיש) ולכן ללא התחברות ---
+    @app.route("/manifest.webmanifest")
+    def pwa_manifest():
+        response = send_from_directory(app.static_folder, "manifest.webmanifest", mimetype="application/manifest+json")
+        response.headers["Cache-Control"] = "no-cache"
+        return response
+
+    @app.route("/sw.js")
+    def pwa_service_worker():
+        response = send_from_directory(app.static_folder, "sw.js", mimetype="application/javascript")
+        # ה-SW עצמו לא נשמר במטמון - כדי שעדכון שלו ייקלט מיד אחרי פריסה
+        response.headers["Cache-Control"] = "no-cache"
+        response.headers["Service-Worker-Allowed"] = "/"
+        return response
+
+    @app.route("/offline")
+    def pwa_offline():
+        return send_from_directory(app.static_folder, "offline.html", mimetype="text/html")
+
+    @app.route("/")
+    def index():
+        if current_user() is None:
+            return redirect(url_for("auth.login"))
+
+        repos = db_context.get_repos()
+        appointments = repos.appointments.get_all()
+        today_appointments = repos.appointments.get_today()
+        leads = repos.leads.get_all()
+        customers = repos.customers.get_all()
+
+        recent_appointments = to_records(appointments.head(5)) if not appointments.empty else []
+        recent_leads = to_records(leads.head(5)) if not leads.empty else []
+        recent_customers = to_records(customers.head(5)) if not customers.empty else []
+
+        return render_template(
+            "dashboard.html",
+            appointments_count=len(appointments),
+            today_count=len(today_appointments),
+            leads_count=len(leads),
+            customers_count=len(customers),
+            recent_appointments=recent_appointments,
+            recent_leads=recent_leads,
+            recent_customers=recent_customers,
+        )
+
+    return app

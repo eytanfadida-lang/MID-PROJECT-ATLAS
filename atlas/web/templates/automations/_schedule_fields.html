@@ -1,0 +1,323 @@
+{# פרטיאל משותף לטופס הגדרת תזמון - כלול פעם אחת בטופס היצירה (new.html), ופעם אחת
+   לכל שורת אוטומציה בטבלה המאוחדת (list.html, בתוך {% for %}) - לכן אסור להשתמש ב-id
+   גלובלי (getElementById) בג'אווהסקריפט, כל הטוגלים מוגבלים ל-closest('form') כדי שלא
+   יתנגשו בין מופעים שונים של הפרטיאל הזה באותו עמוד.
+   מצפה למשתנים: form (dict/request.form עם ערכים קיימים, או {} ליצירה חדשה),
+   weekday_labels, selected_weekdays (רשימת int - ראו _extract_weekdays בבלופרינט) #}
+<div class="form-group">
+    <label>מקור קהל</label>
+    <select name="audience_source" class="automations-audience-select" onchange="automationsToggleAudience(this)">
+        <option value="manual" {{ 'selected' if form.get('audience_source', 'manual') == 'manual' else '' }}>רשימה ידנית</option>
+        <option value="arbox_birthday" {{ 'selected' if form.get('audience_source') == 'arbox_birthday' else '' }}>יום הולדת (מתוך Arbox, אוטומטי)</option>
+        <option value="arbox_membership_expiring" {{ 'selected' if form.get('audience_source') == 'arbox_membership_expiring' else '' }}>סיום מנוי מתקרב (מתוך Arbox, אוטומטי)</option>
+        <option value="arbox_expiring_sessions" {{ 'selected' if form.get('audience_source') == 'arbox_expiring_sessions' else '' }}>נגמרת הכרטיסייה (מתוך Arbox, אוטומטי)</option>
+        <option value="arbox_active_members" {{ 'selected' if form.get('audience_source') == 'arbox_active_members' else '' }}>לקוחות פעילים - רשימת תפוצה כללית (מתוך Arbox)</option>
+        <option value="arbox_trial_reminder" {{ 'selected' if form.get('audience_source') == 'arbox_trial_reminder' else '' }}>תזכורת לשיעור ניסיון (מתוך Arbox, אוטומטי)</option>
+        <option value="arbox_churned" {{ 'selected' if form.get('audience_source') == 'arbox_churned' else '' }}>לקוחות שעזבו (מתוך Arbox, אוטומטי)</option>
+        <option value="arbox_lost_leads" {{ 'selected' if form.get('audience_source') == 'arbox_lost_leads' else '' }}>מתעניינים אבודים (מתוך Arbox, אוטומטי)</option>
+        <option value="arbox_converted_leads" {{ 'selected' if form.get('audience_source') == 'arbox_converted_leads' else '' }}>מתעניינים חדשים שהומרו (מתוך Arbox, אוטומטי)</option>
+        <option value="arbox_trial_no_show" {{ 'selected' if form.get('audience_source') == 'arbox_trial_no_show' else '' }}>מתעניינות שלא הגיעו לשיעור ניסיון (מתוך Arbox, אוטומטי)</option>
+        <option value="arbox_attendance_milestone" {{ 'selected' if form.get('audience_source') == 'arbox_attendance_milestone' else '' }}>ברכת מילסטון על כניסה עגולה (מתוך Arbox, אוטומטי)</option>
+    </select>
+</div>
+
+<div class="automations-audience-field" data-for="arbox_birthday">
+    <div class="form-group">
+        <label>שעת שליחה</label>
+        <input type="time" name="time_of_day" value="{{ form.get('time_of_day', '09:00') }}">
+    </div>
+    <div class="form-group">
+        <label>סינון קהל</label>
+        <select name="audience_status">
+            <option value="all" {{ 'selected' if form.get('audience_status', 'all') == 'all' else '' }}>הכל</option>
+            <option value="active" {{ 'selected' if form.get('audience_status') == 'active' else '' }}>מנויות פעילות בלבד</option>
+            <option value="inactive" {{ 'selected' if form.get('audience_status') == 'inactive' else '' }}>לא פעילות בלבד</option>
+        </select>
+        <p class="hint">נבדק אוטומטית כל יום - מי שיום ההולדת שלה חל היום נשלפת ישירות מ-Arbox,
+            בלי רשימת נמענים ידנית. אפשר להשתמש ב-{{ '{full_name}' }} וגם ב-{{ '{age}' }} בהודעה.</p>
+    </div>
+</div>
+
+<div class="automations-audience-field" data-for="arbox_membership_expiring">
+    <div class="form-group">
+        <label>שעת שליחה</label>
+        <input type="time" name="time_of_day" value="{{ form.get('time_of_day', '09:00') }}">
+    </div>
+    <div class="form-group">
+        <label>כמה ימים לפני סיום המנוי</label>
+        <input type="number" name="days_before" min="0" max="90" value="{{ form.get('days_before', 5) }}">
+        <p class="hint">נבדק אוטומטית כל יום - מי שהמנוי שלה מסתיים בדיוק בעוד כמות הימים הזו
+            נשלפת ישירות מ-Arbox, בלי רשימת נמענים ידנית. אפשר להשתמש ב-{{ '{full_name}' }},
+            {{ '{membership_type_name}' }}, {{ '{end_date}' }} ו-{{ '{days_left}' }} בהודעה.</p>
+    </div>
+</div>
+
+<div class="automations-audience-field" data-for="arbox_churned">
+    <div class="form-group">
+        <label>שעת שליחה</label>
+        <input type="time" name="time_of_day" value="{{ form.get('time_of_day', '09:00') }}">
+    </div>
+    <div class="form-group">
+        <label>כמה ימים אחרי שהמנוי פג</label>
+        <input type="number" name="days_since" min="1" max="365" value="{{ form.get('days_since', 14) }}">
+        <p class="hint">נבדק אוטומטית כל יום - מי שהמנוי שלה פג בדיוק לפני כמות הימים הזו
+            (לא חודש) נשלפת ישירות מ-Arbox, בלי רשימת נמענים ידנית. כדי לשלוח כמה הודעות
+            בטווחים שונים (למשל 14 יום ואז 35 יום, כמו ב-Upgrade360) - יוצרים כמה אוטומציות
+            נפרדות עם מספר ימים שונה. אפשר להשתמש ב-{{ '{full_name}' }},
+            {{ '{membership_type_name}' }}, {{ '{end_date}' }} ו-{{ '{days_since}' }} בהודעה.</p>
+    </div>
+</div>
+
+<div class="automations-audience-field" data-for="arbox_lost_leads">
+    <div class="form-group">
+        <label>שעת שליחה</label>
+        <input type="time" name="time_of_day" value="{{ form.get('time_of_day', '09:00') }}">
+    </div>
+    <div class="form-group">
+        <label>כמה ימים אחרי שהליד סומן אבוד</label>
+        <input type="number" name="days_since" min="1" max="365" value="{{ form.get('days_since', 7) }}">
+        <p class="hint">נבדק אוטומטית כל יום - מי שהליד שלה סומן "אבוד" ב-Arbox בדיוק לפני
+            כמות הימים הזו נשלפת ישירות משם, בלי רשימת נמענים ידנית. כדי לשלוח כמה הודעות
+            בטווחים שונים (למשל 7/14/21/28 יום, כמו ב-Upgrade360) - יוצרים כמה אוטומציות
+            נפרדות עם מספר ימים שונה. אפשר להשתמש ב-{{ '{full_name}' }},
+            {{ '{lost_reason_name}' }} ו-{{ '{days_since}' }} בהודעה.</p>
+    </div>
+</div>
+
+<div class="automations-audience-field" data-for="arbox_converted_leads">
+    <div class="form-group">
+        <label>שעת שליחה</label>
+        <input type="time" name="time_of_day" value="{{ form.get('time_of_day', '09:00') }}">
+    </div>
+    <div class="form-group">
+        <label>כמה ימים אחרי שהליד הומר ללקוחה</label>
+        <input type="number" name="days_since" min="1" max="365" value="{{ form.get('days_since', 3) }}">
+        <p class="hint">נבדק אוטומטית כל יום - מי שהליד שלה הומר ללקוחה ב-Arbox בדיוק לפני
+            כמות הימים הזו נשלפת ישירות משם, בלי רשימת נמענים ידנית. כדי לשלוח כמה הודעות
+            בטווחים שונים (למשל 3/14 יום, כמו ב-Upgrade360) - יוצרים כמה אוטומציות נפרדות
+            עם מספר ימים שונה. אפשר להשתמש ב-{{ '{full_name}' }} ו-{{ '{days_since}' }} בהודעה.</p>
+    </div>
+</div>
+
+<div class="automations-audience-field" data-for="arbox_attendance_milestone">
+    <div class="form-group">
+        <label>שעת בדיקה/שליחה</label>
+        <input type="time" name="time_of_day" value="{{ form.get('time_of_day', '09:00') }}">
+        <p class="hint">בודקת את השיעורים של **אתמול** (לא היום) - כדי שהנתונים כבר סגורים וההודעה
+            יכולה להתייחס ל"ראיתי שהיית אתמול".</p>
+    </div>
+    <div class="form-group">
+        <label>לברך כל כמה שיעורים (מילסטון)</label>
+        <input type="number" name="milestone_interval" min="1" max="1000" value="{{ form.get('milestone_interval', 10) }}">
+        <p class="hint">נבדק אוטומטית כל יום - מי שהגיעה אתמול בפועל לשיעור (check-in, לא רק
+            הוזמנה) ועם השיעור הזה הגיעה למספר שמתחלק בשלם במספר שלמעלה (למשל כל 10 - שיעור
+            10, 20, 30...) מקבלת ברכה. הספירה מתחילה **מעכשיו** (לא מההיסטוריה המלאה ב-Arbox).
+            אפשר להשתמש ב-{{ '{full_name}' }} או {{ '{first_name}' }}, {{ '{class_name}' }},
+            {{ '{staff_member}' }} ו-{{ '{visit_count}' }} בהודעה.</p>
+    </div>
+</div>
+
+<div class="automations-audience-field" data-for="arbox_trial_no_show">
+    <div class="form-group">
+        <label>שעת שליחה</label>
+        <input type="time" name="time_of_day" value="{{ form.get('time_of_day', '09:00') }}">
+    </div>
+    <div class="form-group">
+        <label>כמה ימים אחורה לבדוק (חלון)</label>
+        <input type="number" name="window_days" min="1" max="365" value="{{ form.get('window_days', 90) }}">
+    </div>
+    <div class="form-group">
+        <label>לא לשלוח שוב לאותה מתעניינת למשך (ימים)</label>
+        <input type="number" name="resend_cooldown_days" min="1" max="365" value="{{ form.get('resend_cooldown_days', 90) }}">
+        <p class="hint">נבדק אוטומטית כל יום - מי שנרשמה לשיעור ניסיון בחלון שלמעלה, לא הגיעה
+            בפועל (check-in) ולא הומרה ללקוחה נשלפת ישירות מ-Arbox, בלי רשימת נמענים ידנית.
+            כדי לא לשלוח שוב בכל הרצה לאותה מתעניינת - לא נשלח שוב למי שכבר קיבלה הודעה
+            מהאוטומציה הזו בטווח הימים שלמעלה. אפשר להשתמש ב-{{ '{full_name}' }} או {{ '{first_name}' }},
+            {{ '{class_name}' }}, {{ '{date}' }} ו-{{ '{location_name}' }} בהודעה.</p>
+    </div>
+</div>
+
+<div class="automations-audience-field" data-for="arbox_expiring_sessions">
+    <div class="form-group">
+        <label>שעת שליחה</label>
+        <input type="time" name="time_of_day" value="{{ form.get('time_of_day', '09:00') }}">
+    </div>
+    <div class="form-group">
+        <label>כמה ניקובים נותרו בכרטיסייה</label>
+        <input type="number" name="sessions_left" min="0" max="20" value="{{ form.get('sessions_left', 1) }}">
+    </div>
+    <div class="form-group">
+        <label>לא לשלוח שוב לאותה לקוחה למשך (ימים)</label>
+        <input type="number" name="resend_cooldown_days" min="1" max="90" value="{{ form.get('resend_cooldown_days', 14) }}">
+        <p class="hint">נבדק אוטומטית כל יום - מי שבכרטיסייה שלה נותר בדיוק מספר הניקובים הזה
+            נשלפת ישירות מ-Arbox, בלי רשימת נמענים ידנית. כדי לא להציף באותה הודעה כל יום אם
+            הלקוחה לא מגיעה, לא נשלח שוב למי שכבר קיבלה הודעה מהאוטומציה הזו בטווח הימים שלמעלה.
+            אפשר להשתמש ב-{{ '{full_name}' }}, {{ '{membership_type_name}' }} ו-{{ '{sessions_left}' }} בהודעה.</p>
+    </div>
+</div>
+
+<div class="automations-audience-field" data-for="arbox_active_members">
+    <div class="form-group">
+        <label>סינון לפי סוג מנוי (אופציונלי - בחר/י אחד או יותר, ריק = כל הסוגים)</label>
+        <div class="automations-membership-types">
+            <input type="text" class="automations-membership-search" placeholder="חיפוש בין סוגי המנוי..." oninput="automationsFilterMembershipTypes(this)">
+            <label class="automations-membership-select-all">
+                <input type="checkbox" onchange="automationsToggleAllMembershipTypes(this)"> בחר/י הכל (מהמוצגים)
+            </label>
+            <div class="automations-membership-list">
+                {% for mt in membership_types %}
+                <label class="automations-membership-option">
+                    <input type="checkbox" name="membership_types" value="{{ mt }}" {{ 'checked' if mt in selected_membership_types else '' }}>
+                    {{ mt }}
+                </label>
+                {% endfor %}
+                {% if not membership_types %}
+                <p class="hint">עדיין לא התקבלו סוגי מנוי מ-Arbox - ירוץ `/tasks/arbox-sync` ברקע.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <div class="form-group">
+        <label>סינון לפי סניף (אופציונלי - בחר/י אחד או יותר, ריק = כל הסניפים)</label>
+        <div class="automations-membership-types">
+            <div class="automations-membership-list">
+                {% for loc in locations %}
+                <label class="automations-membership-option">
+                    <input type="checkbox" name="locations" value="{{ loc }}" {{ 'checked' if loc in selected_locations else '' }}>
+                    {{ loc }}
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+        <p class="hint">נשלף ישירות מ-Arbox בכל הרצה - כל הלקוחות עם מנוי פעיל, או רק מי שתואמת
+            את הסינון שלמעלה. את התזמון (פעם בשבוע, כל יום וכו') בוחרים למטה, בדיוק כמו ברשימה
+            ידנית. בניגוד לאפגרייד 360 - אין כאן עריכת תוכן ההודעה בכל הרצה בנפרד, אלא תבנית
+            קבועה (ניתנת לעריכה בכל עת מתחת, כולל חזרה לנוסח קודם דרך היסטוריית ההודעות). אפשר
+            להשתמש ב-{{ '{full_name}' }}, {{ '{membership_type_name}' }} ו-{{ '{location_name}' }} בהודעה.</p>
+    </div>
+</div>
+
+<div class="automations-audience-field" data-for="arbox_trial_reminder">
+    <div class="form-group">
+        <label>שעת בדיקה/שליחה</label>
+        <input type="time" name="time_of_day" value="{{ form.get('time_of_day', '09:00') }}">
+    </div>
+    <div class="form-group">
+        <label>מתי</label>
+        <select name="reminder_timing">
+            <option value="day_before" {{ 'selected' if form.get('reminder_timing', 'day_before') == 'day_before' else '' }}>יום לפני השיעור</option>
+            <option value="same_day" {{ 'selected' if form.get('reminder_timing') == 'same_day' else '' }}>באותו יום השיעור</option>
+        </select>
+    </div>
+    <div class="form-group">
+        <label>איזה שיעורים</label>
+        <select name="time_filter">
+            <option value="before" {{ 'selected' if form.get('time_filter', 'before') == 'before' else '' }}>עד השעה</option>
+            <option value="after" {{ 'selected' if form.get('time_filter') == 'after' else '' }}>החל מהשעה</option>
+        </select>
+        <input type="number" name="before_hour" min="0" max="23" value="{{ form.get('before_hour', 12) }}" style="width:70px;">
+    </div>
+    <div class="form-group">
+        <label>סינון לפי סניף (אופציונלי - ריק = כל הסניפים)</label>
+        <div class="automations-membership-types">
+            <div class="automations-membership-list">
+                {% for loc in locations %}
+                <label class="automations-membership-option">
+                    <input type="checkbox" name="locations" value="{{ loc }}" {{ 'checked' if loc in selected_locations else '' }}>
+                    {{ loc }}
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+        <p class="hint">נבדק אוטומטית כל יום - מי שרשום לשיעור ניסיון במועד ובטווח השעות שנבחרו
+            נשלפת ישירות מ-Arbox, בלי רשימת נמענים ידנית. באפגרייד 360 כל סניף הוא הודעה נפרדת
+            (כתובת/וויז שונים בטקסט) - כאן אפשר להשיג את זה ע"י יצירת אוטומציה נפרדת לכל סניף
+            (לבחור רק אותו בסינון). אפשר להשתמש ב-{{ '{full_name}' }}, {{ '{class_name}' }},
+            {{ '{start_time}' }} ו-{{ '{location_name}' }} בהודעה.</p>
+    </div>
+</div>
+
+<div class="automations-audience-field" data-for="manual arbox_active_members">
+    <div class="form-group">
+        <label>סוג תזמון</label>
+        <select name="schedule_type" class="automations-schedule-type-select" onchange="automationsToggleSchedule(this)">
+            <option value="once" {{ 'selected' if form.get('schedule_type') == 'once' else '' }}>חד-פעמי</option>
+            <option value="daily" {{ 'selected' if form.get('schedule_type') == 'daily' else '' }}>יומי</option>
+            <option value="weekly" {{ 'selected' if form.get('schedule_type') == 'weekly' else '' }}>שבועי</option>
+            <option value="monthly" {{ 'selected' if form.get('schedule_type') == 'monthly' else '' }}>חודשי</option>
+        </select>
+    </div>
+
+    <div class="form-group schedule-field" data-for="once">
+        <label>תאריך ושעת שליחה</label>
+        <input type="datetime-local" name="run_at" value="{{ form.get('run_at', '') }}">
+    </div>
+    <div class="form-group schedule-field" data-for="once">
+        <label>תאריך ושעת "הורדה" (אופציונלי - הכנת רשימת נמענים מראש, לפני השליחה)</label>
+        <input type="datetime-local" name="stage_at" value="{{ form.get('stage_at', '') }}">
+    </div>
+
+    <div class="form-group schedule-field" data-for="daily weekly monthly">
+        <label>שעת שליחה</label>
+        <input type="time" name="time_of_day" value="{{ form.get('time_of_day', '09:00') }}">
+    </div>
+    <div class="form-group schedule-field" data-for="daily weekly monthly">
+        <label>שעת "הורדה" (אופציונלי - הכנת רשימת נמענים מראש, לפני השליחה)</label>
+        <input type="time" name="stage_time" value="{{ form.get('stage_time', '') }}">
+    </div>
+
+    <div class="form-group schedule-field" data-for="weekly">
+        <label>ימים בשבוע</label>
+        <div class="af-weekdays">
+            {% for i in range(7) %}
+            <label><input type="checkbox" name="weekdays" value="{{ i }}" {{ 'checked' if i in selected_weekdays else '' }}> {{ weekday_labels[i] }}</label>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="form-group schedule-field" data-for="monthly">
+        <label>יום בחודש (1-31)</label>
+        <input type="number" name="day_of_month" min="1" max="31" value="{{ form.get('day_of_month', 1) }}">
+    </div>
+</div>
+
+<script>
+function automationsToggleSchedule(select) {
+    var form = select.closest('form');
+    var selected = select.value;
+    form.querySelectorAll('.schedule-field').forEach(function (el) {
+        el.hidden = el.dataset.for.split(' ').indexOf(selected) === -1;
+    });
+}
+function automationsToggleAudience(select) {
+    var form = select.closest('form');
+    var selected = select.value;
+    form.querySelectorAll('.automations-audience-field').forEach(function (el) {
+        el.hidden = el.dataset.for.split(' ').indexOf(selected) === -1;
+    });
+}
+function automationsFilterMembershipTypes(input) {
+    var container = input.closest('.automations-membership-types');
+    var query = input.value.trim().toLowerCase();
+    container.querySelectorAll('.automations-membership-option').forEach(function (label) {
+        var text = label.textContent.trim().toLowerCase();
+        label.hidden = query !== '' && text.indexOf(query) === -1;
+    });
+}
+function automationsToggleAllMembershipTypes(checkbox) {
+    var container = checkbox.closest('.automations-membership-types');
+    var checked = checkbox.checked;
+    container.querySelectorAll('.automations-membership-option').forEach(function (label) {
+        if (!label.hidden) {
+            label.querySelector('input').checked = checked;
+        }
+    });
+}
+(function () {
+    var scripts = document.getElementsByTagName('script');
+    var thisForm = scripts[scripts.length - 1].closest('form');
+    if (!thisForm) return;
+    automationsToggleAudience(thisForm.querySelector('.automations-audience-select'));
+    automationsToggleSchedule(thisForm.querySelector('.automations-schedule-type-select'));
+})();
+</script>

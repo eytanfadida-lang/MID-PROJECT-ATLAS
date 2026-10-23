@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block page_title %}בלאקליסט גלובלי - אוטומציות{% endblock %}
+{% block page_heading %}בלאקליסט גלובלי{% endblock %}
+
+{% block content %}
+<div class="automations-header">
+    <div class="automations-actions">
+        <a href="{{ url_for('automations.list_automations') }}" class="btn btn-ghost">→ חזרה לאוטומציות</a>
+    </div>
+</div>
+
+<div class="bl-callout">
+    <span class="bl-callout-icon">🚫</span>
+    <p>מספרים ברשימה הזו לא יקבלו אף הודעה מתוזמנת, מכל אוטומציה שהיא.</p>
+</div>
+
+<form method="post" action="{{ url_for('automations.add_to_blacklist') }}" class="bl-add">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <div class="bl-add-field">
+        <label for="bl-phone">טלפון</label>
+        <input type="text" id="bl-phone" name="phone" placeholder="0501234567" required inputmode="tel" dir="ltr">
+    </div>
+    <div class="bl-add-field">
+        <label for="bl-name">שם (אופציונלי)</label>
+        <input type="text" id="bl-name" name="full_name">
+    </div>
+    <button type="submit" class="btn">＋ הוספה לבלאקליסט</button>
+</form>
+
+<div class="wa-section-head">
+    <h4>מספרים חסומים <span class="category-pill">{{ entries | length if entries else 0 }}</span></h4>
+</div>
+
+{% if entries %}
+<div class="wa-filters">
+    <input type="text" id="bl-search" placeholder="🔍 חיפוש לפי טלפון או שם" aria-label="חיפוש בבלאקליסט">
+</div>
+
+<div class="automations-table-wrap bl-table-wrap">
+<table class="bl-table mobile-cards">
+    <thead>
+        <tr><th>טלפון</th><th>שם</th><th></th></tr>
+    </thead>
+    <tbody>
+        {% for e in entries %}
+        <tr class="bl-row" data-search="{{ (e.phone ~ ' ' ~ (e.full_name or '')) | lower }}">
+            <td class="bl-phone m-title" dir="ltr">{{ e.phone }}</td>
+            <td data-label="שם">{{ e.full_name or '—' }}</td>
+            <td class="automations-row-actions">
+                <form method="post" action="{{ url_for('automations.remove_from_blacklist', blacklist_id=e.id) }}" style="display:inline;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <button type="submit" class="btn btn-ghost btn-sm btn-ghost-danger"
+                            onclick="return confirm('להסיר את {{ e.phone }} מהבלאקליסט? הוא/היא יוכלו לקבל שוב הודעות מתוזמנות.');">הסרה</button>
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+</div>
+<p class="empty-state" id="bl-no-results" hidden>לא נמצאו מספרים שמתאימים לחיפוש.</p>
+
+<script>
+(function () {
+    var search = document.getElementById('bl-search');
+    var rows = document.querySelectorAll('.bl-row');
+    var none = document.getElementById('bl-no-results');
+    search.addEventListener('input', function () {
+        var q = search.value.trim().toLowerCase();
+        var visible = 0;
+        rows.forEach(function (row) {
+            row.hidden = q && row.dataset.search.indexOf(q) === -1;
+            if (!row.hidden) visible++;
+        });
+        none.hidden = visible !== 0;
+    });
+})();
+</script>
+{% else %}
+<div class="empty-state automations-empty">
+    <div class="automations-empty-icon">✅</div>
+    <strong>הבלאקליסט ריק</strong>
+    <p class="hint">כל הנמענים יכולים לקבל הודעות מתוזמנות.</p>
+</div>
+{% endif %}
+{% endblock %}

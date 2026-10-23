@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block page_title %}משתמשים - מנהל תורים{% endblock %}
+{% block page_heading %}משתמשים{% endblock %}
+
+{% block content %}
+<div class="automations-header">
+    <div class="automations-actions">
+        <a href="{{ url_for('users.new_user') }}" class="btn">＋ משתמש חדש</a>
+    </div>
+</div>
+
+{% if users %}
+<div class="appt-count"><span class="category-pill">{{ users | length }} משתמשים</span></div>
+
+<div class="automations-table-wrap cust-table-wrap">
+<table class="cust-table mobile-cards">
+    <thead>
+        <tr><th>משתמש</th><th>תפקיד</th><th>מזהה</th><th></th></tr>
+    </thead>
+    <tbody>
+        {% for u in users %}
+        <tr>
+            <td class="m-title">
+                <a href="{{ url_for('users.edit_user', user_id=u.id) }}" class="cust-name-cell">
+                    <span class="recent-avatar" aria-hidden="true">{{ (u.username or '?')[:1] | upper }}</span>
+                    <span class="cust-name">{{ u.username }}</span>
+                </a>
+            </td>
+            <td data-label="תפקיד"><span class="badge {{ role_badge_class(u.role) }}">{{ u.role }}</span></td>
+            <td class="cust-muted" data-label="מזהה">{{ u.id }}</td>
+            <td class="automations-row-actions">
+                <div class="cust-actions">
+                    <a href="{{ url_for('users.edit_user', user_id=u.id) }}" class="btn btn-ghost btn-sm">✏️ ערוך</a>
+                    <form method="post" action="{{ url_for('users.delete_user', user_id=u.id) }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                        <button type="submit" class="btn btn-ghost btn-sm btn-ghost-danger" onclick="return confirm('למחוק משתמש זה?');">מחק</button>
+                    </form>
+                </div>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+</div>
+{% else %}
+<div class="empty-state automations-empty">
+    <div class="automations-empty-icon">👤</div>
+    <strong>עדיין אין משתמשים</strong>
+</div>
+{% endif %}
+{% endblock %}
