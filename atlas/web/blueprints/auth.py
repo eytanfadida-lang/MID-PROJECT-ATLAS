@@ -23,6 +23,8 @@ def login():
             "role": role,
             "permissions": user.get("permissions", []),
         }
+        # session קבוע (ראו factory.py): נשארת מחוברת גם אחרי סגירת הדפדפן/האפליקציה, עד 30 יום מהשימוש האחרון
+        session.permanent = True
         return redirect(url_for("appointments.list_appointments"))
 
     return render_template("login.html", username="")

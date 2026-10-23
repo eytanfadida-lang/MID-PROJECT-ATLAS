@@ -1,8 +1,9 @@
+import datetime
 import os
 import threading
 import time
 
-from flask import Flask, redirect, render_template, send_from_directory, url_for
+from flask import Flask, redirect, render_template, send_from_directory, session, url_for
 
 from atlas.core import roles
 from atlas.data import context as db_context
@@ -83,6 +84,19 @@ def create_app():
         static_folder="web/static",
     )
     app.secret_key = load_secret_key()
+
+    # התחברות קבועה: בלי זה ה-session הוא קוקי "זמני" שנמחק כשסוגרים את הדפדפן/האפליקציה, ובאפליקציה
+    # מותקנת בטלפון המשתמשת הייתה מתנתקת בכל פתיחה מחדש. עם session קבוע הקוקי נשמר 30 יום, ו-Flask
+    # מחדש אותו בכל בקשה (SESSION_REFRESH_EACH_REQUEST) - כלומר "30 ימים מהשימוש האחרון", לא מההתחברות.
+    # SameSite=Lax: הקוקי לא נשלח בבקשות חוצות-אתרים (הגנה נוספת מפני CSRF) אבל כן בניווט רגיל לאתר
+    app.config["PERMANENT_SESSION_LIFETIME"] = datetime.timedelta(days=30)
+    app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+
+    @app.before_request
+    def keep_logged_in_sessions_persistent():
+        # גם מי שכבר מחוברת עם קוקי זמני (לפני העדכון) הופכת לקבועה בבקשה הבאה - בלי להתחבר מחדש
+        if session.get("user") is not None and not session.permanent:
+            session.permanent = True
 
     db_context.init_app(app)
 
