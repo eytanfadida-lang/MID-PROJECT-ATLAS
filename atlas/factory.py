@@ -17,6 +17,7 @@ from atlas.core.view_utils import (
     whatsapp_link,
     to_records,
     collapse_blank_lines,
+    day_label,
 )
 
 from atlas.web.blueprints.auth import bp as auth_bp
@@ -87,13 +88,15 @@ def _nav_counts():
             counts["nav_unread_chats"] = repos.customer_bot_messages.count_unread_conversations()
         statuses = repos.lead_statuses.get_names()
         if statuses:
-            counts["nav_new_leads"] = repos.leads.count_by_status(statuses[0])
+            # משתמשת רגילה רואה בעמוד הלידים רק לידים ששויכו אליה - המספר בתגית חייב להתאים לרשימה
+            assignee = None if user.get("role") == roles.ADMIN else user.get("username", "")
+            counts["nav_new_leads"] = repos.leads.count_by_status(statuses[0], assigned_user=assignee)
     except Exception:  # noqa: BLE001
         pass
     return counts
 
 
-def _dashboard_data(repos, is_admin):
+def _dashboard_data(repos, is_admin, username=""):
     """הנתונים ללוח היום: תורי היום לפי שעה, שיחות שמחכות לתשובה (למנהלת), ולידים חדשים."""
     today = repos.appointments.get_today()
     today_records = to_records(today.sort_values("appointment_time")) if not today.empty else []
@@ -110,6 +113,9 @@ def _dashboard_data(repos, is_admin):
 
     statuses = repos.lead_statuses.get_names()
     new_leads = repos.leads.get_by_status(statuses[0]) if statuses else None
+    if new_leads is not None and not is_admin:
+        # אותו כלל כמו בעמוד הלידים: משתמשת רגילה רואה רק לידים ששויכו אליה
+        new_leads = new_leads[new_leads["assigned_user"].fillna("") == username]
     new_leads_count = 0 if new_leads is None else len(new_leads)
     new_lead_records = to_records(new_leads.head(5)) if new_leads is not None and not new_leads.empty else []
 
@@ -166,6 +172,7 @@ def create_app():
     app.jinja_env.filters["format_lead_datetime"] = format_lead_datetime
     app.jinja_env.filters["whatsapp_link"] = whatsapp_link
     app.jinja_env.filters["collapse_blank_lines"] = collapse_blank_lines
+    app.jinja_env.filters["day_label"] = day_label
 
     # התראות דחיפה על הודעה נכנסת חדשה מלקוחה (ראו atlas/services/web_push.py). רושמים פעם אחת
     # לכל תהליך - לא מכפילים אם create_app נקראת שוב (למשל בבדיקות)
@@ -214,7 +221,8 @@ def create_app():
 
         repos = db_context.get_repos()
         return render_template(
-            "dashboard.html", **_dashboard_data(repos, current_user().get("role") == roles.ADMIN)
+            "dashboard.html",
+            **_dashboard_data(repos, current_user().get("role") == roles.ADMIN, current_user().get("username", "")),
         )
 
     return app

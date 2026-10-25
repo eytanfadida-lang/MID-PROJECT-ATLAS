@@ -14,21 +14,49 @@ bp = Blueprint("appointments", __name__, url_prefix="/appointments")
 @login_required
 def list_appointments():
     phone = request.args.get("phone", "").strip()
-    today_only = request.args.get("today") == "1"
+    # טווח התצוגה: היום / מחר / השבוע (7 ימים מהיום, ברירת המחדל) / הכל. ?today=1 הישן נשמר (= היום)
+    view_range = request.args.get("range", "")
+    if request.args.get("today") == "1":
+        view_range = "today"
+    if view_range not in ("today", "tomorrow", "week", "all"):
+        view_range = "week"
 
     repos = get_repos()
+    everything = repos.appointments.get_all()
+    today = datetime.date.today()
+    keys = {
+        "today": [today.isoformat()],
+        "tomorrow": [(today + datetime.timedelta(days=1)).isoformat()],
+        "week": [(today + datetime.timedelta(days=i)).isoformat() for i in range(7)],
+    }
+    range_counts = {name: int(everything["appointment_date"].isin(days).sum()) for name, days in keys.items()}
+    range_counts["all"] = len(everything)
+
     if phone:
         df = repos.appointments.get_by_phone(phone)
-    elif today_only:
-        df = repos.appointments.get_today()
+        view_range = "all"
+    elif view_range == "all":
+        df = everything
     else:
-        df = repos.appointments.get_all()
+        df = everything[everything["appointment_date"].isin(keys[view_range])]
+
+    # מיון: ימים עולים (בתצוגת "הכל" - החדש קודם), ובתוך יום לפי שעה
+    if not df.empty:
+        df = df.sort_values(["appointment_date", "appointment_time"], ascending=[view_range != "all", True])
+    groups = []
+    for record in to_records(df):
+        if not groups or groups[-1]["date"] != record["appointment_date"]:
+            groups.append({"date": record["appointment_date"], "items": []})
+        groups[-1]["items"].append(record)
 
     return render_template(
         "appointments/list.html",
-        appointments=to_records(df),
+        groups=groups,
+        total=len(df),
         phone=phone,
-        today_only=today_only,
+        view_range=view_range,
+        range_counts=range_counts,
+        today_iso=today.isoformat(),
     )
 
 

@@ -132,7 +132,7 @@
             </label>
             <span class="chat-attach-name" id="chat-attach-name" hidden></span>
             <textarea name="body" id="chat-body" rows="1" placeholder="כתוב הודעה..." title="Ctrl+Enter לשליחה"></textarea>
-            <button type="submit" class="btn" id="chat-send">שלח ➤</button>
+            <button type="submit" class="chat-send-btn" id="chat-send" aria-label="שליחה" title="שליחה (Ctrl+Enter)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M22 2 11 13"/><path d="M22 2l-7 20-4-9-9-4z"/></svg></button>
         </form>
         {% else %}
         <div class="chat-app-empty">בחר/י שיחה מהרשימה</div>

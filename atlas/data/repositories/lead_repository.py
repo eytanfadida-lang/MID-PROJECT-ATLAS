@@ -142,8 +142,14 @@ class LeadRepository:
         )
 
     # כמה לידים נמצאים בסטטוס נתון (לתגית "לידים חדשים" בסרגל הניווט)
-    def count_by_status(self, status):
-        return self.conn.execute(f"SELECT COUNT(*) FROM {TABLE_NAME} WHERE status = ?", (status,)).fetchone()[0]
+    # assigned_user: מגביל ללידים שמשויכים למשתמש (משתמשת רגילה רואה בעמוד הלידים רק את שלה, ולכן גם המספר)
+    def count_by_status(self, status, assigned_user=None):
+        if assigned_user is None:
+            return self.conn.execute(f"SELECT COUNT(*) FROM {TABLE_NAME} WHERE status = ?", (status,)).fetchone()[0]
+        return self.conn.execute(
+            f"SELECT COUNT(*) FROM {TABLE_NAME} WHERE status = ? AND COALESCE(assigned_user, '') = ?",
+            (status, assigned_user),
+        ).fetchone()[0]
 
     # מחזירה את הלידים לפי סטטוס נתון
     def get_by_status(self, status):

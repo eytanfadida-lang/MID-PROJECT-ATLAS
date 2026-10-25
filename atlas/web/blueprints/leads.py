@@ -70,6 +70,11 @@ def list_leads():
         df = df[df["assigned_user"].fillna("") == current_username]
 
     all_leads = repos.leads.get_all()
+    # מספרי הלשוניות לפי סטטוס - על אותה קבוצה שהמשתמשת רשאית לראות (אדמין: הכל; אחרת: רק ששויכו אליה)
+    visible_leads = all_leads
+    if current_user and current_user.get("role") != "admin":
+        visible_leads = all_leads[all_leads["assigned_user"].fillna("") == current_username]
+    status_counts = visible_leads["status"].fillna("").value_counts().to_dict()
     all_phone_counts = all_leads["phone"].fillna("").astype(str).str.strip()
     duplicate_phones = set(
         all_phone_counts[all_phone_counts != ""].value_counts()[lambda series: series > 1].index
@@ -101,6 +106,8 @@ def list_leads():
         status_colors=repos.lead_statuses.get_color_map(),
         default_status_color=DEFAULT_STATUS_COLOR,
         status=status,
+        status_counts=status_counts,
+        visible_total=len(visible_leads),
         phone=phone,
         users=users,
         show_my_only=show_my_only,

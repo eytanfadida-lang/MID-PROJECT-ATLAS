@@ -5754,3 +5754,450 @@ body.dark .actions-row .icon-btn.btn-danger,
 body.dark .actions-row .icon-btn.btn-danger:hover {
     color: #2a1a33;
 }
+
+/* =====================================================================================================
+   "יומן סטודיו" - שלב 2: לידים, שיחות ותורים.
+   ===================================================================================================== */
+
+/* --- לשוניות סינון (סטטוס בלידים, טווח תאריכים בתורים): טקסט עם קו תחתון, והמספר לצידו.
+       לשונית פעילה = קו צהוב. במקום "כדורים" וכפתורים זהים, כדי שיהיה ברור שזה סינון ולא פעולה --- */
+.status-tabs {
+    display: flex;
+    gap: 22px;
+    margin: 0 0 14px;
+    border-bottom: 1px solid var(--border);
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+
+.status-tabs::-webkit-scrollbar {
+    display: none;
+}
+
+.status-tabs a {
+    position: relative;
+    padding: 10px 0;
+    color: var(--muted);
+    font-weight: 600;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.status-tabs a:hover {
+    color: var(--text);
+}
+
+.status-tabs a.on {
+    color: var(--text);
+    font-weight: 700;
+}
+
+.status-tabs a.on::after {
+    content: "";
+    position: absolute;
+    inset-inline: 0;
+    bottom: -1px;
+    height: 3px;
+    background: var(--accent);
+}
+
+.status-tabs small {
+    margin-inline-start: 4px;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+/* --- תורים --- */
+.appt-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 14px;
+    margin-bottom: 4px;
+}
+
+.appt-top .status-tabs {
+    flex: 1;
+    min-width: 0;
+}
+
+.appt-search {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 4px 0 18px;
+}
+
+.appt-search input[type=text] {
+    min-width: 220px;
+    border-radius: 10px;
+}
+
+.appt-day {
+    margin-bottom: 22px;
+}
+
+.appt-day-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+.appt-day-head h3 {
+    margin: 0;
+    font-size: 17px;
+}
+
+.appt-day-head span {
+    color: var(--muted);
+    font-size: 14px;
+}
+
+.appt-slot {
+    position: relative;
+    display: grid;
+    grid-template-columns: 78px minmax(0, 1fr) auto auto;
+    align-items: center;
+    gap: 14px;
+    padding: 13px 16px;
+    border-bottom: 1px solid var(--border);
+}
+
+.appt-slot:last-child {
+    border-bottom: 0;
+}
+
+.appt-main {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.appt-contact {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.appt-contact .tel-link {
+    font-weight: 600;
+    color: var(--text);
+}
+
+.appt-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.appt-actions form {
+    margin: 0;
+}
+
+.appt-slot.is-past .studio-time,
+.appt-slot.is-past .studio-who {
+    color: var(--muted);
+    opacity: 0.7;
+}
+
+.appt-slot.is-now {
+    background: color-mix(in srgb, var(--accent) 16%, var(--surface));
+}
+
+.appt-slot.is-now::before {
+    content: "";
+    position: absolute;
+    inset-block: 0;
+    inset-inline-start: 0;
+    width: 5px;
+    background: var(--accent);
+}
+
+/* --- לידים --- */
+.leads-tabs {
+    margin-top: 2px;
+}
+
+/* ליד חדש (הסטטוס הראשון) מסומן בפס צהוב בצד ההתחלה של השורה */
+.leads-table tr.is-new td:first-child {
+    border-inline-start: 4px solid var(--accent);
+}
+
+/* כפתורי אייקון: SVG אחיד (העורך/המרה/מחיקה היו תווי טקסט שנראו שונה בכל מכשיר) */
+.icon-btn svg {
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    pointer-events: none;
+}
+
+.leads-table .actions-row .icon-btn svg {
+    width: 16px;
+    height: 16px;
+}
+
+/* וואטסאפ/התקשרות כפתורים גדולים - בכרטיס בטלפון בלבד (בשולחן עבודה יש אייקון ליד המספר) */
+.lead-act {
+    display: none;
+}
+
+/* --- שיחות: צבעים של הזהות החדשה במקום ירוק וואטסאפ --- */
+.chat-app {
+    border-color: var(--border);
+    background: var(--surface);
+}
+
+.chat-thread,
+.chat-app-empty {
+    background: var(--bg);
+    background-image: none;
+}
+
+body.dark .chat-thread,
+body.dark .chat-app-empty {
+    background: var(--bg);
+}
+
+.chat-bubble {
+    color: var(--text);
+    box-shadow: none;
+}
+
+.chat-bubble-in,
+body.dark .chat-bubble-in {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+}
+
+.chat-bubble-out,
+body.dark .chat-bubble-out {
+    background: #ece6f1;
+    color: var(--text);
+}
+
+body.dark .chat-bubble-out {
+    background: #3a2d45;
+}
+
+.chat-bubble .chat-time,
+body.dark .chat-bubble-in .chat-time,
+body.dark .chat-bubble-out .chat-time {
+    color: var(--muted);
+}
+
+.chat-day-sep span,
+body.dark .chat-day-sep span {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    box-shadow: none;
+}
+
+.chat-bubble-pending {
+    opacity: 0.75;
+}
+
+.chat-list-avatar,
+.chat-header-avatar {
+    background: var(--ink);
+    color: #fff;
+    font-family: var(--font-display);
+    font-weight: 400;
+}
+
+body.dark .chat-list-avatar,
+body.dark .chat-header-avatar {
+    background: var(--accent);
+    color: var(--on-accent);
+}
+
+.chat-list-item.active {
+    border-inline-start-color: var(--accent);
+    background: var(--surface-2);
+}
+
+.chat-unread-dot {
+    background: var(--accent);
+}
+
+.chat-list-item-unread .chat-list-name {
+    color: var(--text);
+}
+
+.chat-list-tools .wa-chip {
+    border-radius: 8px;
+    border: 1.5px solid var(--border-strong);
+    font-weight: 700;
+}
+
+.chat-list-tools .wa-chip.active {
+    background: var(--ink);
+    border-color: var(--ink);
+    color: #fff;
+}
+
+body.dark .chat-list-tools .wa-chip.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--on-accent);
+}
+
+.chat-send-btn {
+    width: 44px;
+    height: 44px;
+    flex-shrink: 0;
+    display: grid;
+    place-items: center;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: var(--ink);
+    color: #fff;
+    cursor: pointer;
+}
+
+.chat-send-btn svg {
+    width: 20px;
+    height: 20px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    transform: scaleX(-1);
+}
+
+.chat-send-btn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+}
+
+body.dark .chat-send-btn {
+    background: var(--accent);
+    color: var(--on-accent);
+}
+
+.chat-reply-form textarea {
+    background: var(--surface);
+}
+
+.chat-attach-name {
+    border-color: var(--border-strong);
+}
+
+/* --- טלפון --- */
+@media (max-width: 800px) {
+    .appt-top {
+        flex-direction: column-reverse;
+        align-items: stretch;
+        gap: 8px;
+    }
+
+    .appt-top .btn {
+        width: 100%;
+    }
+
+    .appt-search input[type=text] {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .appt-slot {
+        grid-template-columns: 62px minmax(0, 1fr);
+        grid-template-areas:
+            "time main"
+            "contact contact"
+            "actions actions";
+        gap: 8px 12px;
+        padding: 12px 14px;
+    }
+
+    .appt-slot .studio-time {
+        grid-area: time;
+        font-size: 23px;
+    }
+
+    .appt-main {
+        grid-area: main;
+    }
+
+    .appt-contact {
+        grid-area: contact;
+    }
+
+    .appt-actions {
+        grid-area: actions;
+        flex-wrap: wrap;
+    }
+
+    .appt-actions .btn {
+        flex: 1;
+    }
+
+    .leads-tabs {
+        margin-inline: -4px;
+    }
+
+    .leads-table.mobile-cards tr.is-new {
+        border-inline-start: 5px solid var(--accent);
+    }
+
+    .leads-table tr.is-new td:first-child {
+        border-inline-start: 0 !important;
+    }
+
+    .leads-table .col-actions {
+        flex-wrap: wrap;
+    }
+
+    .lead-act {
+        display: inline-flex;
+        flex: 1 1 84px;
+        align-items: center;
+        justify-content: center;
+        min-height: 44px;
+        padding: 0 14px;
+        border: 1.5px solid var(--ink);
+        border-radius: 10px;
+        font-size: 14px;
+        font-weight: 700;
+        text-decoration: none;
+        color: var(--ink);
+        background: var(--surface);
+    }
+
+    .lead-act-wa {
+        background: var(--ink);
+        color: #fff;
+    }
+
+    body.dark .lead-act {
+        border-color: var(--accent);
+        color: var(--accent);
+        background: transparent;
+    }
+
+    body.dark .lead-act-wa {
+        background: var(--accent);
+        color: var(--on-accent);
+    }
+
+    .leads-table .actions-row .icon-btn {
+        width: 44px;
+        height: 44px;
+    }
+
+    .leads-table .actions-row .icon-btn svg {
+        width: 20px;
+        height: 20px;
+    }
+
+    .chat-send-btn {
+        width: 46px;
+        height: 46px;
+    }
+}

@@ -13,6 +13,28 @@ ROLE_BADGE_CLASSES = {
 
 # ממירה DataFrame לרשימת dict-ים רגילים לשימוש ב-Jinja, עם NaN/NaT מוחלף ב-None
 # (כדי שלא יודפס "nan" בטמפלט על עמודות ריקות, למשל customer_id שלא קושר עדיין)
+# שמות ימי השבוע בעברית לפי datetime.weekday() (שני=0 ... ראשון=6)
+_HEBREW_WEEKDAYS = ["שני", "שלישי", "רביעי", "חמישי", "שישי", "שבת", "ראשון"]
+
+
+# כותרת יום לרשימת התורים: "היום, יום שני 26.10" / "מחר, יום שלישי 27.10" / "יום רביעי 28.10".
+# date_iso בפורמט YYYY-MM-DD; ערך לא תקין מוחזר כמו שהוא (לא מפיל עמוד בגלל רשומה פגומה)
+def day_label(date_iso, today=None):
+    import datetime
+
+    try:
+        day = datetime.date.fromisoformat(str(date_iso)[:10])
+    except ValueError:
+        return str(date_iso or "ללא תאריך")
+    today = today or datetime.date.today()
+    base = f"יום {_HEBREW_WEEKDAYS[day.weekday()]} {day.day}.{day.month}"
+    if day == today:
+        return f"היום, {base}"
+    if day == today + datetime.timedelta(days=1):
+        return f"מחר, {base}"
+    return base
+
+
 def to_records(df):
     return df.where(pd.notnull(df), None).to_dict("records")
 
