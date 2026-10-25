@@ -5,7 +5,7 @@
 {% block content %}
 <div class="automations-header">
     <div class="automations-actions">
-        <a href="{{ url_for('appointments.list_appointments') }}" class="btn btn-ghost">→ חזרה לתורים</a>
+        <a href="{{ url_for('appointments.list_appointments') }}" class="btn btn-ghost">חזרה לתורים</a>
     </div>
 </div>
 
@@ -35,6 +35,6 @@
         <label>שעה</label>
         <input type="time" name="appointment_time" value="{{ appointment.appointment_time or '' }}">
     </div>
-    <button type="submit" class="btn">✓ שמור שינויים</button>
+    <button type="submit" class="btn">שמור שינויים</button>
 </form>
 {% endblock %}

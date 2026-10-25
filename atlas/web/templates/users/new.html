@@ -5,7 +5,7 @@
 {% block content %}
 <div class="automations-header">
     <div class="automations-actions">
-        <a href="{{ url_for('users.list_users') }}" class="btn btn-ghost">→ חזרה למשתמשים</a>
+        <a href="{{ url_for('users.list_users') }}" class="btn btn-ghost">חזרה למשתמשים</a>
     </div>
 </div>
 
@@ -36,6 +36,6 @@
             <label><input type="checkbox" name="permissions" value="manage_customers"> ניהול לקוחות</label>
         </div>
     </div>
-    <button type="submit" class="btn">✓ צור משתמש</button>
+    <button type="submit" class="btn">צור משתמש</button>
 </form>
 {% endblock %}

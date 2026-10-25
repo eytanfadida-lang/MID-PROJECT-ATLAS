@@ -49,14 +49,14 @@
     }
 
     var LABELS = {
-        loading: ['🔔 התראות…', true],
-        unsupported: ['🔔 התראות לא נתמכות בדפדפן הזה', true],
-        'ios-install': ['🔔 התראות: קודם יש להתקין למסך הבית', true],
-        unavailable: ['🔔 התראות: הספרייה עדיין לא מותקנת בשרת', true],
-        denied: ['🔕 התראות חסומות - יש לאפשר בהגדרות הדפדפן/הטלפון', true],
-        off: ['🔔 הפעלת התראות על הודעות חדשות', false],
-        on: ['🔔 התראות פעילות (לחיצה לכיבוי)', false],
-        busy: ['🔔 רגע…', true]
+        loading: ['התראות…', true],
+        unsupported: ['התראות לא נתמכות בדפדפן הזה', true],
+        'ios-install': ['התראות: קודם יש להתקין למסך הבית', true],
+        unavailable: ['התראות: הספרייה עדיין לא מותקנת בשרת', true],
+        denied: ['התראות חסומות - יש לאפשר בהגדרות הדפדפן/הטלפון', true],
+        off: ['הפעלת התראות על הודעות חדשות', false],
+        on: ['התראות פעילות (לחיצה לכיבוי)', false],
+        busy: ['רגע…', true]
     };
 
     function render(flashText) {
@@ -157,9 +157,9 @@
     if (testRow) testRow.addEventListener('click', function () {
         testRow.disabled = true;
         post('/push/test').then(function (res) {
-            render(res.ok ? '✓ נשלחה התראת בדיקה' : '⚠ ' + (res.error || 'השליחה נכשלה'));
+            render(res.ok ? 'נשלחה התראת בדיקה' : '' + (res.error || 'השליחה נכשלה'));
             setTimeout(function () { render(); }, 3500);
-        }).catch(function () { render('⚠ השליחה נכשלה'); }).then(function () { testRow.disabled = false; });
+        }).catch(function () { render('השליחה נכשלה'); }).then(function () { testRow.disabled = false; });
     });
 
     render();   // מציגים מיד (מצב 'טוען') - הכפתור לא נעלם עד שה-service worker מוכן

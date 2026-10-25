@@ -5,7 +5,7 @@
 {% block content %}
 <div class="automations-header">
     <div class="automations-actions">
-        <a href="{{ url_for('appointments.new_choose_day') }}" class="btn btn-ghost">→ בחר יום אחר</a>
+        <a href="{{ url_for('appointments.new_choose_day') }}" class="btn btn-ghost">בחר יום אחר</a>
     </div>
 </div>
 
@@ -23,7 +23,6 @@
 </div>
 {% else %}
 <div class="empty-state automations-empty">
-    <div class="automations-empty-icon">⏰</div>
     <strong>אין שעות זמינות ביום זה</strong>
     <p class="hint"><a href="{{ url_for('appointments.new_choose_day') }}">בחרו יום אחר</a></p>
 </div>

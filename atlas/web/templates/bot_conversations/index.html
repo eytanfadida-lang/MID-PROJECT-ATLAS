@@ -7,7 +7,7 @@
 <div class="chat-app" id="chat-app" data-signature="{{ signature }}" data-state-url="{{ url_for('bot_conversations.poll_state') }}" data-csrf="{{ csrf_token }}" data-list-url="{{ url_for('bot_conversations.list_conversations') }}">
     <div class="chat-app-list">
         <div class="chat-list-tools">
-            <input type="text" id="chat-search" placeholder="🔍 חיפוש לפי שם או טלפון" aria-label="חיפוש שיחות" dir="auto">
+            <input type="text" id="chat-search" placeholder="חיפוש לפי שם או טלפון" aria-label="חיפוש שיחות" dir="auto">
             <div class="chat-list-filters">
                 <button type="button" class="wa-chip active" data-chat-filter="all">הכל (<span id="chat-count-all">{{ conversations | length }}</span>)</button>
                 <button type="button" class="wa-chip" data-chat-filter="unread">לא נקראו (<span id="chat-count-unread">{{ unread_count }}</span>)</button>
@@ -31,7 +31,7 @@
                             {% if c.unread %}<span class="chat-unread-dot" title="הודעה חדשה שלא נקראה"></span>{% endif %}
                         </div>
                         <div class="chat-list-number">
-                            📞 {{ c.phone }} · {{ c.bot_phone_label }}
+                            {{ c.phone }} · {{ c.bot_phone_label }}
                             {% if c.debt and c.debt not in ('0', '0.0', '0.00') %}<span class="badge badge-red">חוב {{ c.debt }}</span>{% endif %}
                             {% if c.cancelled %}<span class="badge badge-gray">מנוי בוטל</span>{% elif c.active == False %}<span class="badge badge-gray">לא פעילה</span>{% endif %}
                         </div>
@@ -65,9 +65,9 @@
                     <form method="post" action="{{ url_for('bot_conversations.toggle_bot_pause', phone=active_phone) }}">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                         {% if active_conversation.bot_paused %}
-                        <button type="submit" class="btn btn-sm" title="הבוט לא עונה כרגע בשיחה הזו - לחצי כדי להחזיר אותו">⏸️ בוט מושהה - הפעלה מחדש</button>
+                        <button type="submit" class="btn btn-sm" title="הבוט לא עונה כרגע בשיחה הזו - לחצי כדי להחזיר אותו">בוט מושהה - הפעלה מחדש</button>
                         {% else %}
-                        <button type="submit" class="btn btn-ghost btn-sm" title="משהה את תגובות הבוט בשיחה הזו, כדי שלא יפריע כשאת מתכתבת ישירות">⏸️ השהה בוט</button>
+                        <button type="submit" class="btn btn-ghost btn-sm" title="משהה את תגובות הבוט בשיחה הזו, כדי שלא יפריע כשאת מתכתבת ישירות">השהה בוט</button>
                         {% endif %}
                     </form>
                     {% if active_conversation.last_incoming_message_id %}
@@ -115,7 +115,7 @@
                     {%- elif m.attachment_url.lower().endswith(('.ogg', '.oga', '.mp3', '.aac', '.amr', '.wav', '.m4a')) -%}
                     <audio src="{{ m.attachment_url }}" controls></audio>
                     {%- else -%}
-                    <a href="{{ m.attachment_url }}" target="_blank" rel="noopener" class="chat-attachment-file">📎 קובץ מצורף</a>
+                    <a href="{{ m.attachment_url }}" target="_blank" rel="noopener" class="chat-attachment-file">קובץ מצורף</a>
                     {%- endif -%}
                 {%- endif -%}
                 {%- if m.body %}{{ m.body | collapse_blank_lines }}{% endif %}<span class="chat-time">{{ m.created_at | format_lead_datetime }}</span>{# -#}
@@ -127,7 +127,7 @@
               class="chat-reply-form" enctype="multipart/form-data">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <label class="chat-attach-btn" title="צירוף קובץ/תמונה">
-                📎
+                <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M21 11.5 12.6 20a5 5 0 0 1-7-7L14 4.6a3.3 3.3 0 0 1 4.7 4.7l-8.4 8.4a1.7 1.7 0 0 1-2.4-2.4l7.7-7.7"/></svg>
                 <input type="file" name="attachment" id="chat-attachment" hidden>
             </label>
             <span class="chat-attach-name" id="chat-attach-name" hidden></span>
@@ -211,7 +211,7 @@
             var hasFile = file.files && file.files.length > 0;
             send.disabled = !body.value.trim() && !hasFile;
             fileName.hidden = !hasFile;
-            fileName.textContent = hasFile ? '📎 ' + file.files[0].name : '';
+            fileName.textContent = hasFile ? file.files[0].name : '';
         }
         // תיבת הכתיבה גדלה עם הטקסט (עד גובה מסוים) במקום להישאר שורה אחת
         function autoGrow() {
@@ -252,7 +252,7 @@
             if (attachmentName) {
                 var att = document.createElement('div');
                 att.className = 'chat-attachment-file';
-                att.textContent = '📎 ' + attachmentName;
+                att.textContent = attachmentName;
                 el.appendChild(att);
             }
             if (text) el.appendChild(document.createTextNode(text));
@@ -286,7 +286,7 @@
             }).then(function (res) {
                 if (res.ok) {
                     dropPending(el);
-                    status.textContent = 'נשלח ✓';
+                    status.textContent = 'נשלח';
                     inFlight = false;
                     tick(true);  // מביא את ההודעה האמיתית ומחליף בה את הבועה הזמנית
                 } else {

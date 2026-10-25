@@ -25,8 +25,8 @@
 <div class="automations-header">
     <div class="automations-actions">
         <a href="{{ url_for('automations.new_automation') }}" class="btn">＋ אוטומציה מתוזמנת חדשה</a>
-        <a href="{{ url_for('automations.blacklist') }}" class="btn btn-ghost">🚫 בלאקליסט גלובלי</a>
-        <a href="{{ url_for('whatsapp_templates.list_templates') }}" class="btn btn-ghost">📨 תבניות וואטסאפ</a>
+        <a href="{{ url_for('automations.blacklist') }}" class="btn btn-ghost">בלאקליסט גלובלי</a>
+        <a href="{{ url_for('whatsapp_templates.list_templates') }}" class="btn btn-ghost">תבניות וואטסאפ</a>
     </div>
 </div>
 
@@ -91,32 +91,32 @@
                 {% if a.trigger_type == 'scheduled' %}
                     {% set tc = a.trigger_config %}
                     {% if tc.audience_source == 'arbox_birthday' %}
-                        🎂 יום הולדת (Arbox) -
+                        יום הולדת (Arbox) -
                         {{ {'all': 'הכל', 'active': 'פעילות', 'inactive': 'לא פעילות'}[tc.get('audience_status', 'all')] }},
                         {{ tc.time_of_day }}
                     {% elif tc.audience_source == 'arbox_membership_expiring' %}
                         ⏳ סיום מנוי בעוד {{ tc.days_before }} ימים (Arbox), {{ tc.time_of_day }}
                     {% elif tc.audience_source == 'arbox_expiring_sessions' %}
-                        🎫 נותרו {{ tc.sessions_left }} ניקובים (Arbox), {{ tc.time_of_day }}
+                        נותרו {{ tc.sessions_left }} ניקובים (Arbox), {{ tc.time_of_day }}
                     {% elif tc.audience_source == 'arbox_trial_reminder' %}
-                        🏃 תזכורת שיעור ניסיון (Arbox) -
+                        תזכורת שיעור ניסיון (Arbox) -
                         {{ 'יום לפני' if tc.reminder_timing != 'same_day' else 'באותו יום' }},
                         {{ 'עד' if tc.time_filter != 'after' else 'החל מ' }}-{{ tc.before_hour }}:00
                         {% if tc.locations %}, סניפים: {{ tc.locations|join(', ') }}{% endif %},
                         {{ tc.time_of_day }}
                     {% elif tc.audience_source == 'arbox_churned' %}
-                        💔 מנוי פג לפני {{ tc.days_since }} ימים (Arbox), {{ tc.time_of_day }}
+                        מנוי פג לפני {{ tc.days_since }} ימים (Arbox), {{ tc.time_of_day }}
                     {% elif tc.audience_source == 'arbox_lost_leads' %}
-                        📉 ליד אבוד לפני {{ tc.days_since }} ימים (Arbox), {{ tc.time_of_day }}
+                        ליד אבוד לפני {{ tc.days_since }} ימים (Arbox), {{ tc.time_of_day }}
                     {% elif tc.audience_source == 'arbox_converted_leads' %}
-                        🎉 ליד הומר לפני {{ tc.days_since }} ימים (Arbox), {{ tc.time_of_day }}
+                        ליד הומר לפני {{ tc.days_since }} ימים (Arbox), {{ tc.time_of_day }}
                     {% elif tc.audience_source == 'arbox_trial_no_show' %}
-                        🙈 לא הגיעה לניסיון, חלון {{ tc.window_days }} ימים (Arbox), {{ tc.time_of_day }}
+                        לא הגיעה לניסיון, חלון {{ tc.window_days }} ימים (Arbox), {{ tc.time_of_day }}
                     {% elif tc.audience_source == 'arbox_attendance_milestone' %}
-                        🎯 מילסטון כל {{ tc.milestone_interval }} כניסות (Arbox), {{ tc.time_of_day }}
+                        מילסטון כל {{ tc.milestone_interval }} כניסות (Arbox), {{ tc.time_of_day }}
                     {% else %}
                         {% if tc.audience_source == 'arbox_active_members' %}
-                            📋 לקוחות פעילים (Arbox{% if tc.membership_types %}, {{ tc.membership_types|length }} סוגי מנוי נבחרים{% endif %}{% if tc.locations %}, סניפים: {{ tc.locations|join(', ') }}{% endif %}) -
+                            לקוחות פעילים (Arbox{% if tc.membership_types %}, {{ tc.membership_types|length }} סוגי מנוי נבחרים{% endif %}{% if tc.locations %}, סניפים: {{ tc.locations|join(', ') }}{% endif %}) -
                         {% endif %}
                         {% if tc.schedule_type == 'once' %}
                             חד-פעמי ב-{{ tc.run_at }}
@@ -151,7 +151,7 @@
             <td class="automations-num" data-label="כשלונות"><span class="num-pill {{ 'num-fail' if a.failed_count else 'num-zero' }}">{{ a.failed_count }}</span></td>
             <td class="automations-row-actions">
                 <button type="button" class="btn btn-ghost btn-sm" aria-expanded="false"
-                        onclick="automationsToggleDetails({{ a.id }}, this)">✏️ עריכה</button>
+                        onclick="automationsToggleDetails({{ a.id }}, this)">עריכה</button>
             </td>
         </tr>
         <tr id="details-{{ a.id }}" class="automations-details-row" {% if row.group_id %}data-group="{{ row.group_id }}"{% endif %} hidden>
@@ -262,7 +262,7 @@
                     <p class="empty-state">אין עדיין נמענים.</p>
                     {% endif %}
                     {% else %}
-                    <p class="hint">🔄 הקהל נשלף אוטומטית מ-Arbox בכל הרצה (לפי ההגדרות בתזמון למעלה) - אין רשימת נמענים ידנית לנהל.</p>
+                    <p class="hint">הקהל נשלף אוטומטית מ-Arbox בכל הרצה (לפי ההגדרות בתזמון למעלה) - אין רשימת נמענים ידנית לנהל.</p>
                     {% endif %}
                     </div>
                     {% endif %}
@@ -298,7 +298,6 @@
 {% endfor %}
 {% else %}
 <div class="empty-state automations-empty">
-    <div class="automations-empty-icon">⚡</div>
     <strong>אין עדיין אוטומציות</strong>
     <p class="hint">צרו אוטומציה מתוזמנת ראשונה כדי להתחיל לשלוח הודעות אוטומטית.</p>
 </div>

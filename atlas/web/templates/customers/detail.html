@@ -5,7 +5,7 @@
 {% block content %}
 <div class="automations-header">
     <div class="automations-actions">
-        <a href="{{ url_for('customers.list_customers') }}" class="btn btn-ghost">→ חזרה ללקוחות</a>
+        <a href="{{ url_for('customers.list_customers') }}" class="btn btn-ghost">חזרה ללקוחות</a>
     </div>
 </div>
 
@@ -15,12 +15,12 @@
         <h2>{{ customer.name }}</h2>
         <div class="cust-chips">
             {% if customer.phone %}
-            <span class="cust-chip">📞 <bdi dir="ltr">{{ customer.phone }}</bdi>
+            <span class="cust-chip"><bdi dir="ltr">{{ customer.phone }}</bdi>
                 <a href="{{ customer.phone | whatsapp_link }}" target="_blank" rel="noopener" class="cust-chip-link">וואטסאפ</a>
             </span>
             {% endif %}
-            {% if customer.email %}<span class="cust-chip">✉️ <a href="mailto:{{ customer.email }}" class="cust-chip-link"><bdi dir="ltr">{{ customer.email }}</bdi></a></span>{% endif %}
-            {% if customer.address %}<span class="cust-chip">📍 {{ customer.address }}</span>{% endif %}
+            {% if customer.email %}<span class="cust-chip"><a href="mailto:{{ customer.email }}" class="cust-chip-link"><bdi dir="ltr">{{ customer.email }}</bdi></a></span>{% endif %}
+            {% if customer.address %}<span class="cust-chip">{{ customer.address }}</span>{% endif %}
         </div>
     </div>
     <div class="cust-profile-stats">
@@ -31,13 +31,13 @@
     <form method="post" action="{{ url_for('customers.delete', customer_id=customer.id) }}"
           onsubmit="return confirm('האם אתה בטוח שברצונך למחוק את הלקוח?');" class="cust-profile-delete">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-        <button type="submit" class="btn btn-ghost btn-sm btn-ghost-danger">🗑 מחק לקוח</button>
+        <button type="submit" class="btn btn-ghost btn-sm btn-ghost-danger">מחיקת לקוח</button>
     </form>
     {% endif %}
 </div>
 
 <section class="af-section">
-    <h3 class="af-section-title"><span class="af-step">🗓</span> תורים</h3>
+    <h3 class="af-section-title">תורים</h3>
     {% if appointments %}
     <div class="automations-table-wrap cust-table-wrap">
     <table class="cust-table mobile-cards">
@@ -62,7 +62,7 @@
 </section>
 
 <section class="af-section">
-    <h3 class="af-section-title"><span class="af-step">🧾</span> חשבוניות</h3>
+    <h3 class="af-section-title">חשבוניות</h3>
     {% if invoices %}
     <div class="automations-table-wrap cust-table-wrap">
     <table class="cust-table mobile-cards">
@@ -100,7 +100,7 @@
     </section>
 
     <section class="af-section">
-        <h3 class="af-section-title"><span class="af-step">🎫</span> רכישת מנוי</h3>
+        <h3 class="af-section-title">רכישת מנוי</h3>
         <form method="post" action="{{ url_for('customers.purchase_membership', customer_id=customer.id) }}">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <div class="form-group">
@@ -116,7 +116,7 @@
     </section>
 
     <section class="af-section">
-        <h3 class="af-section-title"><span class="af-step">🔗</span> קישור תור קיים</h3>
+        <h3 class="af-section-title">קישור תור קיים</h3>
         <form method="post" action="{{ url_for('customers.link_appointment', customer_id=customer.id) }}">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <div class="form-group">

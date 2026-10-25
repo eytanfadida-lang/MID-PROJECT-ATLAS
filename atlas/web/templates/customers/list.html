@@ -11,7 +11,7 @@
 
 {% if customers %}
 <div class="cust-bar">
-    <input type="text" id="cust-search" placeholder="🔍 חיפוש לפי שם, טלפון, אימייל או כתובת" aria-label="חיפוש לקוחות" dir="auto">
+    <input type="text" id="cust-search" placeholder="חיפוש לפי שם, טלפון, אימייל או כתובת" aria-label="חיפוש לקוחות" dir="auto">
     <span class="category-pill" id="cust-count">{{ customers | length }} לקוחות</span>
 </div>
 
@@ -85,7 +85,6 @@
 </script>
 {% else %}
 <div class="empty-state automations-empty">
-    <div class="automations-empty-icon">👥</div>
     <strong>עדיין אין לקוחות</strong>
     <p class="hint">הוסיפו לקוח ראשון, או המירו ליד ללקוח מרשימת הלידים.</p>
 </div>

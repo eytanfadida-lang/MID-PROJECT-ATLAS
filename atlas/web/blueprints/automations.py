@@ -55,11 +55,11 @@ LOCATIONS = ["קרית מוצקין", "טירת הכרמל"]
 # כאן נגזר אוטומטית מ-audience_source/trigger_type כדי שלא נצטרך לתחזק את זה ידנית בכל
 # אוטומציה חדשה). סדר ה-dict קובע את סדר הקטגוריות בעמוד
 _CATEGORY_LABELS = {
-    "reminders": "⏰ תזכורות",
-    "retention": "💌 שימור ושיחזור לקוחות",
-    "broadcast": "📋 הודעות כלליות",
-    "manual": "📝 רשימה ידנית",
-    "immediate": "⚡ הודעות מיידיות (מבוססות אירוע)",
+    "reminders": "תזכורות",
+    "retention": "שימור ושיחזור לקוחות",
+    "broadcast": "הודעות כלליות",
+    "manual": "רשימה ידנית",
+    "immediate": "הודעות מיידיות (מבוססות אירוע)",
 }
 _REMINDER_AUDIENCE_SOURCES = (
     "arbox_birthday", "arbox_membership_expiring", "arbox_expiring_sessions", "arbox_trial_reminder",

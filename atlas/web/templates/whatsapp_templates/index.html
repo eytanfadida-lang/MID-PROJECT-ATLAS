@@ -8,7 +8,7 @@
 {% set n_pending = templates | selectattr('status', 'equalto', 'PENDING') | list | length %}
 
 <details class="wa-info">
-    <summary>ℹ️ מה זה תבנית מאושרת ולמה צריך אותה?</summary>
+    <summary>מה זה תבנית מאושרת ולמה צריך אותה?</summary>
     <p class="hint">
         תבנית מאושרת (בניגוד להודעה חופשית) מגיעה ללקוחה גם אם היא לא כתבה לבוט ב-24 השעות
         האחרונות - זה הפתרון לבעיית "ההודעות לא מגיעות" באוטומציות שידור. כל תבנית נשלחת כאן
@@ -47,7 +47,7 @@
 
 {% if templates %}
 <div class="wa-filters">
-    <input type="text" id="wa-search" placeholder="🔍 חיפוש לפי שם או תוכן" aria-label="חיפוש תבניות">
+    <input type="text" id="wa-search" placeholder="חיפוש לפי שם או תוכן" aria-label="חיפוש תבניות">
     <button type="button" class="wa-chip active" data-filter="all">הכל</button>
     <button type="button" class="wa-chip" data-filter="APPROVED">מאושרות</button>
     <button type="button" class="wa-chip" data-filter="PENDING">ממתינות</button>
@@ -82,7 +82,6 @@
 <p class="empty-state" id="wa-no-results" hidden>לא נמצאו תבניות שמתאימות לסינון.</p>
 {% else %}
 <div class="empty-state automations-empty">
-    <div class="automations-empty-icon">📨</div>
     <strong>אין עדיין תבניות</strong>
     <p class="hint">צרו תבנית ראשונה בטופס למטה ושלחו אותה לאישור Meta.</p>
 </div>

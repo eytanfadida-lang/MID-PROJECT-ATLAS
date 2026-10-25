@@ -30,7 +30,7 @@
             <td class="cust-muted" data-label="מזהה">{{ u.id }}</td>
             <td class="automations-row-actions">
                 <div class="cust-actions">
-                    <a href="{{ url_for('users.edit_user', user_id=u.id) }}" class="btn btn-ghost btn-sm">✏️ ערוך</a>
+                    <a href="{{ url_for('users.edit_user', user_id=u.id) }}" class="btn btn-ghost btn-sm">ערוך</a>
                     <form method="post" action="{{ url_for('users.delete_user', user_id=u.id) }}">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                         <button type="submit" class="btn btn-ghost btn-sm btn-ghost-danger" onclick="return confirm('למחוק משתמש זה?');">מחק</button>
@@ -44,7 +44,6 @@
 </div>
 {% else %}
 <div class="empty-state automations-empty">
-    <div class="automations-empty-icon">👤</div>
     <strong>עדיין אין משתמשים</strong>
 </div>
 {% endif %}

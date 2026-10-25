@@ -5,12 +5,12 @@
 {% block content %}
 <div class="automations-header">
     <div class="automations-actions">
-        <a href="{{ url_for('automations.list_automations') }}" class="btn btn-ghost">→ חזרה לאוטומציות</a>
+        <a href="{{ url_for('automations.list_automations') }}" class="btn btn-ghost">חזרה לאוטומציות</a>
     </div>
 </div>
 
 <div class="bl-callout">
-    <span class="bl-callout-icon">🚫</span>
+    <span class="bl-callout-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22"><circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/></svg></span>
     <p>מספרים ברשימה הזו לא יקבלו אף הודעה מתוזמנת, מכל אוטומציה שהיא.</p>
 </div>
 
@@ -33,7 +33,7 @@
 
 {% if entries %}
 <div class="wa-filters">
-    <input type="text" id="bl-search" placeholder="🔍 חיפוש לפי טלפון או שם" aria-label="חיפוש בבלאקליסט">
+    <input type="text" id="bl-search" placeholder="חיפוש לפי טלפון או שם" aria-label="חיפוש בבלאקליסט">
 </div>
 
 <div class="automations-table-wrap bl-table-wrap">
@@ -78,7 +78,6 @@
 </script>
 {% else %}
 <div class="empty-state automations-empty">
-    <div class="automations-empty-icon">✅</div>
     <strong>הבלאקליסט ריק</strong>
     <p class="hint">כל הנמענים יכולים לקבל הודעות מתוזמנות.</p>
 </div>

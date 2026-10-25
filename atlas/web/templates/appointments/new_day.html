@@ -5,7 +5,7 @@
 {% block content %}
 <div class="automations-header">
     <div class="automations-actions">
-        <a href="{{ url_for('appointments.list_appointments') }}" class="btn btn-ghost">→ חזרה לתורים</a>
+        <a href="{{ url_for('appointments.list_appointments') }}" class="btn btn-ghost">חזרה לתורים</a>
     </div>
 </div>
 
@@ -23,7 +23,6 @@
 </div>
 {% else %}
 <div class="empty-state automations-empty">
-    <div class="automations-empty-icon">📅</div>
     <strong>אין ימים זמינים בשבוע הקרוב</strong>
 </div>
 {% endif %}

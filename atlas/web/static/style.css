@@ -6201,3 +6201,106 @@ body.dark .chat-send-btn {
         height: 46px;
     }
 }
+
+/* =====================================================================================================
+   "יומן סטודיו" - שלב 3: לקוחות, משתמשים, אוטומציות, תבניות. אייקוני SVG במקום אימוג'י, ללא פסים צבעוניים.
+   ===================================================================================================== */
+svg.ico {
+    flex-shrink: 0;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.more-row svg {
+    width: 20px;
+    height: 20px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.login-logo svg,
+.login-toggle svg,
+.bl-callout-icon svg,
+.chat-attach-btn svg {
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.login-logo {
+    display: grid;
+    place-items: center;
+    color: var(--on-accent, var(--ink));
+}
+
+.login-toggle {
+    display: grid;
+    place-items: center;
+    color: var(--muted);
+}
+
+.bl-callout-icon {
+    display: inline-grid;
+    place-items: center;
+    color: var(--danger, #b93a2e);
+}
+
+.chat-attach-btn {
+    color: var(--muted);
+}
+
+.chat-attach-btn:hover {
+    color: var(--text);
+}
+
+/* אותו שוליים כמו שאר מסכי הניהול: אין פס צבעוני בצד הכרטיס, המספר נושא את המשמעות */
+.auto-stat,
+.auto-stat-green,
+.auto-stat-blue,
+.auto-stat-red,
+.auto-stat-gray {
+    border-inline-start: 1px solid var(--border);
+    background: var(--surface);
+    border-radius: 10px;
+}
+
+.duplicate-phone {
+    padding: 1px 6px;
+    border-radius: 6px;
+    background: color-mix(in srgb, var(--danger, #b93a2e) 12%, transparent);
+    color: var(--danger, #b93a2e);
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.automations-empty {
+    padding: 36px 20px;
+    border: 1.5px dashed var(--border-strong);
+    border-radius: 12px;
+    background: transparent;
+    color: var(--muted);
+}
+
+.af-section-title {
+    font-family: var(--font-display);
+    font-weight: 400;
+    letter-spacing: 0;
+}
+
+.wa-bubble {
+    background: #ece6f1;
+    box-shadow: none;
+}
+
+body.dark .wa-bubble {
+    background: #3a2d45;
+    color: var(--text);
+}
