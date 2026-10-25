@@ -74,6 +74,55 @@ def _static_asset_version(app):
     return newest
 
 
+# מספרים שמוצגים כתגיות בסרגל הניווט: שיחות שמחכות לתשובה (למנהלת בלבד - אלה שיחות לקוחות) ולידים בסטטוס
+# הראשון ("חדש"). כשל בשאילתה לא צריך להפיל עמוד - פשוט אין תגית
+def _nav_counts():
+    user = current_user()
+    if user is None:
+        return {"nav_unread_chats": 0, "nav_new_leads": 0}
+    counts = {"nav_unread_chats": 0, "nav_new_leads": 0}
+    try:
+        repos = db_context.get_repos()
+        if user.get("role") == roles.ADMIN:
+            counts["nav_unread_chats"] = repos.customer_bot_messages.count_unread_conversations()
+        statuses = repos.lead_statuses.get_names()
+        if statuses:
+            counts["nav_new_leads"] = repos.leads.count_by_status(statuses[0])
+    except Exception:  # noqa: BLE001
+        pass
+    return counts
+
+
+def _dashboard_data(repos, is_admin):
+    """הנתונים ללוח היום: תורי היום לפי שעה, שיחות שמחכות לתשובה (למנהלת), ולידים חדשים."""
+    today = repos.appointments.get_today()
+    today_records = to_records(today.sort_values("appointment_time")) if not today.empty else []
+
+    waiting = []
+    waiting_count = 0
+    if is_admin:
+        unread = [c for c in repos.customer_bot_messages.get_conversation_summaries() if c["unread"]]
+        waiting_count = len(unread)
+        for conversation in unread[:5]:
+            member = repos.arbox_member_cache.get_by_phone(conversation["phone"])
+            name = f"{member['first_name']} {member['last_name']}".strip() if member else ""
+            waiting.append({**conversation, "full_name": name or None})
+
+    statuses = repos.lead_statuses.get_names()
+    new_leads = repos.leads.get_by_status(statuses[0]) if statuses else None
+    new_leads_count = 0 if new_leads is None else len(new_leads)
+    new_lead_records = to_records(new_leads.head(5)) if new_leads is not None and not new_leads.empty else []
+
+    return {
+        "today_appointments": today_records,
+        "waiting_chats": waiting,
+        "waiting_count": waiting_count,
+        "new_leads": new_lead_records,
+        "new_leads_count": new_leads_count,
+        "new_status_name": statuses[0] if statuses else "",
+    }
+
+
 def create_app():
     # יוצר/ממגר את כל הטבלאות פעם אחת בזמן יצירת האפליקציה (רץ גם תחת flask run וגם תחת python app.py)
     db_context.bootstrap_databases()
@@ -122,7 +171,7 @@ def create_app():
     # לכל תהליך - לא מכפילים אם create_app נקראת שוב (למשל בבדיקות)
     if not any(getattr(fn, "_is_web_push_listener", False) for fn in incoming_listeners):
         def _push_on_incoming(phone, body, attachment_url=None):
-            web_push.notify_incoming_async(app, phone, body, attachment_url)
+            web_push.notify_incoming_async(phone, body, attachment_url)
 
         _push_on_incoming._is_web_push_listener = True
         incoming_listeners.append(_push_on_incoming)
@@ -135,6 +184,7 @@ def create_app():
             "ROLE_ADMIN": roles.ADMIN,
             "ROLE_USER": roles.USER,
             "asset_version": _static_asset_version(app),
+            **_nav_counts(),
         }
 
     # --- PWA: מאפשר "התקנה" למסך הבית בטלפון. ה-manifest וה-service worker חייבים להיות מוגשים
@@ -163,24 +213,8 @@ def create_app():
             return redirect(url_for("auth.login"))
 
         repos = db_context.get_repos()
-        appointments = repos.appointments.get_all()
-        today_appointments = repos.appointments.get_today()
-        leads = repos.leads.get_all()
-        customers = repos.customers.get_all()
-
-        recent_appointments = to_records(appointments.head(5)) if not appointments.empty else []
-        recent_leads = to_records(leads.head(5)) if not leads.empty else []
-        recent_customers = to_records(customers.head(5)) if not customers.empty else []
-
         return render_template(
-            "dashboard.html",
-            appointments_count=len(appointments),
-            today_count=len(today_appointments),
-            leads_count=len(leads),
-            customers_count=len(customers),
-            recent_appointments=recent_appointments,
-            recent_leads=recent_leads,
-            recent_customers=recent_customers,
+            "dashboard.html", **_dashboard_data(repos, current_user().get("role") == roles.ADMIN)
         )
 
     return app

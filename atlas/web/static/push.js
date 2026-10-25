@@ -66,7 +66,7 @@
         if (testRow) testRow.hidden = !(state === 'on' && !busy);
         if (bell) {
             bell.hidden = false;
-            bell.textContent = state === 'on' ? '🔔' : '🔕';
+            bell.innerHTML = state === 'on' ? '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/></svg>' : '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8.7 3A6 6 0 0 1 18 8c0 3 .6 5.1 1.3 6.6M17 17H3s3-2 3-9c0-.9.2-1.7.5-2.4"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/><path d="M2 2l20 20"/></svg>';
             bell.title = text;
             bell.setAttribute('aria-label', text);
             bell.disabled = label[1];

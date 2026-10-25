@@ -141,6 +141,10 @@ class LeadRepository:
             params=tuple(lead_ids),
         )
 
+    # כמה לידים נמצאים בסטטוס נתון (לתגית "לידים חדשים" בסרגל הניווט)
+    def count_by_status(self, status):
+        return self.conn.execute(f"SELECT COUNT(*) FROM {TABLE_NAME} WHERE status = ?", (status,)).fetchone()[0]
+
     # מחזירה את הלידים לפי סטטוס נתון
     def get_by_status(self, status):
         return pd.read_sql_query(

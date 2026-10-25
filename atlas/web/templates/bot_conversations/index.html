@@ -176,6 +176,11 @@
     function updateTitle() {
         var unread = parseInt((document.getElementById('chat-count-unread') || {}).textContent, 10) || 0;
         document.title = (unread > 0 ? '(' + unread + ') ' : '') + baseTitle;
+        // תגית "שיחות" בסרגל הניווט (שולחן עבודה ומובייל) - אותו מספר בדיוק, בלי לחכות לטעינת עמוד
+        document.querySelectorAll('[data-nav-count="chats"]').forEach(function (badge) {
+            badge.textContent = unread;
+            badge.hidden = unread === 0;
+        });
         // תג מספר על אייקון האפליקציה המותקנת (היכן שנתמך) - כמו הכותרת, כמה שיחות לא נקראו
         try {
             if (navigator.setAppBadge) { (unread > 0 ? navigator.setAppBadge(unread) : navigator.clearAppBadge()).catch(function () {}); }

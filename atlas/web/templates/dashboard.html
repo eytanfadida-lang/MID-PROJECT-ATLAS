@@ -1,130 +1,126 @@
 {% extends "base.html" %}
-{% block page_title %}לוח בקרה - מנהל תורים{% endblock %}
-{% block page_heading %}לוח בקרה{% endblock %}
+{% block page_title %}היום בסטודיו - מנהל תורים{% endblock %}
+{% block page_heading %}{% endblock %}
 
 {% block content %}
-<div class="dashboard-hero">
+{# לוח היום: מה שהכי אופייני לסטודיו הוא סדר האימונים של היום, ולא מספרים מצטברים. אחריו - מה שמחכה לטיפול #}
+<div class="studio-head">
     <div>
-        <h2><span id="dash-greeting">ברוך הבא</span> למרכז הניהול</h2>
-        <p><span id="dash-date"></span>סקירה מהירה של הפעילות האחרונה ושל המצב הנוכחי של העסק.</p>
+        <h2 class="studio-title">היום בסטודיו</h2>
+        <p class="studio-date" id="studio-date"></p>
     </div>
-    <div class="dashboard-actions">
-        <a href="{{ url_for('appointments.list_appointments') }}" class="btn">🗓️ ניהול תורים</a>
-        <a href="{{ url_for('leads.list_leads') }}" class="btn btn-secondary">🤝 ניהול לידים</a>
-        <a href="{{ url_for('customers.list_customers') }}" class="btn btn-secondary">👥 ניהול לקוחות</a>
-        {% if current_user and current_user.role == ROLE_ADMIN %}
-        <a href="{{ url_for('automations.list_automations') }}" class="btn btn-secondary">⚡ אוטומציות</a>
-        {% endif %}
+    <div class="studio-actions">
+        <a href="{{ url_for('appointments.new_choose_day') }}" class="btn">תור חדש</a>
+        <a href="{{ url_for('leads.new_lead') }}" class="btn btn-ghost">ליד חדש</a>
     </div>
 </div>
 
-<div class="dashboard-grid">
-    <a class="stat-card dash-stat dash-stat-blue" href="{{ url_for('appointments.list_appointments') }}">
-        <span class="dash-stat-icon">🗓️</span>
-        <div class="stat-title">סה"כ תורים</div>
-        <div class="stat-value">{{ appointments_count }}</div>
-        <div class="stat-caption">רשומות פעילות נוכחיות</div>
-    </a>
-    <a class="stat-card dash-stat {{ 'dash-stat-green' if today_count else 'dash-stat-gray' }}" href="{{ url_for('appointments.list_appointments') }}">
-        <span class="dash-stat-icon">⏰</span>
-        <div class="stat-title">תורים להיום</div>
-        <div class="stat-value">{{ today_count }}</div>
-        <div class="stat-caption">{{ 'תורים עם תאריך היום' if today_count else 'אין תורים להיום' }}</div>
-    </a>
-    <a class="stat-card dash-stat dash-stat-orange" href="{{ url_for('leads.list_leads') }}">
-        <span class="dash-stat-icon">🤝</span>
-        <div class="stat-title">לידים</div>
-        <div class="stat-value">{{ leads_count }}</div>
-        <div class="stat-caption">לידים שנרשמו במערכת</div>
-    </a>
-    <a class="stat-card dash-stat dash-stat-purple" href="{{ url_for('customers.list_customers') }}">
-        <span class="dash-stat-icon">👥</span>
-        <div class="stat-title">לקוחות</div>
-        <div class="stat-value">{{ customers_count }}</div>
-        <div class="stat-caption">לקוחות פעילים</div>
-    </a>
+<div class="studio-counts">
+    <div class="studio-count"><strong>{{ today_appointments | length }}</strong><span>אימונים היום</span></div>
+    {% if current_user.role == ROLE_ADMIN %}
+    <div class="studio-count {{ 'is-attn' if waiting_count else '' }}"><strong>{{ waiting_count }}</strong><span>שיחות מחכות לתשובה</span></div>
+    {% endif %}
+    <div class="studio-count {{ 'is-attn' if new_leads_count else '' }}"><strong>{{ new_leads_count }}</strong><span>לידים חדשים</span></div>
 </div>
 
-<div class="dashboard-panels">
-    <section class="panel-card">
-        <div class="panel-head">
-            <div class="panel-title">תורים אחרונים</div>
-            <a href="{{ url_for('appointments.list_appointments') }}" class="panel-link">הצג הכל ←</a>
-        </div>
-        {% if recent_appointments %}
-        <ul class="recent-list">
-            {% for item in recent_appointments %}
-            <li>
-                <span class="recent-avatar" aria-hidden="true">{{ (item.name_of_client or '?')[:1] }}</span>
-                <div class="recent-body">
-                    <strong>{{ item.name_of_client or '-' }}</strong>
-                    <span>{{ item.appointment_date or '-' }} · {{ item.appointment_time or '-' }}</span>
-                </div>
-            </li>
+<div class="studio-cols">
+    <section class="studio-col-main" aria-labelledby="h-day">
+        <h3 class="studio-h" id="h-day">לוח היום</h3>
+        {% if today_appointments %}
+        <div class="studio-box" id="studio-day">
+            {% for a in today_appointments %}
+            <a class="studio-slot" href="{{ url_for('appointments.edit', id_client=a.id_client) }}" data-time="{{ a.appointment_time or '' }}">
+                <time class="studio-time">{{ a.appointment_time or '--:--' }}</time>
+                <span class="studio-slot-body">
+                    <span class="studio-who">{{ a.name_of_client }}</span>
+                    <span class="studio-meta">{{ a.name_of_store }}</span>
+                </span>
+                <span class="studio-tag" hidden>עכשיו</span>
+            </a>
             {% endfor %}
-        </ul>
+        </div>
         {% else %}
-        <p class="empty-state">עדיין אין תורים להצגה.</p>
+        <div class="studio-empty">
+            <strong>אין אימונים מתוכננים להיום</strong>
+            <a href="{{ url_for('appointments.new_choose_day') }}" class="btn btn-sm">קביעת תור</a>
+        </div>
         {% endif %}
     </section>
 
-    <section class="panel-card">
-        <div class="panel-head">
-            <div class="panel-title">לידים אחרונים</div>
-            <a href="{{ url_for('leads.list_leads') }}" class="panel-link">הצג הכל ←</a>
-        </div>
-        {% if recent_leads %}
-        <ul class="recent-list">
-            {% for item in recent_leads %}
-            <li>
-                <span class="recent-avatar" aria-hidden="true">{{ (item.full_name or '?')[:1] }}</span>
-                <div class="recent-body">
-                    <strong>{{ item.full_name or '-' }}</strong>
-                    <span><bdi dir="ltr">{{ item.phone or '-' }}</bdi></span>
-                </div>
-                {% if item.status %}<span class="recent-tag">{{ item.status }}</span>{% endif %}
-            </li>
-            {% endfor %}
-        </ul>
-        {% else %}
-        <p class="empty-state">עדיין אין לידים להצגה.</p>
+    <div class="studio-col-side">
+        {% if current_user.role == ROLE_ADMIN %}
+        <section aria-labelledby="h-chats">
+            <h3 class="studio-h" id="h-chats">מחכות לתשובה</h3>
+            {% if waiting_chats %}
+            <div class="studio-box">
+                {% for c in waiting_chats %}
+                <a class="studio-item" href="{{ url_for('bot_conversations.view_conversation', phone=c.phone) }}">
+                    <span class="studio-dot" aria-hidden="true"></span>
+                    <span class="studio-item-body">
+                        <span class="studio-who">{{ c.full_name or c.phone }}</span>
+                        <span class="studio-snippet">{{ c.last_message_body }}</span>
+                    </span>
+                    <span class="studio-when">{{ c.last_message_at | format_lead_datetime }}</span>
+                </a>
+                {% endfor %}
+            </div>
+            {% if waiting_count > waiting_chats | length %}
+            <a class="studio-more" href="{{ url_for('bot_conversations.list_conversations') }}">עוד {{ waiting_count - (waiting_chats | length) }} שיחות</a>
+            {% endif %}
+            {% else %}
+            <p class="studio-quiet">אין שיחות שמחכות. הכל נענה.</p>
+            {% endif %}
+        </section>
         {% endif %}
-    </section>
 
-    <section class="panel-card">
-        <div class="panel-head">
-            <div class="panel-title">לקוחות אחרונים</div>
-            <a href="{{ url_for('customers.list_customers') }}" class="panel-link">הצג הכל ←</a>
-        </div>
-        {% if recent_customers %}
-        <ul class="recent-list">
-            {% for item in recent_customers %}
-            <li>
-                <span class="recent-avatar" aria-hidden="true">{{ (item.name or '?')[:1] }}</span>
-                <div class="recent-body">
-                    <strong>{{ item.name or '-' }}</strong>
-                    <span><bdi dir="ltr">{{ item.phone or '-' }}</bdi></span>
-                </div>
-            </li>
-            {% endfor %}
-        </ul>
-        {% else %}
-        <p class="empty-state">עדיין אין לקוחות להצגה.</p>
-        {% endif %}
-    </section>
+        <section aria-labelledby="h-leads">
+            <h3 class="studio-h" id="h-leads">לידים חדשים</h3>
+            {% if new_leads %}
+            <div class="studio-box">
+                {% for l in new_leads %}
+                <a class="studio-item" href="{{ url_for('leads.edit', lead_id=l.id) }}">
+                    <span class="studio-dot" aria-hidden="true"></span>
+                    <span class="studio-item-body">
+                        <span class="studio-who">{{ l.full_name }}</span>
+                        <span class="studio-snippet">{{ l.channel }}{% if l.branch %}, {{ l.branch }}{% endif %}</span>
+                    </span>
+                    <span class="studio-when">{{ l.created_datetime_stamp | format_lead_datetime }}</span>
+                </a>
+                {% endfor %}
+            </div>
+            {% if new_leads_count > new_leads | length %}
+            <a class="studio-more" href="{{ url_for('leads.list_leads', status=new_status_name) }}">עוד {{ new_leads_count - (new_leads | length) }} לידים</a>
+            {% endif %}
+            {% else %}
+            <p class="studio-quiet">אין לידים חדשים שמחכים לטיפול.</p>
+            {% endif %}
+        </section>
+    </div>
 </div>
 
 <script>
-// ברכה לפי שעה ותאריך עברי של היום - בצד הדפדפן בלבד, בלי תלות בשרת
+// תאריך היום בעברית, והדגשת האימון שמתקיים עכשיו (שעה אחת מתחילת האימון), ועמעום אימונים שכבר עברו.
+// בצד הדפדפן בלבד, לפי שעון המכשיר
 (function () {
-    var now = new Date();
-    var h = now.getHours();
-    var greeting = h < 5 ? 'לילה טוב,' : h < 12 ? 'בוקר טוב,' : h < 17 ? 'צהריים טובים,' : h < 21 ? 'ערב טוב,' : 'לילה טוב,';
-    document.getElementById('dash-greeting').textContent = greeting + ' ברוכים הבאים';
     try {
-        var d = now.toLocaleDateString('he-IL', { weekday: 'long', day: 'numeric', month: 'long' });
-        document.getElementById('dash-date').textContent = d + ' · ';
+        document.getElementById('studio-date').textContent =
+            new Date().toLocaleDateString('he-IL', { weekday: 'long', day: 'numeric', month: 'long' });
     } catch (e) { /* בלי תאריך - ממשיכים */ }
+    var slots = document.querySelectorAll('.studio-slot[data-time]');
+    var now = new Date();
+    var minutesNow = now.getHours() * 60 + now.getMinutes();
+    var current = null;
+    slots.forEach(function (slot) {
+        var m = /^(\d{1,2}):(\d{2})/.exec(slot.dataset.time || '');
+        if (!m) return;
+        var start = parseInt(m[1], 10) * 60 + parseInt(m[2], 10);
+        if (minutesNow >= start + 60) { slot.classList.add('is-past'); }
+        else if (minutesNow >= start) { current = slot; }
+    });
+    if (current) {
+        current.classList.add('is-now');
+        current.querySelector('.studio-tag').hidden = false;
+    }
 })();
 </script>
 {% endblock %}

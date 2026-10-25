@@ -3,9 +3,14 @@ import json
 import logging
 import os
 import re
+import sqlite3
 import threading
+from types import SimpleNamespace
 
-from atlas.data import context as db_context
+from atlas.data.db import DB_FILE
+from atlas.data.repositories.arbox_member_cache_repository import ArboxMemberCacheRepository
+from atlas.data.repositories.customer_bot_message_repository import CustomerBotMessageRepository
+from atlas.data.repositories.push_subscription_repository import PushSubscriptionRepository
 from atlas.paths import secret
 
 logger = logging.getLogger(__name__)
@@ -151,25 +156,34 @@ def send_to_all(repos, payload):
     return result
 
 
-def _notify_incoming(app, phone, body, attachment_url):
-    with app.app_context():
-        repos = db_context.get_repos()
+def _notify_incoming(phone, body, attachment_url):
+    # חיבור ייעודי לתהליכון (sqlite לא משתף חיבורים בין תהליכונים) ורק שלושת המאגרים הדרושים - לא get_repos()
+    # המלא, שבונה כל מאגר במערכת (כולל מאגר מזהים שמאתחל את עצמו - נוצרת התנגשות בין כמה התראות במקביל)
+    conn = sqlite3.connect(DB_FILE, timeout=10)
+    try:
+        repos = SimpleNamespace(
+            push_subscriptions=PushSubscriptionRepository(conn),
+            arbox_member_cache=ArboxMemberCacheRepository(conn),
+            customer_bot_messages=CustomerBotMessageRepository(conn),
+        )
         if repos.push_subscriptions.count() == 0:
             return
         member = repos.arbox_member_cache.get_by_phone(phone)
         name = f"{member['first_name']} {member['last_name']}".strip() if member else ""
-        unread = sum(1 for c in repos.customer_bot_messages.get_conversation_summaries() if c["unread"])
+        unread = repos.customer_bot_messages.count_unread_conversations()
         send_to_all(repos, build_incoming_payload(phone, name, body, attachment_url, unread))
+    finally:
+        conn.close()
 
 
-def notify_incoming_async(app, phone, body, attachment_url=None):
+def notify_incoming_async(phone, body, attachment_url=None):
     """נקראת על כל הודעה נכנסת מלקוחה (ראו incoming_listeners ב-customer_bot_message_repository)."""
     if not is_available():
         return
 
     def run():
         try:
-            _notify_incoming(app, phone, body, attachment_url)
+            _notify_incoming(phone, body, attachment_url)
         except Exception:  # noqa: BLE001
             logger.exception("incoming-message push notification failed")
 

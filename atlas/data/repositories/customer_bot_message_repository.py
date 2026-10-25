@@ -105,6 +105,17 @@ class CustomerBotMessageRepository:
         )
         self.conn.commit()
 
+    # כמה שיחות מחכות לתשובה (יש בהן הודעה נכנסת שעוד לא נקראה) - לתגית בסרגל הניווט. שאילתה אחת
+    # מצטברת, בלי המידע המלא של get_conversation_summaries (שמריצה שאילתות משנה לכל שיחה)
+    def count_unread_conversations(self):
+        return self.conn.execute(f"""
+            SELECT COUNT(*) FROM (
+                SELECT phone, MAX(CASE WHEN direction = 'in' THEN id END) AS last_in
+                FROM {TABLE_NAME} WHERE deleted_at IS NULL GROUP BY phone
+            ) t LEFT JOIN bot_conversation_read_state r ON r.phone = t.phone
+            WHERE t.last_in IS NOT NULL AND (r.last_read_message_id IS NULL OR r.last_read_message_id < t.last_in)
+        """).fetchone()[0]
+
     # הופכת שיחה ל"לא נקראה" ידנית: מחזירה את מצב הקריאה להודעה שלפני ההודעה הנכנסת האחרונה,
     # כך שההודעה הזו נחשבת שוב חדשה (ראו get_conversation_summaries). אפשרי רק לשיחה שיש בה
     # הודעה נכנסת אחת לפחות - אחרת אין מה "לא לקרוא" (הודעות יוצאות לא נחשבות לא-נקראות).

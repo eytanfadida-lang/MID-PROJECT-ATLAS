@@ -5175,3 +5175,582 @@ body.dark :where(a, button, summary, select, input, textarea, [tabindex]):focus-
         scroll-behavior: auto !important;
     }
 }
+
+/* =====================================================================================================
+   "יומן סטודיו" - שלב 1: זהות חדשה (צבעים, אותיות, מעטפת) ולוח הבקרה.
+   רעיון: סטודיו לחיטוב = סרט מדידה ולוח אימונים. דיו בגוון שזיף, גיר קריר, וצהוב סרט-מדידה שמופיע רק
+   כשמשהו דורש תשומת לב (שיחה שמחכה, ליד חדש, האימון שמתקיים עכשיו). משטחים שטוחים עם מסגרת דקה - בלי
+   גרדיאנטים ובלי צללים. אייקונים בצבע אחד: צבע מסמן מצב, לא קישוט. הבלוק הזה מגדיר מחדש את משתני הצבע
+   שכל האתר כבר משתמש בהם, ולכן רוב העמודים מתעדכנים לבד; עמודים שעדיין לא עובדו (שלבים 2-3) מקבלים
+   את הצבעים והאותיות החדשים אבל לא את המבנה החדש.
+   ===================================================================================================== */
+
+/* אותיות מאוחסנות באתר (בלי בקשה חיצונית, עובד גם בלי אינטרנט): Assistant לטקסט, Secular One לשעות/כותרות.
+   שתיהן ברישיון SIL Open Font License (ראו static/fonts/LICENSE.txt) */
+@font-face { font-family: 'Assistant'; font-style: normal; font-weight: 400 800; font-display: swap;
+  src: url('/static/fonts/assistant-hebrew.woff2') format('woff2');
+  unicode-range: U+0307-0308, U+0590-05FF, U+200C-2010, U+20AA, U+25CC, U+FB1D-FB4F; }
+@font-face { font-family: 'Assistant'; font-style: normal; font-weight: 400 800; font-display: swap;
+  src: url('/static/fonts/assistant-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: 'Secular One'; font-style: normal; font-weight: 400; font-display: swap;
+  src: url('/static/fonts/secular-one-hebrew.woff2') format('woff2');
+  unicode-range: U+0307-0308, U+0590-05FF, U+200C-2010, U+20AA, U+25CC, U+FB1D-FB4F; }
+@font-face { font-family: 'Secular One'; font-style: normal; font-weight: 400; font-display: swap;
+  src: url('/static/fonts/secular-one-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+
+:root {
+    --ink: #35213f;
+    --accent: #f2c230;
+    --on-accent: #35213f;
+    --bg: #f4f3f7;
+    --surface: #ffffff;
+    --surface-2: #f7f6fa;
+    --text: #35213f;
+    --muted: #6b5f73;
+    --border: #e3dfe8;
+    --border-strong: #cfc6d8;
+    --primary: #35213f;
+    --primary-dark: #271830;
+    --primary-2: #35213f;
+    --danger: #b93a2e;
+    --danger-dark: #9a2f25;
+    --shadow: none;
+    --topbar: #35213f;
+    --font-body: "Assistant", "Segoe UI", Tahoma, Arial, sans-serif;
+    --font-display: "Secular One", "Assistant", "Segoe UI", sans-serif;
+}
+
+body.dark {
+    --bg: #150e1a;
+    --surface: #1f1626;
+    --surface-2: #271c2f;
+    --text: #f0eaf4;
+    --muted: #b4a7bf;
+    --border: #3a2d45;
+    --border-strong: #51405f;
+    --primary: #f2c230;
+    --primary-dark: #ffd75e;
+    --primary-2: #f2c230;
+    --danger: #f08a7e;
+    --danger-dark: #f5a69c;
+    --shadow: none;
+    --topbar: #0f0913;
+}
+
+body,
+body.dark {
+    background: var(--bg);
+}
+
+body {
+    font-family: var(--font-body);
+}
+
+button,
+input,
+select,
+textarea {
+    font-family: inherit;
+}
+
+/* --- מעטפת --- */
+.topbar {
+    background: var(--topbar);
+    box-shadow: none;
+}
+
+.topbar .brand,
+.login-card h1 {
+    font-family: var(--font-display);
+    font-weight: 400;
+}
+
+.card {
+    border-radius: 14px;
+    box-shadow: none;
+}
+
+.card-accent {
+    display: none;
+}
+
+.card-header:has(h1:empty) {
+    display: none;
+}
+
+.card h1 {
+    font-family: var(--font-display);
+    font-weight: 400;
+    font-size: 26px;
+    color: var(--text);
+}
+
+.card-header {
+    border-bottom-color: var(--border);
+}
+
+.sidebar {
+    border-radius: 14px;
+    box-shadow: none;
+}
+
+/* אייקונים בצבע אחד (צבע הטקסט): הצבע הצבעוני הקודם לא סימן שום דבר */
+.sidebar .nav-icon,
+.bn-icon,
+.more-tile svg {
+    stroke: currentColor;
+    opacity: 1;
+}
+
+.bn-more .bn-icon circle {
+    fill: currentColor;
+}
+
+body .sidebar .nav-link.active,
+body.dark .sidebar .nav-link.active {
+    background: var(--surface-2);
+    color: var(--text);
+}
+
+.sidebar .nav-link.active::before {
+    background: var(--accent);
+}
+
+body .sidebar .nav-link:hover,
+body.dark .sidebar .nav-link:hover {
+    background: var(--surface-2);
+}
+
+.bn-item.active::before {
+    background: var(--accent);
+}
+
+.bn-item.active {
+    color: var(--text);
+}
+
+.more-tile.active {
+    border-color: var(--text);
+    background: var(--surface-2);
+}
+
+/* תגית מספר בסרגלי הניווט: צהוב = יש מה לטפל */
+.nav-count,
+.bn-count {
+    min-width: 22px;
+    height: 22px;
+    padding: 0 6px;
+    border-radius: 11px;
+    background: var(--accent);
+    color: var(--on-accent);
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 22px;
+    text-align: center;
+}
+
+.nav-count {
+    margin-inline-start: auto;
+}
+
+.nav-count[hidden],
+.bn-count[hidden] {
+    display: none;
+}
+
+.bn-count {
+    position: absolute;
+    top: 5px;
+    inset-inline-end: calc(50% - 26px);
+    min-width: 20px;
+    height: 20px;
+    line-height: 20px;
+    font-size: 11px;
+}
+
+/* כפתורים: משטח שטוח וצבע אחד; ללא גרדיאנט, צל או "ריחוף" */
+.btn {
+    border-radius: 10px;
+    box-shadow: none;
+    font-weight: 700;
+}
+
+.btn:hover {
+    transform: none;
+    box-shadow: none;
+    filter: brightness(1.18);
+}
+
+.btn-secondary,
+.btn-ghost {
+    background: var(--surface);
+    color: var(--text);
+    border: 1.5px solid var(--border-strong);
+    box-shadow: none;
+}
+
+.btn-secondary:hover,
+.btn-ghost:hover {
+    background: var(--surface-2);
+    border-color: var(--text);
+    color: var(--text);
+    filter: none;
+}
+
+body.dark .btn-secondary,
+body.dark .btn-ghost {
+    background: var(--surface);
+    color: var(--text);
+}
+
+.btn-danger {
+    background: var(--danger);
+    border: 1.5px solid var(--danger);
+    color: #fff;
+}
+
+body.dark .btn-danger {
+    color: #2a1a33;
+}
+
+/* שדות: מסגרת כהה במיקוד + טבעת צהובה, במקום הכחול הכללי */
+input[type=text]:focus, input[type=password]:focus, input[type=email]:focus,
+input[type=number]:focus, input[type=date]:focus, input[type=time]:focus, select:focus, textarea:focus {
+    border-color: var(--text);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 55%, transparent);
+}
+
+/* התחברות: דיו שטוח וצהוב, בלי כתמי אור וגרדיאנט */
+.login-page {
+    background: var(--ink);
+}
+
+.login-page::before,
+.login-page::after {
+    display: none;
+}
+
+.login-card {
+    box-shadow: none;
+}
+
+.login-card::before {
+    background: var(--accent);
+}
+
+.login-logo {
+    background: var(--accent);
+    box-shadow: none;
+}
+
+/* --- לוח הבקרה: "היום בסטודיו" --- */
+.studio-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 14px;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+}
+
+.studio-title {
+    margin: 0;
+    font-family: var(--font-display);
+    font-weight: 400;
+    font-size: 36px;
+    line-height: 1.05;
+}
+
+.studio-date {
+    margin: 4px 0 0;
+    color: var(--muted);
+    font-size: 16px;
+}
+
+.studio-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.studio-counts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px 34px;
+    margin-bottom: 26px;
+}
+
+.studio-count {
+    display: flex;
+    flex-direction: column;
+}
+
+.studio-count strong {
+    align-self: flex-start;
+    font-family: var(--font-display);
+    font-weight: 400;
+    font-size: 30px;
+    line-height: 1.1;
+}
+
+.studio-count span {
+    margin-top: 3px;
+    color: var(--muted);
+    font-size: 14px;
+}
+
+/* מספר שדורש טיפול מסומן בפס צהוב מתחתיו - רק כשהוא באמת גדול מאפס */
+.studio-count.is-attn strong {
+    box-shadow: inset 0 -9px 0 var(--accent);
+}
+
+body.dark .studio-count.is-attn strong {
+    box-shadow: inset 0 -9px 0 color-mix(in srgb, var(--accent) 70%, transparent);
+}
+
+.studio-cols {
+    display: grid;
+    grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+    gap: 28px;
+    align-items: start;
+}
+
+.studio-h {
+    margin: 0 0 8px;
+    color: var(--muted);
+    font-size: 15px;
+    font-weight: 700;
+}
+
+.studio-col-side section + section {
+    margin-top: 24px;
+}
+
+.studio-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.studio-slot {
+    position: relative;
+    display: grid;
+    grid-template-columns: 74px 1fr auto;
+    align-items: center;
+    gap: 12px;
+    padding: 13px 16px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+    text-decoration: none;
+}
+
+.studio-slot:last-child,
+.studio-item:last-child {
+    border-bottom: 0;
+}
+
+.studio-slot:hover,
+.studio-item:hover {
+    background: var(--surface-2);
+}
+
+.studio-time {
+    font-family: var(--font-display);
+    font-size: 25px;
+    line-height: 1;
+}
+
+.studio-slot-body,
+.studio-item-body {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.studio-who {
+    font-weight: 700;
+}
+
+.studio-meta,
+.studio-snippet,
+.studio-when {
+    color: var(--muted);
+    font-size: 14px;
+}
+
+.studio-snippet {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.studio-when {
+    font-size: 13px;
+    white-space: nowrap;
+}
+
+.studio-slot.is-past .studio-time,
+.studio-slot.is-past .studio-who {
+    color: var(--muted);
+    opacity: 0.7;
+}
+
+.studio-slot.is-now {
+    background: color-mix(in srgb, var(--accent) 16%, var(--surface));
+}
+
+.studio-slot.is-now::before {
+    content: "";
+    position: absolute;
+    inset-block: 0;
+    inset-inline-start: 0;
+    width: 5px;
+    background: var(--accent);
+}
+
+.studio-tag {
+    padding: 3px 10px;
+    border-radius: 6px;
+    background: var(--accent);
+    color: var(--on-accent);
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.studio-tag[hidden] {
+    display: none;
+}
+
+.studio-item {
+    display: grid;
+    grid-template-columns: 12px 1fr auto;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+    text-decoration: none;
+}
+
+.studio-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--accent);
+}
+
+.studio-more {
+    display: inline-block;
+    margin-top: 8px;
+    color: var(--text);
+    font-size: 14px;
+    font-weight: 700;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+
+.studio-quiet {
+    margin: 0;
+    padding: 14px 4px;
+    color: var(--muted);
+}
+
+.studio-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 22px 18px;
+    background: var(--surface);
+    border: 1px dashed var(--border-strong);
+    border-radius: 10px;
+}
+
+@media (max-width: 800px) {
+    .studio-title {
+        font-size: 30px;
+    }
+
+    .studio-cols {
+        grid-template-columns: 1fr;
+        gap: 22px;
+    }
+
+    .studio-actions {
+        width: 100%;
+    }
+
+    .studio-actions .btn {
+        flex: 1;
+    }
+
+    .studio-slot {
+        grid-template-columns: 62px 1fr auto;
+        padding: 12px 14px;
+    }
+
+    .studio-time {
+        font-size: 23px;
+    }
+
+    .studio-counts {
+        gap: 12px 24px;
+    }
+}
+
+/* --- שלב 1, גימור: טופ-בר, מתגי SVG, ולוח הבקרה על הרקע עצמו (בלי כרטיס עוטף) --- */
+.theme-toggle svg {
+    width: 18px;
+    height: 18px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.theme-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+}
+
+.topbar a.link-button,
+.topbar button.link-button {
+    color: rgba(255, 255, 255, 0.85);
+    text-decoration-color: rgba(255, 255, 255, 0.4);
+    text-underline-offset: 3px;
+}
+
+body.page-dashboard .card {
+    padding: 4px 2px;
+    background: transparent;
+    border: 0;
+}
+
+@media (max-width: 800px) {
+    body.page-dashboard .card {
+        padding: 0;
+    }
+}
+
+/* כפתורי אייקון משניים (עריכה/המרה בלידים): היו לבנים על רקע כחול-אפור; עכשיו הכפתור המשני בהיר, לכן האייקון כהה */
+.actions-row .icon-btn.btn-secondary,
+.actions-row .icon-btn.btn-secondary:hover,
+.actions-row .icon-btn.btn-ghost,
+.actions-row .icon-btn.btn-ghost:hover {
+    color: var(--text);
+}
+
+.actions-row .icon-btn.btn-danger,
+.actions-row .icon-btn.btn-danger:hover {
+    color: #fff;
+}
+
+body.dark .actions-row .icon-btn.btn-danger,
+body.dark .actions-row .icon-btn.btn-danger:hover {
+    color: #2a1a33;
+}
