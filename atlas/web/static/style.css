@@ -6304,3 +6304,430 @@ body.dark .wa-bubble {
     background: #3a2d45;
     color: var(--text);
 }
+
+/* =====================================================================================================
+   לוח האוטומציות: לשוניות קטגוריה, חיפוש/סינון, וכרטיס לכל אוטומציה (ימים, שעה, מתג, חץ פתיחה).
+   המבנה לפי מערכת הניהול שהמשתמשת אוהבת, והצבעים של "יומן סטודיו".
+   ===================================================================================================== */
+.auto-head {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 14px;
+    flex-wrap: wrap;
+    margin-bottom: 18px;
+}
+
+.auto-head-title {
+    margin: 0;
+    font-family: var(--font-display);
+    font-weight: 400;
+    font-size: 26px;
+}
+
+.auto-head-sub {
+    margin: 4px 0 0;
+    color: var(--muted);
+    font-size: 14px;
+}
+
+.auto-head-fail {
+    color: var(--danger);
+    font-weight: 700;
+}
+
+.auto-head-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.auto-cats {
+    display: flex;
+    gap: 4px;
+    padding: 5px;
+    margin-bottom: 16px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+
+.auto-cats::-webkit-scrollbar {
+    display: none;
+}
+
+.auto-cat {
+    flex-shrink: 0;
+    padding: 8px 14px;
+    border: 1px solid transparent;
+    border-radius: 9px;
+    background: none;
+    color: var(--text);
+    font: inherit;
+    font-weight: 600;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.auto-cat small {
+    margin-inline-start: 4px;
+    color: var(--muted);
+    font-weight: 700;
+}
+
+.auto-cat:hover {
+    background: var(--surface);
+}
+
+.auto-cat.on {
+    background: var(--surface);
+    border-color: var(--border-strong);
+    box-shadow: inset 0 -3px 0 var(--accent);
+    font-weight: 700;
+}
+
+.auto-tools {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 18px;
+}
+
+.auto-search {
+    position: relative;
+    display: block;
+    flex: 0 1 320px;
+}
+
+.auto-search svg {
+    position: absolute;
+    top: 50%;
+    inset-inline-start: 12px;
+    transform: translateY(-50%);
+    fill: none;
+    stroke: var(--muted);
+    stroke-width: 2;
+    stroke-linecap: round;
+    pointer-events: none;
+}
+
+.auto-search input {
+    width: 100%;
+    padding-inline-start: 38px;
+    border-radius: 10px;
+}
+
+.auto-tools select {
+    width: auto;
+    border-radius: 10px;
+}
+
+.auto-section {
+    margin-bottom: 26px;
+}
+
+.auto-section-title {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    margin: 0 0 10px;
+    font-size: 17px;
+}
+
+.auto-section-title span {
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.auto-card {
+    margin-bottom: 10px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+}
+
+.auto-card.is-off .auto-card-title {
+    color: var(--muted);
+}
+
+.auto-card.is-open {
+    border-color: var(--border-strong);
+}
+
+.auto-card-head {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    padding: 16px 18px;
+}
+
+.auto-card-main {
+    flex: 1;
+    min-width: 0;
+}
+
+.auto-card-title {
+    margin: 0;
+    font-size: 17px;
+    font-weight: 700;
+}
+
+.auto-card-meta,
+.auto-card-stats {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 4px 0 0;
+    color: var(--muted);
+    font-size: 14px;
+}
+
+.auto-card-stats {
+    gap: 14px;
+    font-size: 13px;
+}
+
+.auto-card-stats .num-ok {
+    color: var(--success, #1e8549);
+    font-weight: 700;
+}
+
+.auto-card-stats .num-fail {
+    color: var(--danger);
+    font-weight: 700;
+}
+
+.auto-sep {
+    opacity: 0.5;
+}
+
+.auto-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: var(--border-strong);
+}
+
+.auto-dot.on {
+    background: #1e8549;
+}
+
+.auto-days {
+    display: flex;
+    gap: 5px;
+}
+
+.auto-day {
+    display: grid;
+    place-items: center;
+    width: 30px;
+    height: 26px;
+    border-radius: 999px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.auto-day.on {
+    background: var(--ink);
+    border-color: var(--ink);
+    color: #fff;
+}
+
+body.dark .auto-day.on {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--on-accent);
+}
+
+.auto-card.is-off .auto-day.on {
+    opacity: 0.45;
+}
+
+.auto-time {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 84px;
+    padding: 5px 12px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--surface);
+}
+
+.auto-time small {
+    color: var(--muted);
+    font-size: 12px;
+}
+
+.auto-time strong {
+    font-family: var(--font-display);
+    font-weight: 400;
+    font-size: 20px;
+    line-height: 1.2;
+}
+
+.auto-toggle {
+    margin: 0;
+}
+
+.auto-chevron {
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border: 0;
+    border-radius: 10px;
+    background: none;
+    color: var(--text);
+    cursor: pointer;
+}
+
+.auto-chevron:hover {
+    background: var(--surface-2);
+}
+
+.auto-chevron svg {
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2.2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    transition: transform 0.15s ease;
+}
+
+.auto-chevron[aria-expanded="true"] svg {
+    transform: rotate(180deg);
+}
+
+.auto-card-body {
+    padding: 4px 18px 18px;
+    border-top: 1px solid var(--border);
+    background: var(--surface-2);
+    border-radius: 0 0 12px 12px;
+}
+
+.auto-card-body .automations-details {
+    margin-top: 14px;
+}
+
+.auto-group-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    margin: 0 0 10px;
+    padding: 10px 14px;
+    border: 1.5px dashed var(--border-strong);
+    border-radius: 12px;
+    background: none;
+    color: var(--text);
+    font: inherit;
+    font-weight: 700;
+    text-align: right;
+    cursor: pointer;
+}
+
+.auto-group-head small {
+    color: var(--muted);
+    font-weight: 600;
+}
+
+.auto-group-head svg {
+    width: 20px;
+    height: 20px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2.2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    transform: rotate(90deg);
+    transition: transform 0.15s ease;
+}
+
+.auto-group-head.expanded svg {
+    transform: rotate(0deg);
+}
+
+.auto-card-member {
+    margin-inline-start: 18px;
+}
+
+.auto-card.is-filtered,
+.auto-group-head.is-filtered,
+.auto-section.is-filtered {
+    display: none;
+}
+
+.auto-list.is-filtering .auto-card[data-group][hidden] {
+    display: block;
+}
+
+.auto-list.is-filtering .auto-card.is-filtered[data-group][hidden] {
+    display: none;
+}
+
+.auto-none {
+    padding: 28px;
+    text-align: center;
+    color: var(--muted);
+    border: 1.5px dashed var(--border-strong);
+    border-radius: 12px;
+}
+
+@media (max-width: 800px) {
+    .auto-head-actions .btn {
+        flex: 1;
+    }
+
+    .auto-tools {
+        flex-direction: column;
+    }
+
+    .auto-search {
+        flex-basis: auto;
+    }
+
+    .auto-tools select {
+        width: 100%;
+    }
+
+    .auto-card-head {
+        flex-wrap: wrap;
+        gap: 12px;
+        padding: 14px;
+    }
+
+    .auto-card-main {
+        flex-basis: 100%;
+    }
+
+    .auto-days {
+        flex: 1;
+        gap: 4px;
+    }
+
+    .auto-day {
+        flex: 1;
+        width: auto;
+        min-width: 0;
+    }
+
+    .auto-time {
+        min-width: 70px;
+    }
+
+    .auto-card-body {
+        padding: 4px 12px 14px;
+    }
+
+    .auto-card-member {
+        margin-inline-start: 8px;
+    }
+}
