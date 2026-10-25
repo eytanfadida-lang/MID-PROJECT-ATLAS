@@ -486,7 +486,7 @@ th {
 }
 
 .pagination-current {
-    background: linear-gradient(90deg, var(--primary) 0%, #3b82f6 100%);
+    background: linear-gradient(90deg, var(--primary) 0%, var(--primary-2) 100%);
     color: #fff;
     padding: 3px 10px;
     border-radius: 999px;
@@ -713,7 +713,7 @@ select.status-select {
     padding: 9px 16px;
     border-radius: 999px;
     border: none;
-    background: linear-gradient(90deg, var(--primary) 0%, #3b82f6 100%);
+    background: linear-gradient(90deg, var(--primary) 0%, var(--primary-2) 100%);
     color: #fff;
     text-decoration: none;
     font-size: 14px;
@@ -2521,7 +2521,7 @@ body.dark .af-weekdays label:has(input:checked) {
     align-items: center;
     justify-content: center;
     border-radius: 50%;
-    background: linear-gradient(135deg, var(--primary) 0%, #3b82f6 100%);
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-2) 100%);
     color: #fff;
     font-size: 15px;
     font-weight: 700;
@@ -2804,7 +2804,7 @@ input[type=color] {
 }
 
 .chat-list-avatar {
-    background: linear-gradient(135deg, var(--primary) 0%, #3b82f6 100%);
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-2) 100%);
     font-weight: 700;
 }
 
@@ -3120,7 +3120,7 @@ body.dark .cust-profile-avatar {
     width: 36px;
     height: 36px;
     border-radius: 50%;
-    background: linear-gradient(135deg, var(--primary) 0%, #3b82f6 100%);
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-2) 100%);
     color: #fff;
     font-size: 15px;
     font-weight: 700;
@@ -4165,7 +4165,7 @@ body.dark .chat-failed-btn {
         align-items: center;
         justify-content: center;
         border-radius: 50%;
-        background: linear-gradient(135deg, var(--primary) 0%, #3b82f6 100%);
+        background: linear-gradient(135deg, var(--primary) 0%, var(--primary-2) 100%);
         color: #fff;
         font-size: 18px;
         font-weight: 700;
@@ -5101,4 +5101,77 @@ body.dark .chat-failed-btn {
     color: #dbeafe;
     font-size: 14px;
     text-decoration: underline;
+}
+
+/* =====================================================================================================
+   רצפת איכות (נגישות) - ניגודיות, מיקוד מקלדת, והפחתת תנועה. לא משנה את הזהות העיצובית, רק מבטיחה שהטקסט
+   קריא (WCAG AA = יחס ניגודיות 4.5:1 לטקסט קטן) ושהניווט במקלדת נראה, ושמי שביקשה פחות תנועה מקבלת פחות.
+   ===================================================================================================== */
+
+/* גוון הקצה של גרדיאנט הכפתורים/האווטארים: התכלת הקודם (#3b82f6) נתן רק 3.7:1 מול טקסט לבן */
+:root {
+    --primary-2: #3372d8;
+}
+
+body.dark {
+    --primary-2: #3b82f6;
+}
+
+/* תגיות צבע: טקסט לבן על הגוונים הקודמים נתן 2.2-2.9:1 (אפור/כתום/ירוק) - מוכהים עד 4.6:1 ומעלה, באותו גוון */
+.badge-blue { background: #2a73d5; }
+.badge-orange { background: #a26631; }
+.badge-teal { background: #127f91; }
+.badge-purple { background: #9b59b6; }
+.badge-gray { background: #6b7677; }
+.badge-green { background: #1e8549; }
+.badge-red { background: #cf4435; }
+
+/* כפתור משני וכפתור סכנה: סוף הגרדיאנט היה בהיר מדי מול טקסט לבן */
+.btn-secondary {
+    background: linear-gradient(90deg, #566275 0%, #606e83 100%);
+}
+
+.btn-danger {
+    background: linear-gradient(90deg, var(--danger) 0%, #d83a3a 100%);
+}
+
+/* מצב כהה: הצבע הראשי בהיר (#60a5fa), ולכן טקסט כהה עליו (7:1) ולא לבן (2.5:1) */
+body.dark .btn:not(.btn-ghost),
+body.dark .btn.pagination-current,
+body.dark .wa-chip.active,
+body.dark .automations-tab-btn.active,
+body.dark .btn-ghost.active,
+body.dark .af-step,
+body.dark .more-avatar {
+    color: #0b1220;
+}
+
+body.dark .btn-secondary {
+    background: linear-gradient(90deg, #7c8aa3 0%, #94a3b8 100%);
+}
+
+body.dark .btn-danger {
+    background: linear-gradient(90deg, #f87171 0%, #ef4444 100%);
+}
+
+/* מיקוד מקלדת: טבעת ברורה וקבועה לכל רכיב שאפשר להגיע אליו עם Tab (אפס-ספציפיות, לא דורס כללים ייעודיים) */
+:where(a, button, summary, select, input, textarea, [tabindex]):focus-visible {
+    outline: 3px solid #1d4ed8;
+    outline-offset: 2px;
+}
+
+body.dark :where(a, button, summary, select, input, textarea, [tabindex]):focus-visible {
+    outline-color: #93c5fd;
+}
+
+/* מי שהגדירה במכשיר "הפחתת תנועה" לא מקבלת אנימציות/מעברים (גיליון עוד, טעינת בועות, ריחוף וכו') */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
 }
