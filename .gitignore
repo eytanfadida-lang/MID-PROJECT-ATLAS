@@ -276,3 +276,11 @@ atlas/web/static/uploads/
 # Web Push (VAPID) private key - נוצר אוטומטית בשימוש הראשון (ראו atlas/services/web_push.py)
 .vapid_private_key
 .vapid_private_key.*.tmp
+
+# חיבור וואטסאפ לא רשמי: טוקן משותף, התחברויות (סודי!) ותלויות
+.gateway_token
+gateway/node_modules/
+gateway/auth/
+
+# gateway config (ATLAS_URL) - local
+gateway/.env

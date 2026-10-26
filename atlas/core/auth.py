@@ -38,7 +38,8 @@ def generate_csrf_token():
 def validate_csrf():
     if request.method != "POST":
         return
-    if request.path.startswith("/tasks/"):
+    # /gateway/* - תהליך חיבור הוואטסאפ (gateway/), מוגן בטוקן משותף (services/gateway_auth.py)
+    if request.path.startswith("/tasks/") or request.path.startswith("/gateway/"):
         return
     token = session.get("csrf_token")
     submitted = request.form.get("csrf_token", "")

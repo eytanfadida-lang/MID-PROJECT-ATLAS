@@ -100,8 +100,11 @@
                    class="nav-link {{ 'active' if request.path.startswith('/users') else '' }}"{% if request.path.startswith('/users') %} aria-current="page"{% endif %}>
                     <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>
                     <span>משתמשים</span></a>
-                {% endif %}
-                </div>
+                <a href="{{ url_for('integrations.index') }}" style="--nav-color: #14b8a6;"
+                   class="nav-link {{ 'active' if request.path.startswith('/integrations') else '' }}"{% if request.path.startswith('/integrations') %} aria-current="page"{% endif %}>
+                    <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 2v6M15 2v6M6 8h12v4a6 6 0 0 1-12 0zM12 18v4"/></svg>
+                    <span>אינטגרציות</span></a>
+                {% endif %}                </div>
                 {% if current_user %}
                 <div class="sidebar-foot">
                     <span class="sidebar-user"><span class="sidebar-avatar" aria-hidden="true">{{ current_user.username[:1] | upper }}</span><span class="nav-label">{{ current_user.username }}</span></span>
@@ -136,7 +139,7 @@
        לוח בקרה / שיחות / לידים / תורים / עוד. משתמש רגיל: לוח בקרה / תורים / לידים / לקוחות / עוד --- #}
     {% if current_user %}
     {% set is_admin = current_user.role == ROLE_ADMIN %}
-    {% set more_active = is_admin and (request.path.startswith('/customers') or request.path.startswith('/automations') or request.path.startswith('/whatsapp-templates') or request.path.startswith('/users')) %}
+    {% set more_active = is_admin and (request.path.startswith('/customers') or request.path.startswith('/automations') or request.path.startswith('/whatsapp-templates') or request.path.startswith('/users') or request.path.startswith('/integrations')) %}
     <nav class="bottom-nav" aria-label="ניווט מהיר">
         <a href="{{ url_for('index') }}" class="bn-item {{ 'active' if request.path == '/' else '' }}" style="--nav-color: #3b82f6;">
             <svg class="bn-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
@@ -188,6 +191,9 @@
             <a href="{{ url_for('users.list_users') }}" class="more-tile {{ 'active' if request.path.startswith('/users') else '' }}" style="--nav-color: #6366f1;">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>
                 <span>משתמשים</span></a>
+            <a href="{{ url_for('integrations.index') }}" class="more-tile {{ 'active' if request.path.startswith('/integrations') else '' }}" style="--nav-color: #14b8a6;">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 2v6M15 2v6M6 8h12v4a6 6 0 0 1-12 0zM12 18v4"/></svg>
+                <span>אינטגרציות</span></a>
         </div>
         {% endif %}
         <div class="more-actions">

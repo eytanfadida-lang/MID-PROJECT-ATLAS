@@ -29,6 +29,8 @@ from atlas.data.automation_db import AutomationDB
 from atlas.data.repositories.automation_repository import AutomationRepository
 from atlas.data.arbox_entrance_count_db import ArboxEntranceCountDB
 from atlas.data.push_subscription_db import PushSubscriptionDB
+from atlas.data.linked_whatsapp_db import LinkedWhatsAppDB
+from atlas.data.repositories.linked_whatsapp_repository import LinkedWhatsAppRepository
 from atlas.data.repositories.push_subscription_repository import PushSubscriptionRepository
 from atlas.data.repositories.arbox_entrance_count_repository import ArboxEntranceCountRepository
 
@@ -40,7 +42,7 @@ def bootstrap_databases():
     for db_class in (
         AppointmentDB, CustomerDB, LeadDB, UserDB, WhatsAppStateDB, BotContentGapDB,
         ArboxMemberCacheDB, ArboxClassCacheDB, CustomerBotMessageDB, AutomationDB,
-        ArboxEntranceCountDB, PushSubscriptionDB,
+        ArboxEntranceCountDB, PushSubscriptionDB, LinkedWhatsAppDB,
     ):
         instance = db_class()
         instance.close()
@@ -80,6 +82,7 @@ def get_repos():
             automations=AutomationRepository(conn),
             arbox_entrance_counts=ArboxEntranceCountRepository(conn),
             push_subscriptions=PushSubscriptionRepository(conn),
+            linked_whatsapp=LinkedWhatsAppRepository(conn),
         )
     return g.repos
 
