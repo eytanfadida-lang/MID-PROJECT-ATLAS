@@ -546,6 +546,35 @@ def toggle_weekday(automation_id, day):
     return jsonify(ok=True, weekdays=sorted(current_days))
 
 
+# עדכון מהיר של שעת השליחה ישירות מתיבת "שליחה HH:MM" בתצוגת-הסיכום בכרטיס - בלי לפתוח את
+# כרטיס העריכה המלא. אותו עקרון כמו toggle_weekday: שומרת על שאר trigger_config כמו שהוא,
+# משנה רק time_of_day. בודקת עקביות מול stage_time קיים (אם יש) - אותו כלל כמו בטופס המלא
+# (_parse_schedule_form): זמן ה"הורדה" חייב להיות לפני זמן השליחה
+@bp.route("/<int:automation_id>/set-time", methods=["POST"])
+@admin_required
+def set_time(automation_id):
+    repos = get_repos()
+    automation = repos.automations.get_by_id(automation_id)
+    if automation is None or automation["trigger_type"] != "scheduled":
+        abort(404)
+
+    trigger_config = dict(automation["trigger_config"])
+    if trigger_config.get("schedule_type") not in ("weekly", "daily", "monthly"):
+        abort(404)
+
+    time_of_day = request.form.get("time_of_day", "").strip()
+    if not re.fullmatch(r"\d{2}:\d{2}", time_of_day or ""):
+        return jsonify(ok=False, error="פורמט שעה לא תקין."), 400
+
+    stage_time = trigger_config.get("stage_time")
+    if stage_time and stage_time >= time_of_day:
+        return jsonify(ok=False, error="זמן ה'הורדה' הקיים מאוחר/שווה לשעת השליחה החדשה - יש לעדכן דרך עריכת התזמון המלאה."), 400
+
+    trigger_config["time_of_day"] = time_of_day
+    repos.automations.update_schedule(automation_id, trigger_config)
+    return jsonify(ok=True, time_of_day=time_of_day)
+
+
 @bp.route("/<int:automation_id>/recipients/add", methods=["POST"])
 @admin_required
 def add_recipient(automation_id):

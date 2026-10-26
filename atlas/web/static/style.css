@@ -6585,6 +6585,35 @@ body.dark .auto-day.on {
     line-height: 1.2;
 }
 
+.auto-time-input {
+    font-family: var(--font-display);
+    font-weight: 400;
+    font-size: 20px;
+    line-height: 1.2;
+    color: var(--ink);
+    background: transparent;
+    border: none;
+    padding: 0;
+    width: 100%;
+    text-align: center;
+    cursor: pointer;
+}
+
+.auto-time-input:hover,
+.auto-time-input:focus {
+    outline: none;
+    color: var(--accent);
+}
+
+.auto-time-input:disabled {
+    cursor: wait;
+    opacity: 0.6;
+}
+
+body.dark .auto-time-input {
+    color-scheme: dark;
+}
+
 .auto-toggle {
     margin: 0;
 }

@@ -153,7 +153,11 @@
             </div>
             {% endif %}
             {% if tc.time_of_day %}
-            <div class="auto-time"><small>שליחה</small><strong>{{ tc.time_of_day }}</strong></div>
+            <div class="auto-time"><small>שליחה</small>
+                <input type="time" class="auto-time-input" value="{{ tc.time_of_day }}"
+                       aria-label="שעת שליחה" data-url="{{ url_for('automations.set_time', automation_id=a.id) }}"
+                       onchange="automationsSetTime(this)" onclick="event.stopPropagation()">
+            </div>
             {% endif %}
             {% endif %}
             <form method="post" action="{{ url_for('automations.toggle_automation', automation_id=a.id) }}" class="automations-toggle-form auto-toggle">
@@ -369,6 +373,34 @@ function automationsToggleWeekday(btn) {
         });
     }).catch(function () {
         btn.disabled = false;
+        alert('שגיאת תקשורת - נסי שוב.');
+    });
+}
+
+// עדכון שעת השליחה ישירות מתיבת "שליחה HH:MM" בתצוגת-הסיכום - fetch ל-set_time, בלי לפתוח
+// את כרטיס העריכה המלא. input type="time" כבר אוכף פורמט חוקי בצד הדפדפן, אבל השרת הוא
+// מקור האמת (כולל בדיקת stage_time) - אם נדחה, מחזירים את הערך הקודם לתיבה
+function automationsSetTime(input) {
+    var previous = input.defaultValue;
+    var csrfInput = document.querySelector('input[name="csrf_token"]');
+    var csrf = csrfInput ? csrfInput.value : '';
+    input.disabled = true;
+    fetch(input.dataset.url, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'X-Requested-With': 'fetch', 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'csrf_token=' + encodeURIComponent(csrf) + '&time_of_day=' + encodeURIComponent(input.value),
+    }).then(function (r) { return r.json(); }).then(function (res) {
+        input.disabled = false;
+        if (!res.ok) {
+            alert(res.error || 'שגיאה בעדכון השעה.');
+            input.value = previous;
+            return;
+        }
+        input.defaultValue = res.time_of_day;
+    }).catch(function () {
+        input.disabled = false;
+        input.value = previous;
         alert('שגיאת תקשורת - נסי שוב.');
     });
 }
