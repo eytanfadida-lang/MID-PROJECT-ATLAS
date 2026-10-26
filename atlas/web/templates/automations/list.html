@@ -143,9 +143,12 @@
                 {% set wd = [] %}
             {% endif %}
             {% if sched in ('weekly', 'daily') or not sched %}
-            <div class="auto-days" role="img" aria-label="ימי שליחה">
+            <div class="auto-days" aria-label="ימי שליחה">
                 {% for i, letter in [(6, 'א'), (0, 'ב'), (1, 'ג'), (2, 'ד'), (3, 'ה'), (4, 'ו'), (5, 'ש')] %}
-                <span class="auto-day{{ ' on' if i in wd else '' }}" title="{{ weekday_labels[i] }}">{{ letter }}</span>
+                <button type="button" class="auto-day{{ ' on' if i in wd else '' }}" title="{{ weekday_labels[i] }}"
+                        aria-label="{{ weekday_labels[i] }}" aria-pressed="{{ 'true' if i in wd else 'false' }}"
+                        data-url="{{ url_for('automations.toggle_weekday', automation_id=a.id, day=i) }}" data-day="{{ i }}"
+                        onclick="automationsToggleWeekday(this)">{{ letter }}</button>
                 {% endfor %}
             </div>
             {% endif %}
@@ -338,6 +341,36 @@ function automationsToggleGroup(head) {
     });
     head.setAttribute('aria-expanded', open ? 'false' : 'true');
     head.classList.toggle('expanded', !open);
+}
+
+// מפעילה/מכבה יום בודד ישירות מהעיגולים בתצוגת-הסיכום (בלי לפתוח את כרטיס העריכה המלא) -
+// fetch לראוט toggle_weekday, ומעדכנת רק את העיגולים האלה לפי הרשימה המעודכנת שחוזרת
+// (לא מניחה מה קרה - השרת הוא מקור האמת, כולל המקרה שהשרת דחה כי זה היה היום האחרון)
+function automationsToggleWeekday(btn) {
+    var container = btn.closest('.auto-days');
+    var csrfInput = document.querySelector('input[name="csrf_token"]');
+    var csrf = csrfInput ? csrfInput.value : '';
+    btn.disabled = true;
+    fetch(btn.dataset.url, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'X-Requested-With': 'fetch', 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'csrf_token=' + encodeURIComponent(csrf),
+    }).then(function (r) { return r.json(); }).then(function (res) {
+        btn.disabled = false;
+        if (!res.ok) {
+            alert(res.error || 'שגיאה בעדכון היום.');
+            return;
+        }
+        container.querySelectorAll('.auto-day').forEach(function (dayBtn) {
+            var isOn = res.weekdays.indexOf(parseInt(dayBtn.dataset.day, 10)) !== -1;
+            dayBtn.classList.toggle('on', isOn);
+            dayBtn.setAttribute('aria-pressed', isOn ? 'true' : 'false');
+        });
+    }).catch(function () {
+        btn.disabled = false;
+        alert('שגיאת תקשורת - נסי שוב.');
+    });
 }
 
 // עובר בין לשוניות (הודעה/תזמון/נמענים/הרצות אחרונות) בתוך אזור העריכה של אוטומציה אחת -

@@ -6531,6 +6531,19 @@ body.dark .wa-bubble {
     color: var(--muted);
     font-size: 13px;
     font-weight: 700;
+    font-family: inherit;
+    padding: 0;
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
+}
+
+.auto-day:hover {
+    border-color: var(--ink);
+}
+
+.auto-day:disabled {
+    cursor: wait;
+    opacity: 0.6;
 }
 
 .auto-day.on {

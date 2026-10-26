@@ -1,6 +1,6 @@
 import re
 
-from flask import Blueprint, render_template, redirect, url_for, flash, abort, request
+from flask import Blueprint, render_template, redirect, url_for, flash, abort, request, jsonify
 
 from atlas.data.context import get_repos
 from atlas.core.auth import admin_required
@@ -505,6 +505,45 @@ def edit_schedule(automation_id):
     repos.automations.update_schedule(automation_id, trigger_config)
     flash("התזמון עודכן בהצלחה.", "success")
     return _back_to_list(automation_id)
+
+
+# הפעלה/כיבוי מהירים של יום בודד ישירות מתצוגת-הסיכום בכרטיס (עיגולי הימים, ראו .auto-days
+# ב-list.html - שם היא תצוגה בלבד, role="img") - בלי לפתוח את כרטיס העריכה המלא ולשלוח טופס
+# שלם. קוראת fetch, מחזירה JSON. שומרת על שאר trigger_config (time_of_day וכו') כמו שהוא -
+# משנה רק את weekdays/schedule_type. "daily" מטופל כ"כל 7 הימים דלוקים" (תואם את ההצגה
+# ב-list.html) - הסרת יום הופכת את זה ל-weekly עם שאר הימים. לא מאפשרת להשאיר רשימה ריקה
+# (אין טעם באוטומציה שלא שולחת באף יום) - הקליק האחרון שהיה מכבה את כל הימים נדחה
+@bp.route("/<int:automation_id>/toggle-weekday/<int:day>", methods=["POST"])
+@admin_required
+def toggle_weekday(automation_id, day):
+    repos = get_repos()
+    automation = repos.automations.get_by_id(automation_id)
+    if automation is None or automation["trigger_type"] != "scheduled" or day not in range(7):
+        abort(404)
+
+    trigger_config = dict(automation["trigger_config"])
+    schedule_type = trigger_config.get("schedule_type")
+    if schedule_type not in ("weekly", "daily"):
+        abort(404)
+
+    if schedule_type == "daily":
+        current_days = list(range(7))
+    else:
+        current_days = trigger_config.get("weekdays") or [trigger_config.get("weekday", 0)]
+    current_days = set(current_days)
+
+    if day in current_days:
+        if len(current_days) == 1:
+            return jsonify(ok=False, error="לא ניתן לכבות את היום האחרון שנשאר פעיל."), 400
+        current_days.discard(day)
+    else:
+        current_days.add(day)
+
+    trigger_config["schedule_type"] = "weekly"
+    trigger_config["weekdays"] = sorted(current_days)
+    trigger_config.pop("weekday", None)
+    repos.automations.update_schedule(automation_id, trigger_config)
+    return jsonify(ok=True, weekdays=sorted(current_days))
 
 
 @bp.route("/<int:automation_id>/recipients/add", methods=["POST"])

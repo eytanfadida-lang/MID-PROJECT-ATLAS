@@ -69,6 +69,25 @@ _ARBOX_CREDIT_REFUSAL_ACTION_CONFIG = {
     "param_templates": ["{first_name}"],
 }
 
+# אוטומציות webhook אמיתיות מ-Arbox לרשימת המתנה (ראו atlas/web/webhooks.py, arbox_webhook) -
+# שני אירועים נפרדים שנתפסו עם payload זהה לחלוטין (אותו id, אותה לקוחה - מעיין נוחונייב,
+# Full Power 25/10 17:00) - entry_from_waiting_list כשנרשמת לרשימת ההמתנה, confirm_entry_
+# from_waiting_list כשמתפנה לה מקום בפועל. שדות אמיתיים מה-payload: name, phone, event_name,
+# date (DD/MM/YYYY), time, coach, time_to_approval (דדליין לאישור המקום, גם הוא DD/MM/YYYY HH:MM),
+# app_link. תבניות UTILITY (כמו שאר אישורי ה-webhook) הוגשו למטא (2026-10-26)
+_ARBOX_WAITING_LIST_ENTRY_ACTION_CONFIG = {
+    "mode": "template",
+    "template_name": "waiting_list_entry",
+    "template_language": "he",
+    "param_templates": ["{name}", "{event_name}", "{date}", "{time}"],
+}
+_ARBOX_WAITING_LIST_CONFIRMED_ACTION_CONFIG = {
+    "mode": "template",
+    "template_name": "waiting_list_confirmed",
+    "template_language": "he",
+    "param_templates": ["{name}", "{event_name}", "{date}", "{time}", "{time_to_approval}"],
+}
+
 # קמפיין חד-פעמי: הזמנת לקוחות VIP LIFESTYLE לטיפול ניסיון ב-MATRIX ROLL (ראו שיחה עם
 # המשתמשת, 2026-10-18) - לא "קהל חדש" אמיתי, רק שימוש ב-arbox_active_members הקיים עם סינון
 # membership_types לארבעת הווריאנטים האמיתיים של VIP LIFESTYLE (מאומת מול הקאש המקומי -
@@ -284,6 +303,8 @@ class AutomationDB:
         self._seed_arbox_membership_hold_automation(conn)
         self._seed_arbox_purchase_automation(conn)
         self._seed_arbox_credit_refusal_automation(conn)
+        self._seed_arbox_waiting_list_entry_automation(conn)
+        self._seed_arbox_waiting_list_confirmed_automation(conn)
         self._seed_vip_roller_trial_automation(conn)
         self._seed_trial_no_show_automation(conn)
         self._seed_trial_no_show_winback_manual_campaign(conn)
@@ -472,6 +493,56 @@ class AutomationDB:
             "INSERT INTO automation_steps (automation_id, step_order, delay_minutes, action_type, "
             "action_config) VALUES (?, 1, 0, 'send_whatsapp_message', ?)",
             (automation_id, json.dumps(_ARBOX_CREDIT_REFUSAL_ACTION_CONFIG, ensure_ascii=False)),
+        )
+        conn.commit()
+
+    # זורעת פעם אחת את אוטומציית webhook הכניסה לרשימת המתנה (ראו _ARBOX_WAITING_LIST_ENTRY_
+    # ACTION_CONFIG למעלה) - אותו דפוס בדיוק כמו שאר אוטומציות ה-webhook
+    @staticmethod
+    def _seed_arbox_waiting_list_entry_automation(conn):
+        import datetime
+
+        exists = conn.execute(
+            "SELECT 1 FROM automations WHERE trigger_type = 'arbox_entry_from_waiting_list'"
+        ).fetchone()
+        if exists:
+            return
+        now = datetime.datetime.now().isoformat(timespec="seconds")
+        cursor = conn.execute(
+            "INSERT INTO automations (tenant_id, name, trigger_type, trigger_config, enabled, "
+            "created_at, updated_at) VALUES (1, ?, ?, NULL, 0, ?, ?)",
+            ("כניסה לרשימת המתנה (Arbox webhook)", "arbox_entry_from_waiting_list", now, now),
+        )
+        automation_id = cursor.lastrowid
+        conn.execute(
+            "INSERT INTO automation_steps (automation_id, step_order, delay_minutes, action_type, "
+            "action_config) VALUES (?, 1, 0, 'send_whatsapp_message', ?)",
+            (automation_id, json.dumps(_ARBOX_WAITING_LIST_ENTRY_ACTION_CONFIG, ensure_ascii=False)),
+        )
+        conn.commit()
+
+    # זורעת פעם אחת את אוטומציית webhook אישור המקום שהתפנה מרשימת המתנה (ראו _ARBOX_WAITING_
+    # LIST_CONFIRMED_ACTION_CONFIG למעלה) - אותו דפוס בדיוק כמו שאר אוטומציות ה-webhook
+    @staticmethod
+    def _seed_arbox_waiting_list_confirmed_automation(conn):
+        import datetime
+
+        exists = conn.execute(
+            "SELECT 1 FROM automations WHERE trigger_type = 'arbox_confirm_entry_from_waiting_list'"
+        ).fetchone()
+        if exists:
+            return
+        now = datetime.datetime.now().isoformat(timespec="seconds")
+        cursor = conn.execute(
+            "INSERT INTO automations (tenant_id, name, trigger_type, trigger_config, enabled, "
+            "created_at, updated_at) VALUES (1, ?, ?, NULL, 0, ?, ?)",
+            ("אישור מקום מרשימת המתנה (Arbox webhook)", "arbox_confirm_entry_from_waiting_list", now, now),
+        )
+        automation_id = cursor.lastrowid
+        conn.execute(
+            "INSERT INTO automation_steps (automation_id, step_order, delay_minutes, action_type, "
+            "action_config) VALUES (?, 1, 0, 'send_whatsapp_message', ?)",
+            (automation_id, json.dumps(_ARBOX_WAITING_LIST_CONFIRMED_ACTION_CONFIG, ensure_ascii=False)),
         )
         conn.commit()
 
