@@ -3,7 +3,8 @@ import os
 import threading
 import time
 
-from flask import Flask, redirect, render_template, send_from_directory, session, url_for
+import pandas as pd
+from flask import Flask, redirect, render_template, request, send_from_directory, session, url_for
 
 from atlas.core import roles
 from atlas.data import context as db_context
@@ -96,7 +97,49 @@ def _nav_counts():
     return counts
 
 
-def _dashboard_data(repos, is_admin, username=""):
+# מספר הערוצים המוצגים בנפרד בגרף העוגה; השאר מתקבצים ל"אחר" (פחות מ-4 צבעים שאפשר להבדיל ביניהם)
+_DASHBOARD_TOP_CHANNELS = 3
+
+
+def _dashboard_charts(repos, is_admin, username, days):
+    """נתוני הגרפים בלוח הבקרה: לידים ותורים ליום ב-`days` הימים האחרונים, וערוצי הלידים באותה תקופה.
+    אותו כלל נראות כמו בעמוד הלידים: משתמשת רגילה רואה רק לידים ששויכו אליה."""
+    today = datetime.date.today()
+    start = today - datetime.timedelta(days=days - 1)
+    day_list = [(start + datetime.timedelta(days=i)).isoformat() for i in range(days)]
+
+    leads = repos.leads.get_all()
+    if not is_admin and not leads.empty:
+        leads = leads[leads["assigned_user"].fillna("") == username]
+    lead_days = pd.to_datetime(leads["created_datetime_stamp"], errors="coerce").dt.strftime("%Y-%m-%d") if not leads.empty else pd.Series(dtype=str)
+    in_range = leads[lead_days.isin(day_list)] if not leads.empty else leads
+    lead_per_day = lead_days[lead_days.isin(day_list)].value_counts().to_dict() if not leads.empty else {}
+
+    appointments = repos.appointments.get_all()
+    appt_days = appointments["appointment_date"].astype(str).str[:10] if not appointments.empty else pd.Series(dtype=str)
+    appt_per_day = appt_days[appt_days.isin(day_list)].value_counts().to_dict()
+    next_week = [(today + datetime.timedelta(days=i)).isoformat() for i in range(7)]
+
+    channel_counts = in_range["channel"].fillna("").replace("", "ללא ערוץ").value_counts() if not in_range.empty else pd.Series(dtype=int)
+    channels = [{"name": name, "count": int(count)} for name, count in channel_counts.head(_DASHBOARD_TOP_CHANNELS).items()]
+    other = int(channel_counts.iloc[_DASHBOARD_TOP_CHANNELS:].sum()) if len(channel_counts) > _DASHBOARD_TOP_CHANNELS else 0
+    if other:
+        channels.append({"name": "אחר", "count": other, "other": True})
+    total = sum(c["count"] for c in channels)
+    for c in channels:
+        c["pct"] = round(100 * c["count"] / total, 1) if total else 0
+
+    return {
+        "days": day_list,
+        "leads": [int(lead_per_day.get(d, 0)) for d in day_list],
+        "appointments": [int(appt_per_day.get(d, 0)) for d in day_list],
+        "channels": channels,
+        "leads_total": int(len(in_range)),
+        "week_appointments": int(appt_days.isin(next_week).sum()) if not appointments.empty else 0,
+    }
+
+
+def _dashboard_data(repos, is_admin, username="", days=30):
     """הנתונים ללוח היום: תורי היום לפי שעה, שיחות שמחכות לתשובה (למנהלת), ולידים חדשים."""
     today = repos.appointments.get_today()
     today_records = to_records(today.sort_values("appointment_time")) if not today.empty else []
@@ -119,8 +162,13 @@ def _dashboard_data(repos, is_admin, username=""):
     new_leads_count = 0 if new_leads is None else len(new_leads)
     new_lead_records = to_records(new_leads.head(5)) if new_leads is not None and not new_leads.empty else []
 
+    chart = _dashboard_charts(repos, is_admin, username, days)
+
     return {
         "today_appointments": today_records,
+        "chart": chart,
+        "days": days,
+        "week_appointments_count": chart["week_appointments"],
         "waiting_chats": waiting,
         "waiting_count": waiting_count,
         "new_leads": new_lead_records,
@@ -222,7 +270,10 @@ def create_app():
         repos = db_context.get_repos()
         return render_template(
             "dashboard.html",
-            **_dashboard_data(repos, current_user().get("role") == roles.ADMIN, current_user().get("username", "")),
+            **_dashboard_data(
+                repos, current_user().get("role") == roles.ADMIN, current_user().get("username", ""),
+                days=days if (days := request.args.get("days", type=int)) in (7, 30, 90) else 30,
+            ),
         )
 
     return app

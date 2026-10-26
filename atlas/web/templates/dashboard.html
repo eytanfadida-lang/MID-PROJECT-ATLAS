@@ -10,18 +10,83 @@
         <p class="studio-date" id="studio-date"></p>
     </div>
     <div class="studio-actions">
+        <nav class="dash-range" aria-label="טווח התקופה בגרפים">
+            {% for d in (7, 30, 90) %}
+            <a href="{{ url_for('index', days=d) if d != 30 else url_for('index') }}" class="{{ 'on' if d == days else '' }}" {{ 'aria-current=true' if d == days else '' }}>{{ d }} ימים</a>
+            {% endfor %}
+        </nav>
         <a href="{{ url_for('appointments.new_choose_day') }}" class="btn">תור חדש</a>
         <a href="{{ url_for('leads.new_lead') }}" class="btn btn-ghost">ליד חדש</a>
     </div>
 </div>
 
-<div class="studio-counts">
-    <div class="studio-count"><strong>{{ today_appointments | length }}</strong><span>אימונים היום</span></div>
+<div class="kpis">
+    <div class="kpi kpi-plum">
+        <div class="kpi-top"><span class="kpi-title">אימונים היום<span class="kpi-help" tabindex="0" role="img" aria-label="כמה תורים קבועים להיום" title="כמה תורים קבועים להיום">?</span></span><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4M9 15l2 2 4-4"/></svg></div>
+        <strong class="kpi-value">{{ today_appointments | length }}</strong>
+    </div>
+    <div class="kpi kpi-plum">
+        <div class="kpi-top"><span class="kpi-title">אימונים השבוע<span class="kpi-help" tabindex="0" role="img" aria-label="תורים ב-7 הימים הקרובים, כולל היום" title="תורים ב-7 הימים הקרובים, כולל היום">?</span></span><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4M7 13h2M11 13h2M15 13h2M7 17h2M11 17h2"/></svg></div>
+        <strong class="kpi-value">{{ week_appointments_count }}</strong>
+    </div>
     {% if current_user.role == ROLE_ADMIN %}
-    <div class="studio-count {{ 'is-attn' if waiting_count else '' }}"><strong>{{ waiting_count }}</strong><span>שיחות מחכות לתשובה</span></div>
+    <div class="kpi {{ 'kpi-attn' if waiting_count else 'kpi-plum' }}">
+        <div class="kpi-top"><span class="kpi-title">שיחות מחכות<span class="kpi-help" tabindex="0" role="img" aria-label="שיחות שהלקוחה כתבה בהן ועוד לא נענו" title="שיחות שהלקוחה כתבה בהן ועוד לא נענו">?</span></span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg></div>
+        <strong class="kpi-value">{{ waiting_count }}</strong>
+        {% if waiting_count %}<a class="kpi-link" href="{{ url_for('bot_conversations.list_conversations') }}">לשיחות</a>{% endif %}
+    </div>
     {% endif %}
-    <div class="studio-count {{ 'is-attn' if new_leads_count else '' }}"><strong>{{ new_leads_count }}</strong><span>לידים חדשים</span></div>
+    <div class="kpi {{ 'kpi-attn' if new_leads_count else 'kpi-plum' }}">
+        <div class="kpi-top"><span class="kpi-title">לידים חדשים<span class="kpi-help" tabindex="0" role="img" aria-label="לידים בסטטוס הראשון, שעוד לא טופלו" title="לידים בסטטוס הראשון, שעוד לא טופלו">?</span></span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h18l-7 8v6l-4 2v-8z"/></svg></div>
+        <strong class="kpi-value">{{ new_leads_count }}</strong>
+        {% if new_leads_count %}<a class="kpi-link" href="{{ url_for('leads.list_leads', status=new_status_name) }}">ללידים</a>{% endif %}
+    </div>
+    <div class="kpi kpi-green">
+        <div class="kpi-top"><span class="kpi-title">לידים ב-{{ days }} ימים<span class="kpi-help" tabindex="0" role="img" aria-label="כל הלידים שנכנסו בתקופה שנבחרה" title="כל הלידים שנכנסו בתקופה שנבחרה">?</span></span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/></svg></div>
+        <strong class="kpi-value">{{ chart.leads_total }}</strong>
+    </div>
 </div>
+
+<div class="dash-charts viz-root">
+    <section class="dash-card dash-card-wide" aria-labelledby="h-trend">
+        <div class="dash-card-head">
+            <h3 id="h-trend">סקירת פעילות</h3>
+            <span class="dash-card-sub">{{ days }} הימים האחרונים</span>
+        </div>
+        <div class="dash-tabs" role="tablist">
+            <button type="button" class="dash-tab on" role="tab" aria-selected="true" data-series="leads">
+                <span>לידים חדשים</span><strong>{{ chart.leads | sum }}</strong></button>
+            <button type="button" class="dash-tab" role="tab" aria-selected="false" data-series="appointments">
+                <span>תורים</span><strong>{{ chart.appointments | sum }}</strong></button>
+        </div>
+        <div class="dash-plot" id="dash-plot"><div class="dash-tip" id="dash-tip" hidden></div></div>
+        <details class="dash-table">
+            <summary>הצגה כטבלה</summary>
+            <div class="dash-table-scroll"><table>
+                <thead><tr><th>תאריך</th><th>לידים חדשים</th><th>תורים</th></tr></thead>
+                <tbody>{% for d in chart.days %}<tr><td>{{ d[8:10] }}.{{ d[5:7] }}</td><td>{{ chart.leads[loop.index0] }}</td><td>{{ chart.appointments[loop.index0] }}</td></tr>{% endfor %}</tbody>
+            </table></div>
+        </details>
+    </section>
+
+    <section class="dash-card" aria-labelledby="h-chan">
+        <div class="dash-card-head">
+            <h3 id="h-chan">מאיפה מגיעים הלידים</h3>
+            <span class="dash-card-sub">{{ days }} הימים האחרונים</span>
+        </div>
+        {% if chart.channels %}
+        <div class="dash-donut" id="dash-donut" role="img" aria-label="התפלגות הלידים לפי ערוץ"></div>
+        <ul class="dash-legend">
+            {% for c in chart.channels %}
+            <li><span class="dash-swatch {{ 'sw-other' if c.other else 'sw-' ~ loop.index }}"></span><span class="dash-legend-name">{{ c.name }}</span><span class="dash-legend-val">{{ c.count }}</span><span class="dash-legend-pct">{{ c.pct }}%</span></li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p class="studio-quiet">אין לידים בתקופה הזו.</p>
+        {% endif %}
+    </section>
+</div>
+<script type="application/json" id="dash-data">{{ chart | tojson }}</script>
 
 <div class="studio-cols">
     <section class="studio-col-main" aria-labelledby="h-day">
@@ -120,6 +185,118 @@
     if (current) {
         current.classList.add('is-now');
         current.querySelector('.studio-tag').hidden = false;
+    }
+})();
+</script>
+<script>
+// גרפי הלוח: קו+שטח לפי יום (לידים/תורים) ועוגה של ערוצי הלידים. SVG בלי ספריה, עם חוצה-שערות וטולטיפ במעבר עכבר/מגע
+(function () {
+    var node = document.getElementById('dash-data');
+    if (!node) return;
+    var data = JSON.parse(node.textContent);
+    var NS = 'http://www.w3.org/2000/svg';
+    function el(name, attrs, parent) {
+        var e = document.createElementNS(NS, name);
+        for (var k in attrs) e.setAttribute(k, attrs[k]);
+        if (parent) parent.appendChild(e);
+        return e;
+    }
+    function niceMax(v) {
+        if (v <= 4) return 4;
+        var pow = Math.pow(10, Math.floor(Math.log10(v)));
+        var n = v / pow;
+        return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 5 ? 5 : 10) * pow;
+    }
+    function fmtDay(iso) { return iso.slice(8, 10) + '.' + iso.slice(5, 7); }
+
+    var plot = document.getElementById('dash-plot');
+    var tip = document.getElementById('dash-tip');
+    var seriesName = 'leads';
+    var LABEL = { leads: 'לידים חדשים', appointments: 'תורים' };
+
+    function drawLine() {
+        var old = plot.querySelector('svg'); if (old) old.remove();
+        var vals = data[seriesName], days = data.days, n = vals.length;
+        var W = Math.max(300, Math.min(760, Math.round(plot.clientWidth - 28))), H = W < 500 ? 230 : 260, L = 36, R = 12, T = 14, B = 28;
+        var max = niceMax(Math.max.apply(null, vals.concat([1])));
+        var svg = el('svg', { viewBox: '0 0 ' + W + ' ' + H, class: 'dash-svg', dir: 'ltr', role: 'img',
+            'aria-label': LABEL[seriesName] + ' לפי יום' });
+        function x(i) { return L + (n === 1 ? (W - L - R) / 2 : i * (W - L - R) / (n - 1)); }
+        function y(v) { return T + (H - T - B) * (1 - v / max); }
+        for (var t = 0; t <= 4; t++) {
+            var gv = max * t / 4, gy = y(gv);
+            el('line', { x1: L, x2: W - R, y1: gy, y2: gy, class: 'dash-grid' }, svg);
+            var tl = el('text', { x: L - 8, y: gy + 4, class: 'dash-axis', 'text-anchor': 'end' }, svg);
+            tl.textContent = Math.round(gv * 10) / 10;
+        }
+        var step = Math.max(1, Math.round(n / 6));
+        for (var i = 0; i < n; i += step) {
+            var xl = el('text', { x: x(i), y: H - 8, class: 'dash-axis', 'text-anchor': 'middle' }, svg);
+            xl.textContent = fmtDay(days[i]);
+        }
+        var pts = vals.map(function (v, i) { return x(i) + ',' + y(v); });
+        el('polygon', { points: x(0) + ',' + y(0) + ' ' + pts.join(' ') + ' ' + x(n - 1) + ',' + y(0), class: 'dash-area' }, svg);
+        el('polyline', { points: pts.join(' '), class: 'dash-line' }, svg);
+        var avg = vals.reduce(function (a, b) { return a + b; }, 0) / n;
+        if (avg > 0) {
+            el('line', { x1: L, x2: W - R, y1: y(avg), y2: y(avg), class: 'dash-avg' }, svg);
+            var al = el('text', { x: L + 6, y: y(avg) - 6, class: 'dash-avg-label', 'text-anchor': 'start' }, svg);
+            al.textContent = 'ממוצע ' + (Math.round(avg * 10) / 10);
+        }
+        var cross = el('line', { class: 'dash-cross', y1: T, y2: H - B, visibility: 'hidden' }, svg);
+        var dot = el('circle', { class: 'dash-dot', r: 5, visibility: 'hidden' }, svg);
+        var hit = el('rect', { x: L, y: T, width: W - L - R, height: H - T - B, fill: 'transparent' }, svg);
+        function show(evt) {
+            var box = svg.getBoundingClientRect();
+            var px = (evt.clientX - box.left) / box.width * W;
+            var i = Math.max(0, Math.min(n - 1, Math.round((px - L) / ((W - L - R) / Math.max(1, n - 1)))));
+            cross.setAttribute('x1', x(i)); cross.setAttribute('x2', x(i)); cross.setAttribute('visibility', 'visible');
+            dot.setAttribute('cx', x(i)); dot.setAttribute('cy', y(vals[i])); dot.setAttribute('visibility', 'visible');
+            tip.hidden = false;
+            tip.innerHTML = '<span>' + fmtDay(days[i]) + '</span><strong>' + vals[i] + '</strong> ' + LABEL[seriesName];
+            var left = x(i) / W * box.width;
+            tip.style.left = Math.max(60, Math.min(box.width - 60, left)) + 'px';
+            tip.style.top = Math.max(0, y(vals[i]) / H * box.height - 58) + 'px';
+        }
+        function hide() { cross.setAttribute('visibility', 'hidden'); dot.setAttribute('visibility', 'hidden'); tip.hidden = true; }
+        hit.addEventListener('pointermove', show);
+        hit.addEventListener('pointerdown', show);
+        hit.addEventListener('pointerleave', hide);
+        plot.insertBefore(svg, tip);
+    }
+
+    document.querySelectorAll('.dash-tab').forEach(function (b) {
+        b.addEventListener('click', function () {
+            seriesName = b.dataset.series;
+            document.querySelectorAll('.dash-tab').forEach(function (o) {
+                o.classList.toggle('on', o === b);
+                o.setAttribute('aria-selected', o === b ? 'true' : 'false');
+            });
+            drawLine();
+        });
+    });
+    drawLine();
+    var resizeTimer;
+    window.addEventListener('resize', function () { clearTimeout(resizeTimer); resizeTimer = setTimeout(drawLine, 150); });
+
+    // עוגה: מקטעים עם רווח של 2px ביניהם, והמספר הכולל במרכז
+    var donut = document.getElementById('dash-donut');
+    if (donut && data.channels.length) {
+        var total = data.channels.reduce(function (a, c) { return a + c.count; }, 0);
+        var R = 70, C = 2 * Math.PI * R, gap = data.channels.length > 1 ? 2 : 0;
+        var s = el('svg', { viewBox: '0 0 200 200', class: 'dash-donut-svg' });
+        var acc = 0;
+        data.channels.forEach(function (c, i) {
+            var len = c.count / total * C;
+            var seg = el('circle', { cx: 100, cy: 100, r: R, fill: 'none', 'stroke-width': 26, class: c.other ? 'sw-other' : 'sw-' + (i + 1),
+                'stroke-dasharray': Math.max(0, len - gap) + ' ' + (C - Math.max(0, len - gap)),
+                'stroke-dashoffset': -acc, transform: 'rotate(-90 100 100)' }, s);
+            var t = el('title', {}, seg); t.textContent = c.name + ': ' + c.count + ' (' + c.pct + '%)';
+            acc += len;
+        });
+        var num = el('text', { x: 100, y: 104, 'text-anchor': 'middle', class: 'dash-donut-num' }, s); num.textContent = total;
+        var cap = el('text', { x: 100, y: 124, 'text-anchor': 'middle', class: 'dash-donut-cap' }, s); cap.textContent = 'לידים';
+        donut.appendChild(s);
     }
 })();
 </script>
