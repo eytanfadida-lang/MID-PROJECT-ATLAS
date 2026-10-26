@@ -7509,3 +7509,33 @@ body.dark .kpi {
         padding-bottom: 52px;
     }
 }
+
+/* גלילה עצמית של תפריט הצד: הרשימה גוללת בתוך הפאנל, וכפתור הצמצום (שבולט החוצה) והתחתית נשארים במקומם */
+@media (min-width: 801px) {
+    .sidebar-scroll {
+        display: block;
+        flex: 1;
+        min-height: 0;
+        margin-inline: -6px;
+        padding-inline: 6px;
+        overflow-x: hidden;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        scrollbar-width: thin;
+    }
+
+    body.sidebar-collapsed .sidebar-scroll {
+        margin-inline: -4px;
+        padding-inline: 4px;
+    }
+
+    .sidebar-foot {
+        flex-shrink: 0;
+    }
+}
+
+@media (max-width: 800px) {
+    .sidebar-scroll {
+        display: contents;
+    }
+}
