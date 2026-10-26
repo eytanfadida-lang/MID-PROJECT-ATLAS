@@ -7145,3 +7145,367 @@ body.dark .kpi {
         flex-wrap: wrap;
     }
 }
+
+/* =====================================================================================================
+   תפריט צד בסגנון לוח ניהול: פאנל לבן באורך מלא בקצה המסך, מותג, "פעולות מהירות", פריטים גדולים עם
+   רקע בהיר לפעיל, וכפתור צמצום. רק בשולחן עבודה; בטלפון יש סרגל תחתון.
+   ===================================================================================================== */
+@media (min-width: 801px) {
+    body .layout,
+    body.page-leads-list .layout {
+        padding: 0;
+        gap: 0;
+        align-items: stretch;
+    }
+
+    body .content {
+        padding: 24px;
+    }
+
+    body.page-leads-list .content {
+        padding-top: 16px;
+        padding-bottom: 16px;
+    }
+
+    body .sidebar {
+        position: sticky;
+        display: flex;
+        flex-direction: column;
+        flex-shrink: 0;
+        width: 248px;
+        height: calc(100vh - 64px);
+        padding: 20px 14px 14px;
+        border: 0;
+        border-inline-end: 1px solid var(--border);
+        border-radius: 0;
+        background: var(--surface);
+        overflow: visible;
+    }
+
+    .sidebar-scroll {
+        display: contents;
+    }
+
+    body.sidebar-collapsed .sidebar {
+        width: 76px;
+        padding-inline: 10px;
+    }
+
+    .sidebar-toggle {
+        position: absolute;
+        top: 14px;
+        inset-inline-end: -14px;
+        z-index: 25;
+        display: grid;
+        place-items: center;
+        width: 28px;
+        height: 28px;
+        padding: 0;
+        border: 1px solid var(--border-strong);
+        border-radius: 50%;
+        background: var(--surface);
+        color: var(--text);
+        cursor: pointer;
+    }
+
+    .sidebar-toggle svg {
+        width: 16px;
+        height: 16px;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 2.2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        transform: scaleX(-1);
+    }
+
+    body.sidebar-collapsed .sidebar-toggle svg {
+        transform: none;
+    }
+
+    .sidebar-brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin: 6px 4px 18px;
+    }
+
+    .sidebar-logo {
+        display: grid;
+        place-items: center;
+        width: 42px;
+        height: 42px;
+        flex-shrink: 0;
+        border-radius: 12px;
+        background: var(--ink);
+        color: var(--accent);
+    }
+
+    .sidebar-logo svg {
+        width: 22px;
+        height: 22px;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+    }
+
+    .sidebar-brand-text {
+        display: flex;
+        flex-direction: column;
+        line-height: 1.25;
+    }
+
+    .sidebar-brand-text strong {
+        font-family: var(--font-display);
+        font-weight: 400;
+        font-size: 18px;
+    }
+
+    .sidebar-brand-text small {
+        color: var(--muted);
+        font-size: 13px;
+    }
+
+    .quick-actions {
+        position: relative;
+        margin-bottom: 16px;
+    }
+
+    .quick-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        min-height: 46px;
+        padding: 0 14px;
+        border: 1.5px solid var(--ink);
+        border-radius: 10px;
+        color: var(--ink);
+        font-size: 16px;
+        font-weight: 700;
+        list-style: none;
+        cursor: pointer;
+    }
+
+    .quick-btn::-webkit-details-marker {
+        display: none;
+    }
+
+    .quick-btn svg {
+        width: 20px;
+        height: 20px;
+        flex-shrink: 0;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+    }
+
+    .quick-btn:hover,
+    .quick-actions[open] .quick-btn {
+        background: color-mix(in srgb, var(--ink) 8%, transparent);
+    }
+
+    .quick-btn:focus-visible {
+        outline: 3px solid var(--accent);
+        outline-offset: 2px;
+    }
+
+    body.dark .quick-btn {
+        border-color: var(--accent);
+        color: var(--accent);
+    }
+
+    .quick-menu {
+        position: absolute;
+        z-index: 30;
+        inset-inline: 0;
+        top: calc(100% + 6px);
+        display: flex;
+        flex-direction: column;
+        min-width: 180px;
+        padding: 6px;
+        border: 1px solid var(--border-strong);
+        border-radius: 10px;
+        background: var(--surface);
+    }
+
+    .quick-menu a {
+        padding: 10px 12px;
+        border-radius: 8px;
+        color: var(--text);
+        font-weight: 600;
+        text-decoration: none;
+    }
+
+    .quick-menu a:hover,
+    .quick-menu a:focus-visible {
+        background: var(--surface-2);
+    }
+
+    body .sidebar .nav-link {
+        gap: 14px;
+        min-height: 46px;
+        margin-bottom: 4px;
+        padding: 0 14px;
+        border-radius: 10px;
+        color: var(--text);
+        font-size: 16px;
+        font-weight: 600;
+    }
+
+    body .sidebar .nav-icon {
+        width: 22px;
+        height: 22px;
+        opacity: 1;
+        stroke-width: 1.7;
+    }
+
+    body .sidebar .nav-link:hover,
+    body.dark .sidebar .nav-link:hover {
+        background: var(--surface-2);
+    }
+
+    body .sidebar .nav-link.active,
+    body.dark .sidebar .nav-link.active {
+        background: color-mix(in srgb, var(--ink) 9%, var(--surface));
+        color: var(--ink);
+        font-weight: 700;
+    }
+
+    body.dark .sidebar .nav-link.active {
+        background: #3a2d45;
+        color: #fff;
+    }
+
+    .sidebar .nav-link.active::before {
+        display: none;
+    }
+
+    .sidebar-title {
+        padding: 14px 14px 6px;
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+    }
+
+    .sidebar-title-sep {
+        margin-top: 8px;
+        padding-top: 16px;
+    }
+
+    .sidebar-foot {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        margin-top: auto;
+        padding: 14px 6px 0;
+        border-top: 1px solid var(--border);
+    }
+
+    .sidebar-user {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-width: 0;
+        font-weight: 600;
+    }
+
+    .sidebar-avatar {
+        display: grid;
+        place-items: center;
+        width: 32px;
+        height: 32px;
+        flex-shrink: 0;
+        border-radius: 50%;
+        background: var(--ink);
+        color: #fff;
+        font-family: var(--font-display);
+    }
+
+    body.dark .sidebar-avatar {
+        background: var(--accent);
+        color: var(--on-accent);
+    }
+
+    /* תפריט מצומצם: רק אייקונים. התוויות נשארות לקורא מסך (חיתוך חזותי ולא display:none) */
+    body.sidebar-collapsed .sidebar .nav-link > span:not(.nav-count),
+    body.sidebar-collapsed .sidebar .nav-label,
+    body.sidebar-collapsed .sidebar-brand-text,
+    body.sidebar-collapsed .sidebar-title {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+        white-space: nowrap;
+    }
+
+    body.sidebar-collapsed .sidebar .nav-link,
+    body.sidebar-collapsed .quick-btn {
+        justify-content: center;
+        padding: 0;
+    }
+
+    body.sidebar-collapsed .sidebar .nav-count {
+        position: absolute;
+        top: 4px;
+        inset-inline-end: 6px;
+        min-width: 18px;
+        height: 18px;
+        line-height: 18px;
+        font-size: 11px;
+    }
+
+    body.sidebar-collapsed .sidebar-brand {
+        justify-content: center;
+        margin-inline: 0;
+    }
+
+    body.sidebar-collapsed .sidebar-foot {
+        justify-content: center;
+    }
+
+    body.sidebar-collapsed .sidebar-title-sep {
+        padding: 0;
+        margin: 8px 0;
+        border-top: 1px solid var(--border);
+    }
+}
+
+@media (max-width: 800px) {
+    .sidebar-toggle,
+    .sidebar-brand,
+    .quick-actions,
+    .sidebar-foot {
+        display: none;
+    }
+}
+
+@media (min-width: 801px) {
+    body:not(.page-leads-list) .sidebar {
+        top: 64px;
+        max-height: none;
+        overflow: visible;
+    }
+
+    body.page-leads-list .sidebar {
+        height: auto;
+        align-self: stretch;
+    }
+
+    .kpis {
+        grid-template-columns: repeat(auto-fit, minmax(165px, 1fr));
+    }
+}
+
+@media (min-width: 801px) {
+    body.page-leads-list .sidebar {
+        padding-bottom: 52px;
+    }
+}
