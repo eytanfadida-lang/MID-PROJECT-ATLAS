@@ -10,7 +10,7 @@ from atlas.core import roles
 from atlas.data import context as db_context
 from atlas.integrations.arbox.sync import sync_arbox_clients
 from atlas.data.repositories.customer_bot_message_repository import incoming_listeners
-from atlas.services import web_push
+from atlas.services import gateway_auth, web_push
 from atlas.core.auth import load_secret_key, generate_csrf_token, validate_csrf, current_user
 from atlas.core.view_utils import (
     role_badge_class,
@@ -182,6 +182,8 @@ def _dashboard_data(repos, is_admin, username="", days=30):
 def create_app():
     # יוצר/ממגר את כל הטבלאות פעם אחת בזמן יצירת האפליקציה (רץ גם תחת flask run וגם תחת python app.py)
     db_context.bootstrap_databases()
+    # טוקן משותף לתהליך חיבור הוואטסאפ (gateway/) - נוצר כבר באתחול, כדי שהתהליך תמיד ימצא אותו
+    gateway_auth.get_or_create_token()
 
     app = Flask(
         __name__,

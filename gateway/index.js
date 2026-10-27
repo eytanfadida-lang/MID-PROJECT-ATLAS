@@ -17,10 +17,18 @@ if (!baseUrl) {
   process.exit(1);
 }
 const tokenFile = resolve(here, process.env.GATEWAY_TOKEN_FILE || '../.gateway_token');
-const getToken = () => process.env.GATEWAY_TOKEN || readFileSync(tokenFile, 'utf8').trim();
+const getToken = () => {
+  if (process.env.GATEWAY_TOKEN) return process.env.GATEWAY_TOKEN;
+  try {
+    return readFileSync(tokenFile, 'utf8').trim();
+  } catch {
+    stamp(`token file not found yet: ${tokenFile} (the app creates it on start; retrying)`);
+    return '';
+  }
+};
+const stamp = (...a) => console.log(new Date().toISOString(), ...a);
 const pollMs = Number(process.env.POLL_MS || 3000);
 const authDir = resolve(here, process.env.AUTH_DIR || './auth');
-const stamp = (...a) => console.log(new Date().toISOString(), ...a);
 
 let createSession;
 if (process.env.GATEWAY_FAKE === '1') {
