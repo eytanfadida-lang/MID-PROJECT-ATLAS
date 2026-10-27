@@ -20,20 +20,25 @@ class CustomerBotMessageRepository:
     # wamid: מזהה ההודעה שהוחזר מוואטסאפ (רק להודעות יוצאות, direction='out') - מפתח
     # לקישור חזרה לעדכון סטטוס משלוח עתידי (ראו update_delivery_status). None עבור הודעות
     # נכנסות (אין "שליחה" שלנו) או אם השליחה נכשלה לפני שהוחזר wamid בכלל
-    def log(self, phone, direction, body, bot_phone_number_id=None, attachment_url=None, wamid=None):
-        self.conn.execute(
+    # created_at: ברירת המחדל "עכשיו"; הודעה שהגיעה מחשבון מקושר נושאת את זמן השליחה האמיתי שלה.
+    # delivery_status: למשל 'queued' להודעה יוצאת שממתינה בתור. מחזירה את מזהה השורה שנוצרה
+    def log(self, phone, direction, body, bot_phone_number_id=None, attachment_url=None, wamid=None,
+            created_at=None, delivery_status=None):
+        cursor = self.conn.execute(
             f"INSERT INTO {TABLE_NAME} (phone, direction, body, created_at, bot_phone_number_id, "
-            "attachment_url, wamid) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            "attachment_url, wamid, delivery_status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 phone,
                 direction,
                 body,
-                datetime.datetime.now().isoformat(timespec="seconds"),
+                created_at or datetime.datetime.now().isoformat(timespec="seconds"),
                 bot_phone_number_id,
                 attachment_url,
                 wamid,
+                delivery_status,
             ),
         )
+        message_id = cursor.lastrowid
         self.conn.commit()
         if direction == "in":
             for listener in incoming_listeners:
@@ -41,6 +46,28 @@ class CustomerBotMessageRepository:
                     listener(phone, body, attachment_url)
                 except Exception:  # noqa: BLE001
                     pass
+        return message_id
+
+    # כמו update_delivery_status, אבל הסטטוס רק מתקדם (sent < delivered < read; failed נקבע רק אם עוד לא נמסרה) -
+    # עדכוני קבלה מגיעים לפעמים בסדר הפוך. מחזירה כמה שורות עודכנו
+    def advance_delivery_status(self, wamid, status):
+        rank = {"queued": 1, "sent": 2, "delivered": 3, "read": 4}
+        new_rank = 5 if status == "failed" else rank.get(status, 0)
+        row = self.conn.execute(f"SELECT delivery_status FROM {TABLE_NAME} WHERE wamid = ? LIMIT 1", (wamid,)).fetchone()
+        if not row:
+            return 0
+        current = row[0]
+        current_rank = 5 if current == "failed" else rank.get(current, 0)
+        if status == "failed" and current_rank >= 3:
+            return 0
+        if new_rank <= current_rank and status != "failed":
+            return 0
+        self.conn.execute(f"UPDATE {TABLE_NAME} SET delivery_status = ? WHERE wamid = ?", (status, wamid))
+        self.conn.commit()
+        return 1
+
+    def wamid_exists(self, wamid):
+        return self.conn.execute(f"SELECT 1 FROM {TABLE_NAME} WHERE wamid = ? LIMIT 1", (wamid,)).fetchone() is not None
 
     # מעדכנת את סטטוס המשלוח (sent/delivered/read/failed) לפי wamid - נקראת מ-webhook עדכוני
     # סטטוס אמיתי מוואטסאפ (ראו atlas/web/webhooks.py, whatsapp_customer_webhook). לא כל
@@ -146,7 +173,12 @@ class CustomerBotMessageRepository:
         deleted_count = self.conn.execute(
             f"SELECT COUNT(*) FROM {TABLE_NAME} WHERE deleted_at IS NOT NULL"
         ).fetchone()[0]
-        return f"{max_id}:{read_count}:{read_sum}:{deleted_count}"
+        # סטטוס משלוח של ההודעות (נשלחת/נמסרה/נקראה/נכשלה) משתנה בלי הודעה חדשה - נכלל בחתימה כדי שהתצוגה תתרענן
+        status_score = self.conn.execute(
+            f"SELECT COALESCE(SUM(CASE delivery_status WHEN 'queued' THEN 1 WHEN 'sent' THEN 2 WHEN 'delivered' THEN 3 "
+            f"WHEN 'read' THEN 4 WHEN 'failed' THEN 5 ELSE 0 END), 0) FROM {TABLE_NAME}"
+        ).fetchone()[0]
+        return f"{max_id}:{read_count}:{read_sum}:{deleted_count}:{status_score}"
 
     def get_by_phone(self, phone):
         rows = self.conn.execute(

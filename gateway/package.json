@@ -7,7 +7,7 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "test": "node test/protocol.test.js"
+    "test": "node --test test/protocol.test.js test/messages.test.js"
   },
   "engines": {
     "node": ">=20"

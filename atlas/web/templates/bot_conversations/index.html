@@ -8,6 +8,12 @@
     <div class="chat-app-list">
         <div class="chat-list-tools">
             <input type="text" id="chat-search" placeholder="חיפוש לפי שם או טלפון" aria-label="חיפוש שיחות" dir="auto">
+            {% if number_labels and number_labels | length > 1 %}
+            <select id="chat-number-filter" class="chat-number-filter" aria-label="סינון לפי מספר">
+                <option value="">כל המספרים</option>
+                {% for label in number_labels %}<option value="{{ label }}">{{ label }}</option>{% endfor %}
+            </select>
+            {% endif %}
             <div class="chat-list-filters">
                 <button type="button" class="wa-chip active" data-chat-filter="all">הכל (<span id="chat-count-all">{{ conversations | length }}</span>)</button>
                 <button type="button" class="wa-chip" data-chat-filter="unread">לא נקראו (<span id="chat-count-unread">{{ unread_count }}</span>)</button>
@@ -17,7 +23,7 @@
             {% if conversations %}
             <p class="empty-state" id="chat-no-results" hidden>לא נמצאו שיחות.</p>
             {% for c in conversations %}
-            <div class="chat-list-row" data-unread="{{ '1' if c.unread else '0' }}" data-search="{{ ((c.full_name or '') ~ ' ' ~ c.phone) | lower }}">
+            <div class="chat-list-row" data-number="{{ c.bot_phone_label }}" data-unread="{{ '1' if c.unread else '0' }}" data-search="{{ ((c.full_name or '') ~ ' ' ~ c.phone) | lower }}">
                 <a href="{{ url_for('bot_conversations.view_conversation', phone=c.phone) }}"
                    class="chat-list-item {{ 'active' if c.phone == active_phone else '' }} {{ 'chat-list-item-unread' if c.unread else '' }}">
                     <div class="chat-list-avatar">{{ (c.full_name or c.phone or '?')[:1] }}</div>
@@ -62,6 +68,7 @@
                     <span class="chat-header-sub">{% if active_conversation.full_name %}<bdi dir="ltr">{{ active_phone }}</bdi> · {% endif %}דרך: {{ active_bot_label }}</span>
                 </div>
                 <div class="chat-header-actions">
+                    {% if not active_conversation.is_linked %}
                     <form method="post" action="{{ url_for('bot_conversations.toggle_bot_pause', phone=active_phone) }}">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                         {% if active_conversation.bot_paused %}
@@ -70,6 +77,7 @@
                         <button type="submit" class="btn btn-ghost btn-sm" title="משהה את תגובות הבוט בשיחה הזו, כדי שלא יפריע כשאת מתכתבת ישירות">השהה בוט</button>
                         {% endif %}
                     </form>
+                    {% endif %}
                     {% if active_conversation.last_incoming_message_id %}
                     <form method="post" action="{{ url_for('bot_conversations.mark_unread', phone=active_phone) }}">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
@@ -118,11 +126,15 @@
                     <a href="{{ m.attachment_url }}" target="_blank" rel="noopener" class="chat-attachment-file">קובץ מצורף</a>
                     {%- endif -%}
                 {%- endif -%}
-                {%- if m.body %}{{ m.body | collapse_blank_lines }}{% endif %}<span class="chat-time">{{ m.created_at | format_lead_datetime }}</span>{# -#}
+                {%- if m.body %}{{ m.body | collapse_blank_lines }}{% endif %}<span class="chat-time">{{ m.created_at | format_lead_datetime }}</span>
+                {%- if m.direction == 'out' and m.delivery_status %}<span class="chat-status chat-status-{{ m.delivery_status }}">{{ {'queued': 'שולח...', 'sent': 'נשלחה', 'delivered': 'נמסרה', 'read': 'נקראה', 'failed': 'לא נשלחה'}.get(m.delivery_status, '') }}</span>{% endif -%}{# -#}
             </div>
             {% endfor %}
         </div>
 
+        {% if linked_unavailable %}
+        <div class="chat-linked-warn" role="status">{{ linked_unavailable }} <a href="{{ url_for('integrations.index') }}">לעמוד האינטגרציות</a></div>
+        {% else %}
         <form method="post" action="{{ url_for('bot_conversations.reply', phone=active_phone) }}"
               class="chat-reply-form" enctype="multipart/form-data">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
@@ -134,6 +146,7 @@
             <textarea name="body" id="chat-body" rows="1" placeholder="כתוב הודעה..." title="Ctrl+Enter לשליחה"></textarea>
             <button type="submit" class="chat-send-btn" id="chat-send" aria-label="שליחה" title="שליחה (Ctrl+Enter)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M22 2 11 13"/><path d="M22 2l-7 20-4-9-9-4z"/></svg></button>
         </form>
+        {% endif %}
         {% else %}
         <div class="chat-app-empty">בחר/י שיחה מהרשימה</div>
         {% endif %}
@@ -146,6 +159,7 @@
     var listEl = document.querySelector('.chat-app-list');
     var itemsEl = document.getElementById('chat-list-items');
     var search = document.getElementById('chat-search');
+    var numberFilter = document.getElementById('chat-number-filter');
     var chips = document.querySelectorAll('[data-chat-filter]');
     var baseTitle = document.title.replace(/^\(\d+\)\s*/, '');
     var filter = 'all';
@@ -157,7 +171,9 @@
         var visible = 0;
         var rows = itemsEl.querySelectorAll('.chat-list-row');
         rows.forEach(function (el) {
-            var ok = (filter === 'all' || el.dataset.unread === '1') && (!q || el.dataset.search.indexOf(q) !== -1);
+            var number = numberFilter ? numberFilter.value : '';
+            var ok = (filter === 'all' || el.dataset.unread === '1') && (!q || el.dataset.search.indexOf(q) !== -1)
+                && (!number || el.dataset.number === number);
             el.hidden = !ok;
             if (ok) visible++;
         });
@@ -165,6 +181,7 @@
         if (noResults) noResults.hidden = rows.length === 0 || visible !== 0;
     }
     if (search) search.addEventListener('input', applyFilters);
+    if (numberFilter) numberFilter.addEventListener('change', applyFilters);
     chips.forEach(function (chip) {
         chip.addEventListener('click', function () {
             filter = chip.dataset.chatFilter;

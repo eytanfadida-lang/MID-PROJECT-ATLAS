@@ -37,6 +37,25 @@ class LinkedWhatsAppDB:
                 seen_at TEXT NOT NULL
             )
         """)
+        # תור הודעות יוצאות מהחשבון הלא רשמי: האפליקציה כותבת, והתהליך (gateway/) שולף ושולח. message_id מצביע
+        # על שורת היומן (customer_bot_messages) שמתעדכנת עם ה-wamid והסטטוס כשהשליחה מסתיימת
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS linked_whatsapp_outbox (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                account_id INTEGER NOT NULL,
+                message_id INTEGER NOT NULL,
+                to_digits TEXT NOT NULL,
+                body TEXT,
+                attachment_url TEXT,
+                attachment_mime TEXT,
+                attachment_name TEXT,
+                status TEXT NOT NULL DEFAULT 'queued',
+                error TEXT,
+                created_at TEXT NOT NULL,
+                picked_at TEXT
+            )
+        """)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_linked_outbox_status ON linked_whatsapp_outbox(status)")
         return conn
 
     def close(self):

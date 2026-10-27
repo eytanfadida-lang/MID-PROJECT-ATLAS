@@ -5,6 +5,7 @@
 //   AUTH_DIR             where WhatsApp logins are stored (default ./auth - keep it private!)
 //   POLL_MS              how often to ask the app what to do (default 3000)
 //   GATEWAY_FAKE=1       use fake sessions (no WhatsApp) to try the UI
+//   FAKE_INCOMING_MS     (fake mode) deliver one test message this many ms after connecting
 import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -30,17 +31,22 @@ const stamp = (...a) => console.log(new Date().toISOString(), ...a);
 const pollMs = Number(process.env.POLL_MS || 3000);
 const authDir = resolve(here, process.env.AUTH_DIR || './auth');
 
+const api = createApi({ baseUrl, getToken });
 let createSession;
 if (process.env.GATEWAY_FAKE === '1') {
   const { createFakeSessionFactory } = await import('./fake_session.js');
-  createSession = createFakeSessionFactory({ scanAfterMs: Number(process.env.FAKE_SCAN_AFTER_MS || 15000), log: stamp });
+  createSession = createFakeSessionFactory({
+    scanAfterMs: Number(process.env.FAKE_SCAN_AFTER_MS || 15000),
+    incomingAfterMs: Number(process.env.FAKE_INCOMING_MS || 0),
+    log: stamp,
+  });
   stamp('FAKE mode: no WhatsApp connection will be made');
 } else {
   const { createBaileysSessionFactory } = await import('./session.js');
-  createSession = createBaileysSessionFactory({ authDir, log: stamp });
+  createSession = createBaileysSessionFactory({ authDir, api, log: stamp });
 }
 
-const gateway = new Gateway({ api: createApi({ baseUrl, getToken }), createSession, log: stamp });
+const gateway = new Gateway({ api, createSession, log: stamp });
 
 let stopping = false;
 async function loop() {
@@ -54,7 +60,9 @@ async function loop() {
       // The app being briefly unreachable (reload, deploy) is normal: keep running, back off up to 30s
       stamp(`poll failed (${failures}): ${e.message}`);
     }
-    await new Promise((r) => setTimeout(r, Math.min(pollMs * (1 + failures), 30000)));
+    // The app says how soon to come back (fast while there is activity, slow when idle); POLL_MS overrides it.
+    const base = process.env.POLL_MS ? pollMs : gateway.nextPollMs || pollMs;
+    await new Promise((r) => setTimeout(r, Math.min(base * (1 + failures), 30000)));
   }
 }
 

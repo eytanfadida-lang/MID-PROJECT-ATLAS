@@ -7922,3 +7922,35 @@ body.dark .kpi {
 .int-qr-wait[hidden] {
     display: none;
 }
+
+/* שיחות דרך חשבון מקושר: בורר מספר ברשימה, סטטוס משלוח בבועה, והודעה כשהחשבון לא מחובר */
+.chat-number-filter {
+    width: 100%;
+    margin-block: 8px;
+    border-radius: 10px;
+}
+
+.chat-status {
+    margin-inline-start: 6px;
+    color: var(--muted);
+    font-size: 11px;
+}
+
+.chat-status-failed {
+    color: var(--danger);
+    font-weight: 700;
+}
+
+.chat-status-read {
+    color: #1e8549;
+    font-weight: 700;
+}
+
+.chat-linked-warn {
+    margin: 10px 14px 14px;
+    padding: 12px 14px;
+    border: 1px solid var(--accent);
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--accent) 14%, var(--surface));
+    font-size: 14px;
+}

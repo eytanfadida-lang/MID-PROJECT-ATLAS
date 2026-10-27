@@ -7,6 +7,7 @@ from werkzeug.utils import secure_filename
 
 from atlas.data.context import get_repos
 from atlas.core.auth import admin_required
+from atlas.services import linked_whatsapp
 from atlas.services.phone_utils import to_whatsapp_format
 from atlas.integrations.whatsapp import bot as whatsapp_bot
 from atlas.paths import PROJECT_ROOT
@@ -21,11 +22,12 @@ UPLOADS_DIR = PROJECT_ROOT / "atlas" / "web" / "static" / "uploads"
 
 # שני הראוטים למטה מציגים את אותו עמוד דו-עמודות (רשימת שיחות מימין, שיחה נבחרת
 # משמאל, כמו וואטסאפ עצמו) - view_conversation רק מוסיף לו את השיחה הנבחרת
-def _with_number_labels(conversations):
+def _with_number_labels(conversations, repos=None):
     for conversation in conversations:
-        conversation["bot_phone_label"] = whatsapp_bot.describe_phone_number_id(
-            conversation.get("bot_phone_number_id")
-        )
+        number_id = conversation.get("bot_phone_number_id")
+        linked_label = linked_whatsapp.label_for(repos, number_id) if repos is not None else None
+        conversation["bot_phone_label"] = linked_label or whatsapp_bot.describe_phone_number_id(number_id)
+        conversation["is_linked"] = linked_whatsapp.account_id_of(number_id) is not None
     return conversations
 
 
@@ -51,16 +53,22 @@ def _with_names(conversations, repos):
     return conversations
 
 
+# המספרים (רשמי/מקושר) שבהם יש שיחות - לבורר "סנן לפי מספר" ברשימה (מוצג רק כשיש יותר ממספר אחד)
+def _number_labels(conversations):
+    return sorted({c["bot_phone_label"] for c in conversations})
+
+
 @bp.route("/")
 @admin_required
 def list_conversations():
     repos = get_repos()
     conversations = _with_names(
-        _with_number_labels(repos.customer_bot_messages.get_conversation_summaries()), repos
+        _with_number_labels(repos.customer_bot_messages.get_conversation_summaries(), repos), repos
     )
     return render_template(
         "bot_conversations/index.html", conversations=conversations, active_phone=None, messages=None,
         active_conversation=None, signature=repos.customer_bot_messages.get_state_signature(),
+        number_labels=_number_labels(conversations),
     )
 
 
@@ -116,7 +124,12 @@ def edit_message(phone, message_id):
     message = repos.customer_bot_messages.get_by_id(phone, message_id)
     ok = bool(new_body) and bool(message) and repos.customer_bot_messages.edit_message(phone, message_id, new_body)
 
-    if ok and message["direction"] == "out":
+    if ok and message["direction"] == "out" and linked_whatsapp.account_id_of(message["bot_phone_number_id"]) is not None:
+        # חשבון מקושר: הודעת "תיקון" נשלחת דרך התור, כמו כל הודעה יוצאת משם
+        linked_whatsapp.queue_outgoing(
+            repos, linked_whatsapp.account_id_of(message["bot_phone_number_id"]), phone, f"תיקון להודעה הקודמת:\n{new_body}"
+        )
+    elif ok and message["direction"] == "out":
         whatsapp_phone = to_whatsapp_format(phone)
         if whatsapp_phone:
             try:
@@ -165,14 +178,22 @@ def view_conversation(phone):
     if not is_poll or request.args.get("visible") == "1":
         repos.customer_bot_messages.mark_read(phone)
     conversations = _with_names(
-        _with_number_labels(repos.customer_bot_messages.get_conversation_summaries()), repos
+        _with_number_labels(repos.customer_bot_messages.get_conversation_summaries(), repos), repos
     )
     messages = repos.customer_bot_messages.get_by_phone(phone)
     if not messages:
         abort(404)
-    active_bot_label = whatsapp_bot.describe_phone_number_id(
-        repos.customer_bot_messages.get_latest_bot_phone_number_id(phone)
-    )
+    latest_number_id = repos.customer_bot_messages.get_latest_bot_phone_number_id(phone)
+    active_bot_label = linked_whatsapp.label_for(repos, latest_number_id) or whatsapp_bot.describe_phone_number_id(latest_number_id)
+    # שיחה דרך חשבון מקושר שלא מחובר כרגע - התבנית מציגה אזהרה במקום שדה כתיבה פעיל
+    linked_id = linked_whatsapp.account_id_of(latest_number_id)
+    active_linked = repos.linked_whatsapp.get(linked_id) if linked_id is not None else None
+    linked_unavailable = None
+    if linked_id is not None:
+        if active_linked is None:
+            linked_unavailable = "החשבון שדרכו התנהלה השיחה נמחק, ולכן אי אפשר לענות כאן."
+        elif active_linked["status"] != "connected":
+            linked_unavailable = "החשבון שדרכו התנהלה השיחה לא מחובר כרגע. אפשר לחבר אותו מחדש בעמוד האינטגרציות."
     active_conversation = next((c for c in conversations if c["phone"] == phone), None)
     return render_template(
         "bot_conversations/index.html",
@@ -182,6 +203,8 @@ def view_conversation(phone):
         active_bot_label=active_bot_label,
         active_conversation=active_conversation,
         signature=repos.customer_bot_messages.get_state_signature(),
+        number_labels=_number_labels(conversations),
+        linked_unavailable=linked_unavailable,
     )
 
 
@@ -226,13 +249,34 @@ def reply(phone):
     if not body and not has_attachment:
         return _reply_failed(phone, "יש להזין תוכן הודעה או לצרף קובץ.")
 
-    whatsapp_phone = to_whatsapp_format(phone)
-    if not whatsapp_phone:
-        return _reply_failed(phone, "מספר טלפון לא תקין לשליחה.")
-
     repos = get_repos()
     # עונה מאותו מספר שבו התנהלה השיחה עד כה - רלוונטי מרגע שכמה מספרים מחוברים
     bot_phone_number_id = repos.customer_bot_messages.get_latest_bot_phone_number_id(phone)
+
+    # שיחה דרך חשבון "לא רשמי" (מכשיר מקושר): ההודעה נכנסת לתור, והתהליך שמחזיק את החיבור שולח אותה
+    # (עד כמה שניות). נתיב נפרד לגמרי מה-API הרשמי, כולל מספרים זרים שלא עוברים נרמול ישראלי
+    linked_id = linked_whatsapp.account_id_of(bot_phone_number_id)
+    if linked_id is not None:
+        attachment_url = attachment_mime = attachment_name = None
+        if has_attachment:
+            attachment_mime = uploaded_file.content_type or "application/octet-stream"
+            attachment_name = uploaded_file.filename
+            if len(uploaded_file.read()) > linked_whatsapp.MAX_ATTACHMENT_BYTES:
+                return _reply_failed(phone, "הקובץ גדול מדי (עד 10MB).")
+            uploaded_file.seek(0)
+            attachment_url = _save_upload_locally(phone, uploaded_file)
+        queued, result = linked_whatsapp.queue_outgoing(
+            repos, linked_id, phone, body, attachment_url, attachment_mime, attachment_name
+        )
+        if not queued:
+            return _reply_failed(phone, result, status=409)
+        if request.headers.get("X-Requested-With") == "fetch":
+            return jsonify(ok=True)
+        return redirect(url_for("bot_conversations.view_conversation", phone=phone))
+
+    whatsapp_phone = to_whatsapp_format(phone)
+    if not whatsapp_phone:
+        return _reply_failed(phone, "מספר טלפון לא תקין לשליחה.")
     bot_config = whatsapp_bot.CUSTOMER_BOT
 
     attachment_url = None

@@ -8,6 +8,13 @@ DESIRED = ("connect", "disconnect", "delete")
 
 # התהליך נחשב "לא פועל" אם לא פנה לאפליקציה כל כך הרבה שניות (הוא פונה כל ~3 שניות)
 GATEWAY_ONLINE_WITHIN_SECONDS = 30
+# הודעה שנתקעה "בשליחה" כל כך הרבה שניות נחשבת כושלת (ראו take_pending)
+STALE_SENDING_SECONDS = 90
+# קצב הפנייה של התהליך לאפליקציה: מהר (שנייה) כשיש פעילות עכשיו, איטי (3 שניות) כשהכל שקט - כדי לא להעמיס
+# על האתר (כל פנייה היא בקשה לשרת האינטרנט)
+FAST_POLL_MS = 1000
+IDLE_POLL_MS = 3000
+ACTIVE_WINDOW_SECONDS = 60
 # גודל מקסימלי לתמונת ה-QR שמתקבלת מהתהליך (PNG ב-base64 הוא ~5KB) - הגנה מפני נתון שרירותי גדול
 MAX_QR_IMAGE_LENGTH = 40000
 
@@ -103,6 +110,86 @@ class LinkedWhatsAppRepository:
         cursor = self.conn.execute(f"DELETE FROM {TABLE_NAME} WHERE id = ?", (account_id,))
         self.conn.commit()
         return cursor.rowcount > 0
+
+    # --- תור הודעות יוצאות ---
+    def enqueue(self, account_id, message_id, to_digits, body=None, attachment_url=None, attachment_mime=None, attachment_name=None):
+        cursor = self.conn.execute(
+            "INSERT INTO linked_whatsapp_outbox (account_id, message_id, to_digits, body, attachment_url, attachment_mime, "
+            "attachment_name, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, 'queued', ?)",
+            (account_id, message_id, to_digits, body, attachment_url, attachment_mime, attachment_name, _now()),
+        )
+        self.conn.commit()
+        return cursor.lastrowid
+
+    # מחזירה לתהליך את ההודעות שממתינות לשליחה ומסמנת אותן "בשליחה", כדי שלא יישלחו פעמיים. הודעה שנתקעה
+    # "בשליחה" יותר מדי זמן (התהליך קרס באמצע) לא נשלחת שוב אוטומטית - זה עלול לשלוח כפול - אלא מסומנת כנכשלה
+    def take_pending(self, limit=20):
+        cutoff = (datetime.datetime.now() - datetime.timedelta(seconds=STALE_SENDING_SECONDS)).isoformat(timespec="seconds")
+        stale = self.conn.execute(
+            "SELECT id FROM linked_whatsapp_outbox WHERE status = 'sending' AND picked_at < ?", (cutoff,)
+        ).fetchall()
+        for (outbox_id,) in stale:
+            self.complete(outbox_id, ok=False, error="לא התקבל אישור שליחה - ייתכן שההודעה לא נשלחה")
+        rows = self.conn.execute(
+            "SELECT id, account_id, to_digits, body, attachment_url, attachment_mime, attachment_name "
+            "FROM linked_whatsapp_outbox WHERE status = 'queued' ORDER BY id LIMIT ?", (limit,)
+        ).fetchall()
+        now = _now()
+        for row in rows:
+            self.conn.execute("UPDATE linked_whatsapp_outbox SET status = 'sending', picked_at = ? WHERE id = ?", (now, row[0]))
+        self.conn.commit()
+        keys = ("id", "account_id", "to", "body", "attachment_url", "attachment_mime", "attachment_name")
+        return [dict(zip(keys, r)) for r in rows]
+
+    # התהליך מדווח על תוצאת השליחה: מעדכנת את שורת התור, ואת שורת היומן (wamid + sent/failed).
+    # אם בינתיים הגיעה מוואטסאפ "הודעה יוצאת" עם אותו wamid ונרשמה כשורה נוספת - מסירה את הכפילות
+    def complete(self, outbox_id, ok, wamid=None, error=None):
+        row = self.conn.execute("SELECT message_id FROM linked_whatsapp_outbox WHERE id = ?", (outbox_id,)).fetchone()
+        if row is None:
+            return False
+        message_id = row[0]
+        self.conn.execute(
+            "UPDATE linked_whatsapp_outbox SET status = ?, error = ? WHERE id = ?",
+            ("sent" if ok else "failed", None if ok else (str(error or "")[:300] or None), outbox_id),
+        )
+        if ok:
+            if wamid:
+                self.conn.execute("DELETE FROM customer_bot_messages WHERE wamid = ? AND id != ?", (wamid, message_id))
+            self.conn.execute(
+                "UPDATE customer_bot_messages SET wamid = COALESCE(?, wamid), delivery_status = 'sent' WHERE id = ?",
+                (wamid, message_id),
+            )
+        else:
+            self.conn.execute("UPDATE customer_bot_messages SET delivery_status = 'failed' WHERE id = ?", (message_id,))
+        self.conn.commit()
+        return True
+
+    def has_pending_outbox(self):
+        return self.conn.execute(
+            "SELECT 1 FROM linked_whatsapp_outbox WHERE status IN ('queued', 'sending') LIMIT 1"
+        ).fetchone() is not None
+
+    # האם היה "קצב" לאחרונה (הודעה יוצאת בתור או הודעה מחשבון מקושר) - התהליך מתעורר מהר כשיש פעילות
+    # וחוסך בקשות כשהכל רגוע (ראו poll_interval_ms)
+    def seconds_since_activity(self):
+        latest = []
+        row = self.conn.execute("SELECT MAX(created_at) FROM linked_whatsapp_outbox").fetchone()
+        if row and row[0]:
+            latest.append(row[0])
+        row = self.conn.execute(
+            "SELECT created_at FROM customer_bot_messages WHERE bot_phone_number_id LIKE 'linked:%' ORDER BY id DESC LIMIT 1"
+        ).fetchone()
+        if row and row[0]:
+            latest.append(row[0])
+        if not latest:
+            return None
+        return (datetime.datetime.now() - datetime.datetime.fromisoformat(max(latest))).total_seconds()
+
+    def poll_interval_ms(self):
+        if self.has_pending_outbox():
+            return FAST_POLL_MS
+        age = self.seconds_since_activity()
+        return FAST_POLL_MS if age is not None and age <= ACTIVE_WINDOW_SECONDS else IDLE_POLL_MS
 
     # --- דופק של התהליך ---
     def touch_gateway(self):
