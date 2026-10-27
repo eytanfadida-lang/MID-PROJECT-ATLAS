@@ -310,6 +310,7 @@ class AutomationDB:
         self._seed_trial_no_show_winback_manual_campaign(conn)
         self._seed_vip_inactive_winback_manual_campaign(conn)
         self._seed_tira_koach_room_manual_campaign(conn)
+        self._seed_studio_closure_manual_campaign(conn)
         self._seed_attendance_milestone_automation(conn)
         self._migrate_upgrade360_automations_to_templates(conn)
         return conn
@@ -1111,6 +1112,92 @@ class AutomationDB:
         }
         now = datetime.datetime.now().isoformat(timespec="seconds")
         trigger_config = {"schedule_type": "once", "run_at": "2026-10-21T00:00"}
+        cursor = conn.execute(
+            "INSERT INTO automations (tenant_id, name, trigger_type, trigger_config, enabled, "
+            "created_at, updated_at) VALUES (1, ?, 'scheduled', ?, 0, ?, ?)",
+            (name, json.dumps(trigger_config, ensure_ascii=False), now, now),
+        )
+        automation_id = cursor.lastrowid
+        conn.execute(
+            "INSERT INTO automation_steps (automation_id, step_order, delay_minutes, action_type, "
+            "action_config) VALUES (?, 1, 0, 'send_whatsapp_message', ?)",
+            (automation_id, json.dumps(action_config, ensure_ascii=False)),
+        )
+        for phone, full_name in recipients:
+            conn.execute(
+                "INSERT INTO automation_recipients (automation_id, phone, full_name, created_at) "
+                "VALUES (?, ?, ?, ?)",
+                (automation_id, phone, full_name, now),
+            )
+        conn.commit()
+
+    # זורעת פעם אחת קמפיין חד-פעמי דחוף (לבקשת המשתמשת, 2026-10-27) - הודעה על סגירת
+    # הסטודיו היום, ל-42 מנויות FITNESS YOUNG פעילות (מתוך 57 - 15 ללא טלפון רשום). בדקתי
+    # בפועל: אף אחת מה-42 לא בתוך חלון 24 השעות כרגע (0 מתאימות לטקסט חופשי מיידי) - כולן
+    # תלויות באישור התבנית "studio_closure_notice_v2" (UTILITY, הוגשה 27/10). run_at כבר
+    # בעבר בכוונה - תירה בפועל ברגע שתופעל, לא משנה מתי
+    @staticmethod
+    def _seed_studio_closure_manual_campaign(conn):
+        import datetime
+
+        name = "סגירת סטודיו - שליחה ידנית 27.10.26"
+        exists = conn.execute("SELECT 1 FROM automations WHERE name = ?", (name,)).fetchone()
+        if exists:
+            return
+
+        recipients = [
+            ("0525771536", "אביגיל דרי"),
+            ("0546440416", "אביה אלמליח"),
+            ("0547561601", "אגם פואה"),
+            ("0545595888", "אדל אפרהימי"),
+            ("0524716157", "אור לוטאטי"),
+            ("0545508028", "אורי קוגן"),
+            ("0506418048", "אמה סחנין"),
+            ("0544477046", "אן שושנה"),
+            ("0528388505", "גפן רוסנו"),
+            ("0522604546", "דניאל מלול"),
+            ("0509456767", "דניאל דשוסקי"),
+            ("0546044055", "הילי שוסטרמן"),
+            ("0502207307", "הלל בן חמו"),
+            ("0523773456", "זוהר צור"),
+            ("0526425054", "טליה דדון"),
+            ("0543075772", "טליה אוראון"),
+            ("0538050001", "יובל עמר 2"),
+            ("0525695777", "יובל שחר"),
+            ("0523434978", "יובל רום"),
+            ("0542221263", "יעל פלד"),
+            ("0524291639", "ירדן דקל"),
+            ("0545751192", "ליאל גולדמן"),
+            ("0546372922", "ליה אברהם"),
+            ("0547499084", "ליה ילסקי"),
+            ("0548825167", "מיה כהן"),
+            ("0548044083", "מיכל אידלמן"),
+            ("0526274888", "מיקה ורון"),
+            ("0524043238", "נויה בייקר"),
+            ("0507400515", "נויה קובליו"),
+            ("0545870016", "נועה אברהם"),
+            ("0544202077", "נועה שלו"),
+            ("0549700559", "עומר נרזעי"),
+            ("0544430717", "עופרי יסימובסקי"),
+            ("0524415888", "עופרי שוורץ"),
+            ("0549996457", "ענבר שם טוב"),
+            ("0508117906", "פארי ביטון"),
+            ("0549094627", "צליל סרג"),
+            ("0553057341", "קרן ברקן שם טוב"),
+            ("0526456056", "רומי פסטרנק"),
+            ("0523337862", "שיר זמר"),
+            ("0547467137", "תמר גנון"),
+            ("0508540956", "תמר ישראל"),
+        ]
+
+        action_config = {
+            "mode": "template",
+            "template_name": "studio_closure_notice_v2",
+            "template_language": "he",
+            "param_templates": ["{first_name}"],
+        }
+        now = datetime.datetime.now().isoformat(timespec="seconds")
+        trigger_config = {"schedule_type": "once", "run_at": "2026-10-27T00:00"}
         cursor = conn.execute(
             "INSERT INTO automations (tenant_id, name, trigger_type, trigger_config, enabled, "
             "created_at, updated_at) VALUES (1, ?, 'scheduled', ?, 0, ?, ?)",
