@@ -109,3 +109,16 @@ export function buildContent(item, bytes) {
   if (mime.startsWith('audio/')) return { audio: bytes, mimetype: mime };
   return { document: bytes, caption, mimetype: mime, fileName: item.attachment_name || 'file' };
 }
+
+// Why a message was not turned into a record - written to the gateway log so a missing message can be explained.
+export async function whySkipped(message, lookupLidToPhone) {
+  const jid = message?.key?.remoteJid || '';
+  if (!message?.key?.id) return 'no message id';
+  if (!jid) return 'no chat id';
+  if (IGNORED_SERVERS.some((s) => jid.endsWith(s))) return `ignored chat type (${jid.split('@')[1]})`;
+  if (!message.message) return `no content (stub ${message.messageStubType ?? 'none'}; probably could not be decrypted yet)`;
+  if (jid.endsWith('@lid') && !(await resolvePhone(message.key, lookupLidToPhone))) return `could not map ${jid} to a phone number (alt: ${message.key.remoteJidAlt || 'none'})`;
+  const info = describe(message.message);
+  if (!info) return `not a chat message (${Object.keys(unwrap(message.message)).join(',') || 'empty'})`;
+  return 'unknown';
+}

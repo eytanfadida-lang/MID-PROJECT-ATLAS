@@ -5,7 +5,7 @@ import pino from 'pino';
 import { randomBytes } from 'node:crypto';
 import { rm } from 'node:fs/promises';
 import { join } from 'node:path';
-import { MAX_MEDIA_BYTES, buildContent, toReceipts, toRecord } from './messages.js';
+import { MAX_MEDIA_BYTES, buildContent, toReceipts, toRecord, whySkipped } from './messages.js';
 
 const RECONNECT_DELAYS_MS = [2000, 5000, 10000, 30000];
 const FIRST_QR_TTL_S = 60; // WhatsApp keeps the first QR for 60s, later ones for 20s
@@ -99,14 +99,21 @@ export function createBaileysSessionFactory({ authDir, api, log = console.log })
 
     async function handleUpsert(socket, { messages, type }) {
       // "notify" = new/just-delivered messages (including ones that arrived while we were offline). "append" is history.
-      if (type !== 'notify') return;
+      if (type !== 'notify') {
+        log(`#${account.id} upsert ignored (type ${type}, ${messages.length} message(s))`);
+        return;
+      }
       const records = [];
       for (const message of messages) {
         try {
           if (sentIds.has(message.key?.id)) continue; // echo of something we just sent
           const lookup = async (lid) => socket.signalRepository?.lidMapping?.getPNForLID?.(lid) ?? null;
           const record = await toRecord(message, lookup);
-          if (!record) continue;
+          if (!record) {
+            log(`#${account.id} message skipped: ${await whySkipped(message, lookup)}`);
+            continue;
+          }
+          log(`#${account.id} message ${record.direction} from ${record.phone} (${record.media || 'text'})`);
           if (record.media && record.size <= MAX_MEDIA_BYTES) {
             try {
               const buffer = await downloadMediaMessage(message, 'buffer', {}, { logger, reuploadRequest: socket.updateMediaMessage });
@@ -158,6 +165,7 @@ export function createBaileysSessionFactory({ authDir, api, log = console.log })
           failures = 0;
           qrCount = 0;
           connected = true;
+          log(`#${account.id} connected`);
           const phone = String(socket.user?.id || '').split(':')[0].split('@')[0] || null;
           report({ status: 'connected', phone });
         }
