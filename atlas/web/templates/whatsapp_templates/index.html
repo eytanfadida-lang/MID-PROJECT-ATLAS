@@ -41,7 +41,7 @@
 </div>
 
 <div class="wa-section-head">
-    <h4>תבניות קיימות</h4>
+    <h2>תבניות קיימות</h2>
     <a href="#wa-new-form" class="btn btn-sm">＋ תבנית חדשה</a>
 </div>
 
@@ -88,7 +88,7 @@
 {% endif %}
 
 <div class="wa-new" id="wa-new-form">
-    <h4>תבנית חדשה</h4>
+    <h2>תבנית חדשה</h2>
     <div class="wa-new-layout">
         <form method="post" action="{{ url_for('whatsapp_templates.create_template') }}" class="wa-form">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">

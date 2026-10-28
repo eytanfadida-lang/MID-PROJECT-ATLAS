@@ -68,7 +68,7 @@
     <table class="leads-table mobile-cards">
         <thead>
             <tr>
-                <th class="col-select"><input type="checkbox" id="select-all-checkbox"></th>
+                <th class="col-select"><input type="checkbox" id="select-all-checkbox" aria-label="בחירת כל הלידים"></th>
                 <th class="col-created">תאריך</th>
                 <th class="col-status">סטטוס</th>
                 <th class="col-assigned">מנהל לקוח</th>
@@ -86,12 +86,12 @@
         <tbody>
             {% for lead in leads %}
             <tr class="{{ 'is-new' if statuses and lead.status == statuses[0] else '' }}">
-                <td class="col-select"><input type="checkbox" class="lead-select-checkbox" value="{{ lead.id }}"></td>
+                <td class="col-select"><input type="checkbox" class="lead-select-checkbox" value="{{ lead.id }}" aria-label="בחירת {{ lead.full_name }}"></td>
                 <td class="col-created" data-label="תאריך">{{ lead.created_datetime_stamp | format_lead_datetime }}</td>
                 <td class="col-status">
                     <form method="post" action="{{ url_for('leads.update_status', lead_id=lead.id) }}">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                        <select name="status" class="status-select" style="--status-color: {{ status_colors.get(lead.status, default_status_color) }};" onchange="this.form.submit()">
+                        <select name="status" class="status-select" aria-label="סטטוס של {{ lead.full_name }}" style="--status-color: {{ status_colors.get(lead.status, default_status_color) }};" onchange="this.form.submit()">
                             {% for s in statuses %}
                             <option value="{{ s }}" style="background: {{ status_colors.get(s, default_status_color) }}; color: #fff;" {{ "selected" if s == lead.status else "" }}>{{ s }}</option>
                             {% endfor %}
@@ -101,7 +101,7 @@
                 <td class="col-assigned" data-label="מנהל לקוח">
                     <form method="post" action="{{ url_for('leads.assign_lead', lead_id=lead.id) }}" class="inline-form">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                        <select name="assigned_user" class="assigned-select" onchange="this.form.submit()">
+                        <select name="assigned_user" class="assigned-select" aria-label="מנהל לקוח של {{ lead.full_name }}" onchange="this.form.submit()">
                             <option value="">— ללא משויך —</option>
                             {% for user in users %}
                             <option value="{{ user.username }}" {{ "selected" if user.username == lead.assigned_user else "" }}>{{ user.username }}</option>

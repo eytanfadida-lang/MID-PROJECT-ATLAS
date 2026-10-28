@@ -1925,7 +1925,10 @@ body.dark .automations-group-header-row:hover {
 }
 
 .wa-section-head h4,
-.wa-new h4 {
+.wa-new h4,
+.wa-section-head h2,
+.wa-new h2,
+h2.sub-title {
     margin: 0;
     font-size: 16px;
 }
@@ -7953,4 +7956,122 @@ body.dark .kpi {
     border-radius: 10px;
     background: color-mix(in srgb, var(--accent) 14%, var(--surface));
     font-size: 14px;
+}
+
+/* נגישות: קישור "דילוג לתוכן" (מוצג רק בפוקוס מקלדת) ו-<main> שלא מקבל מסגרת פוקוס כשמדלגים אליו */
+.skip-link {
+    position: absolute;
+    inset-inline-start: 12px;
+    top: -60px;
+    z-index: 1000;
+    padding: 10px 16px;
+    border-radius: 0 0 10px 10px;
+    background: var(--ink);
+    color: #fff;
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.skip-link:focus {
+    top: 0;
+}
+
+main.content:focus {
+    outline: none;
+}
+
+.appt-day-head h2 {
+    margin: 0;
+    font-size: 17px;
+}
+
+h2.auto-section-title,
+h3.auto-card-title {
+    font-family: inherit;
+}
+
+h2.auto-section-title {
+    font-size: 17px;
+}
+
+/* =====================================================================================================
+   מובייל: גודל מטרות מגע. ביקורת איכות מדדה רכיבים קטנים מ-24px (מתחת למינימום של WCAG 2.2) ורבים מתחת ל-44px:
+   אייקון הוואטסאפ (22px), מספרי טלפון וקישורי אימייל בכרטיסים, ימי השבוע באוטומציות (14px רוחב), מתגי ההפעלה,
+   "לא נקרא" ברשימת השיחות. מגדילים את אזור הלחיצה, ובמתגים בלי לשנות את המראה (אזור שקוף סביבם)
+   ===================================================================================================== */
+@media (max-width: 800px) {
+    .whatsapp-icon,
+    .tel-link,
+    .cust-link {
+        display: inline-flex;
+        align-items: center;
+        min-height: 44px;
+        min-width: 44px;
+    }
+
+    .whatsapp-icon {
+        justify-content: center;
+    }
+
+    .btn {
+        min-height: 44px;
+    }
+
+    .wa-chip,
+    .chat-mark-unread {
+        min-height: 40px;
+    }
+
+    .auto-cat {
+        min-height: 44px;
+    }
+
+    .auto-days {
+        flex: 1 1 100%;
+        order: 5;
+    }
+
+    .auto-day {
+        min-height: 40px;
+        min-width: 0;
+    }
+
+    .switch {
+        position: relative;
+    }
+
+    .switch::after {
+        content: "";
+        position: absolute;
+        inset: -12px -6px;
+    }
+}
+
+@media (max-width: 800px) {
+    .kpi-help {
+        width: 24px;
+        height: 24px;
+        font-size: 12px;
+    }
+
+    .dash-table summary {
+        display: flex;
+        align-items: center;
+        min-height: 44px;
+    }
+
+    /* מתג הפעלה: 46x26 במקום 40x22 (מינימום 24px לגובה), הידית בהתאם */
+    .switch {
+        width: 46px;
+        height: 26px;
+    }
+
+    .switch-knob {
+        width: 20px;
+        height: 20px;
+    }
+
+    .switch.on .switch-knob {
+        transform: translateX(-20px);
+    }
 }

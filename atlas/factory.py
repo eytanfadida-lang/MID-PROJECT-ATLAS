@@ -222,6 +222,35 @@ def create_app():
 
     app.before_request(validate_csrf)
 
+    # כותרות אבטחה ומטמון לכל תשובה (נבדק בביקורת איכות: לא הוגדרו קודם):
+    #  - nosniff / SAMEORIGIN / Referrer-Policy / Permissions-Policy: מניעת הטמעת האתר בדף זר (clickjacking על פעולות מנהל),
+    #    ניחוש סוג תוכן, ודליפת כתובות. HSTS רק כשהבקשה הגיעה ב-HTTPS (PythonAnywhere מסיים TLS לפני האפליקציה)
+    #  - דפי האפליקציה הם אישיים: "private, no-cache" (לא נשמרים במטמון משותף, ותמיד מאומתים מחדש)
+    #  - קבצים סטטיים: עם ?v=<גרסה> (ראו asset_version) - שנה שלמה ו-immutable; גופנים/אייקונים - שבוע;
+    #    sw.js והמניפסט תמיד מאומתים מחדש (חייבים להתעדכן מיד)
+    @app.after_request
+    def add_security_and_cache_headers(response):
+        headers = response.headers
+        headers.setdefault("X-Content-Type-Options", "nosniff")
+        headers.setdefault("X-Frame-Options", "SAMEORIGIN")
+        headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+        headers.setdefault("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
+        if request.is_secure or request.headers.get("X-Forwarded-Proto") == "https":
+            headers.setdefault("Strict-Transport-Security", "max-age=31536000")
+        path = request.path
+        if path.startswith("/static/"):
+            if path.endswith("/sw.js"):
+                headers["Cache-Control"] = "no-cache"
+            elif request.args.get("v"):
+                headers["Cache-Control"] = "public, max-age=31536000, immutable"
+            elif path.rsplit(".", 1)[-1] in ("woff2", "png", "ico", "svg"):
+                headers["Cache-Control"] = "public, max-age=604800"
+        elif path in ("/sw.js", "/manifest.webmanifest"):
+            headers["Cache-Control"] = "no-cache"
+        else:
+            headers.setdefault("Cache-Control", "private, no-cache")
+        return response
+
     app.jinja_env.globals["role_badge_class"] = role_badge_class
     app.jinja_env.filters["format_lead_datetime"] = format_lead_datetime
     app.jinja_env.filters["whatsapp_link"] = whatsapp_link

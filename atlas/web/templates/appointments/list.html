@@ -25,7 +25,7 @@
 {% for g in groups %}
 <section class="appt-day" aria-label="{{ g.date | day_label }}">
     <div class="appt-day-head">
-        <h3>{{ g.date | day_label }}</h3>
+        <h2>{{ g.date | day_label }}</h2>
         <span>{{ g['items'] | length }} תורים</span>
     </div>
     <div class="studio-box">

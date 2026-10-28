@@ -22,6 +22,7 @@
 </head>
 {% set ep = request.endpoint %}
 <body class="{{ 'page-leads-list' if ep == 'leads.list_leads' else ('page-chat-list' if ep == 'bot_conversations.list_conversations' else ('page-chat-thread' if ep == 'bot_conversations.view_conversation' else ('page-dashboard' if ep == 'index' else ''))) }}">
+    <a href="#main" class="skip-link">דילוג לתוכן הראשי</a>
     <div class="app-shell">
         <div class="topbar">
             <a href="#" class="topbar-back" id="topbar-back" aria-label="חזרה" hidden>→</a>
@@ -123,7 +124,7 @@
             {% endwith %}
             </div>
 
-            <div class="content">
+            <main class="content" id="main" tabindex="-1">
                 <div class="card">
                     <div class="card-header">
                         <h1>{% block page_heading %}{% endblock %}</h1>
@@ -131,7 +132,7 @@
                     </div>
                     {% block content %}{% endblock %}
                 </div>
-            </div>
+            </main>
         </div>
     </div>
 
@@ -241,6 +242,25 @@
             toggles.forEach(function (toggle) { toggle.addEventListener('click', flip); });
             if (themeRow) themeRow.addEventListener('click', flip);
         });
+    })();
+
+    // נגישות: טפסים רבים כותבים <label> ושדה זה לצד זה בלי for/id, וקורא מסך לא מקשר ביניהם. מקשרים אוטומטית
+    // כשבתוך אותו קונטיינר (.form-group וכד') יש תווית אחת ושדה אחד
+    (function () {
+        var uid = 0;
+        function link(root) {
+            root.querySelectorAll('label:not([for])').forEach(function (label) {
+                if (label.querySelector('input,select,textarea')) return; // השדה בתוך התווית - כבר מקושר
+                var box = label.parentElement;
+                if (!box) return;
+                var fields = box.querySelectorAll('input:not([type=hidden]),select,textarea');
+                if (fields.length !== 1 || box.querySelectorAll('label').length !== 1) return;
+                var field = fields[0];
+                if (!field.id) field.id = 'auto-field-' + (++uid);
+                label.htmlFor = field.id;
+            });
+        }
+        document.addEventListener('DOMContentLoaded', function () { link(document); });
     })();
 
     // הודעות הצלחה/שגיאה (flash) נעלמות אוטומטית אחרי 3 שניות
