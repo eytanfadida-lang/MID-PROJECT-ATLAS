@@ -23,21 +23,29 @@ UPLOADS_DIR = PROJECT_ROOT / "atlas" / "web" / "static" / "uploads"
 # שני הראוטים למטה מציגים את אותו עמוד דו-עמודות (רשימת שיחות מימין, שיחה נבחרת
 # משמאל, כמו וואטסאפ עצמו) - view_conversation רק מוסיף לו את השיחה הנבחרת
 def _with_number_labels(conversations, repos=None):
+    labels = {}
     for conversation in conversations:
         number_id = conversation.get("bot_phone_number_id")
-        linked_label = linked_whatsapp.label_for(repos, number_id) if repos is not None else None
-        conversation["bot_phone_label"] = linked_label or whatsapp_bot.describe_phone_number_id(number_id)
-        conversation["is_linked"] = linked_whatsapp.account_id_of(number_id) is not None
+        if number_id not in labels:
+            linked_label = linked_whatsapp.label_for(repos, number_id) if repos is not None else None
+            labels[number_id] = (
+                linked_label or whatsapp_bot.describe_phone_number_id(number_id),
+                linked_whatsapp.account_id_of(number_id) is not None,
+            )
+        conversation["bot_phone_label"], conversation["is_linked"] = labels[number_id]
     return conversations
 
 
 # מעשירה כל שיחה בפרטי הלקוחה מהקאש המקומי של Arbox (arbox_member_cache, ראו
 # atlas/data/repositories/arbox_member_cache_repository.py - מתעדכן תדיר ע"י /tasks/arbox-sync,
 # אין כאן קריאה חיה ל-Arbox בטעינת העמוד). כל השדות None אם המספר לא נמצא בקאש (למשל ליד
-# שעוד לא הפך ללקוחה ב-Arbox, או מספר שגוי) - הטמפלט נופל חזרה למספר הטלפון/מסתיר את השדות
+# שעוד לא הפך ללקוחה ב-Arbox, או מספר שגוי) - הטמפלט נופל חזרה למספר הטלפון/מסתיר את השדות.
+# הקאש והשהיות הבוט נשלפים בשאילתה אחת לכל הרשימה (לא שאילתה לכל שיחה)
 def _with_names(conversations, repos):
+    members = repos.arbox_member_cache.get_many_by_phone([c["phone"] for c in conversations])
+    paused = repos.customer_bot_messages.paused_phones()
     for conversation in conversations:
-        member = repos.arbox_member_cache.get_by_phone(conversation["phone"])
+        member = members.get(conversation["phone"])
         full_name = f"{member['first_name']} {member['last_name']}".strip() if member else ""
         conversation["full_name"] = full_name or None
         conversation["membership_type_name"] = (member or {}).get("membership_type_name") or None
@@ -49,7 +57,7 @@ def _with_names(conversations, repos):
         # ב-Arbox" לבין "מופיעה אבל המנוי שלה לא פעיל כרגע"
         conversation["active"] = bool(member["active"]) if member else None
         conversation["synced_at"] = (member or {}).get("synced_at") or None
-        conversation["bot_paused"] = repos.customer_bot_messages.is_bot_paused(conversation["phone"])
+        conversation["bot_paused"] = conversation["phone"] in paused
     return conversations
 
 

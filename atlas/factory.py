@@ -1,3 +1,4 @@
+import gzip
 import datetime
 import os
 import threading
@@ -179,6 +180,26 @@ def _dashboard_data(repos, is_admin, username="", days=30):
     }
 
 
+# דחיסת gzip לדפי HTML ו-JSON (דף השיחות לבדו ~500KB, ב-gzip כ-10%) - מתעלמת מקבצים סטטיים (נשרתים
+# ישירות ע"י השרת) ומתשובות שכבר דחוסות/זרימה. מקטינה משמעותית את זמן הטעינה בטלפון
+def _gzip_response(response):
+    if (
+        response.direct_passthrough
+        or response.status_code < 200 or response.status_code >= 300
+        or "Content-Encoding" in response.headers
+        or "gzip" not in request.headers.get("Accept-Encoding", "")
+        or response.mimetype not in ("text/html", "application/json")
+    ):
+        return
+    data = response.get_data()
+    if len(data) < 1024:
+        return
+    response.set_data(gzip.compress(data, compresslevel=5))
+    response.headers["Content-Encoding"] = "gzip"
+    response.headers["Content-Length"] = str(len(response.get_data()))
+    response.headers.add("Vary", "Accept-Encoding")
+
+
 def create_app():
     # יוצר/ממגר את כל הטבלאות פעם אחת בזמן יצירת האפליקציה (רץ גם תחת flask run וגם תחת python app.py)
     db_context.bootstrap_databases()
@@ -249,6 +270,7 @@ def create_app():
             headers["Cache-Control"] = "no-cache"
         else:
             headers.setdefault("Cache-Control", "private, no-cache")
+        _gzip_response(response)
         return response
 
     app.jinja_env.globals["role_badge_class"] = role_badge_class

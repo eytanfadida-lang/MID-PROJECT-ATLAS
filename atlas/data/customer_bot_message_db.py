@@ -69,6 +69,10 @@ class CustomerBotMessageDB:
             if name not in columns:
                 conn.execute(f"ALTER TABLE customer_bot_messages ADD COLUMN {name} {column_type}")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_customer_bot_messages_wamid ON customer_bot_messages(wamid)")
+        # רשימת השיחות והשיחה הפתוחה שולפות לפי טלפון ומסדרות לפי id - אינדקס מורכב מייתר מיון וסריקה
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_customer_bot_messages_phone_id ON customer_bot_messages(phone, id)"
+        )
 
     def close(self):
         self.conn.close()

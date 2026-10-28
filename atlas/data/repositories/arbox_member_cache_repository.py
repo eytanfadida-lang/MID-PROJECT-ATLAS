@@ -74,6 +74,38 @@ class ArboxMemberCacheRepository:
         ).fetchall()
         return [row[0] for row in rows]
 
+    # כמו get_by_phone, אבל לכמה טלפונים בשאילתה אחת (לרשימת השיחות, במקום שאילתה לכל שיחה).
+    # מחזירה {טלפון כפי שנשלח: רשומה} רק למי שנמצא בקאש
+    def get_many_by_phone(self, phones):
+        wanted = {}
+        for phone in phones:
+            wanted.setdefault(normalize_phone(phone), []).append(phone)
+        keys = [k for k in wanted if k]
+        found = {}
+        for start in range(0, len(keys), 500):
+            chunk = keys[start:start + 500]
+            marks = ",".join("?" * len(chunk))
+            rows = self.conn.execute(
+                f"SELECT phone, first_name, last_name, active, membership_start_date, membership_end_date, "
+                f"synced_at, user_id, membership_user_id, membership_type_name, debt, cancelled "
+                f"FROM {TABLE_NAME} WHERE phone IN ({marks})",
+                chunk,
+            ).fetchall()
+            for row in rows:
+                member = self._row_to_member(row)
+                for original in wanted.get(row[0], []):
+                    found[original] = member
+        return found
+
+    @staticmethod
+    def _row_to_member(row):
+        return {
+            "phone": row[0], "first_name": row[1], "last_name": row[2], "active": bool(row[3]),
+            "membership_start_date": row[4], "membership_end_date": row[5], "synced_at": row[6],
+            "user_id": row[7], "membership_user_id": row[8], "membership_type_name": row[9],
+            "debt": row[10], "cancelled": bool(row[11]),
+        }
+
     def get_by_phone(self, phone):
         row = self.conn.execute(
             f"SELECT phone, first_name, last_name, active, membership_start_date, membership_end_date, "

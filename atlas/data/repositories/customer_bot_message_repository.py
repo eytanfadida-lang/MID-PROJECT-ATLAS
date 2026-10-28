@@ -226,6 +226,9 @@ class CustomerBotMessageRepository:
 
     # בודקת אם הבוט מושהה לשיחה הזו (נציגה אנושית כותבת ישירות) - ראו set_bot_paused.
     # נבדקת ב-webhooks.py לפני כל טיפול בבוט (גם לפני fallback של הודעה לא-טקסטואלית)
+    def paused_phones(self):
+        return {row[0] for row in self.conn.execute("SELECT phone FROM bot_paused_conversations").fetchall()}
+
     def is_bot_paused(self, phone):
         row = self.conn.execute(
             "SELECT 1 FROM bot_paused_conversations WHERE phone = ?", (phone,)
