@@ -8075,3 +8075,42 @@ h2.auto-section-title {
         transform: translateX(-20px);
     }
 }
+
+/* הודעות יוצאות בצ'אט - ירוק כמו בוואטסאפ (בועת כישלון נשארת אדומה) */
+.chat-bubble-out:not(.chat-bubble-failed),
+body.dark .chat-bubble-out:not(.chat-bubble-failed) {
+    background: #d9fdd3;
+    color: #111b21;
+}
+
+body.dark .chat-bubble-out:not(.chat-bubble-failed) {
+    background: #005c4b;
+    color: #e9edef;
+}
+
+.chat-bubble-out:not(.chat-bubble-failed) .chat-time,
+.chat-bubble-out:not(.chat-bubble-failed) .chat-status:not(.chat-status-failed):not(.chat-status-read) {
+    color: rgba(17, 27, 33, 0.62);
+}
+
+body.dark .chat-bubble-out:not(.chat-bubble-failed) .chat-time,
+body.dark .chat-bubble-out:not(.chat-bubble-failed) .chat-status:not(.chat-status-failed):not(.chat-status-read) {
+    color: rgba(233, 237, 239, 0.7);
+}
+
+/* "נקראה" כחול כמו הוי הכחול בוואטסאפ - ירוק על ירוק לא נקרא */
+.chat-bubble-out .chat-status-read {
+    color: #1565a8;
+}
+
+body.dark .chat-bubble-out .chat-status-read {
+    color: #53bdeb;
+}
+
+.chat-bubble-out .chat-status-failed {
+    color: #b42318;
+}
+
+body.dark .chat-bubble-out .chat-status-failed {
+    color: #ffb4a9;
+}
