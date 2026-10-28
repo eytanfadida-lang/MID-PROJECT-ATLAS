@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { Gateway, createApi } from '../gateway.js';
 
-function makeHarness(initialAccounts, { outbox = [] } = {}) {
+function makeHarness(initialAccounts, { outbox = [], gatewayOptions = {} } = {}) {
   const accounts = new Map(initialAccounts.map((a) => [a.id, { status: 'starting', desired: 'connect', label: `a${a.id}`, ...a }]));
   const reports = [];
   const results = [];
@@ -45,7 +45,7 @@ function makeHarness(initialAccounts, { outbox = [] } = {}) {
     sessions.push(s);
     return s;
   };
-  const gateway = new Gateway({ api, createSession, log: () => {}, sleep: async () => {}, random: () => 0 });
+  const gateway = new Gateway({ api, createSession, log: () => {}, sleep: async () => {}, random: () => 0, backgroundSends: false, ...gatewayOptions });
   return { gateway, accounts, reports, sessions, results, messages, setDown: (v) => { down = v; }, queueOutbox: (items) => { pendingOutbox.push(...items); } };
 }
 
@@ -189,4 +189,18 @@ test('api requests are aborted when the app does not answer (so the loop cannot 
   });
   const api = createApi({ baseUrl: 'http://x', getToken: () => 't', fetchImpl, timeoutMs: 50 });
   await assert.rejects(api.sync());
+});
+
+test('a hanging send does not block polling, and is reported as failed after the timeout', async () => {
+  const h = makeHarness([{ id: 1 }], { gatewayOptions: { backgroundSends: true, sendTimeoutMs: 60 } });
+  await h.gateway.tick();
+  h.sessions[0].send = () => new Promise(() => {}); // never resolves
+  h.queueOutbox([{ id: 30, account_id: 1, to: '972501234567', body: 'stuck' }]);
+  const started = Date.now();
+  await h.gateway.tick(); // returns at once although the send is hanging
+  assert.ok(Date.now() - started < 50, 'tick must not wait for the send');
+  await h.gateway.tick(); // polling continues
+  await h.gateway.draining;
+  const result = h.results.find(([id]) => id === 30);
+  assert.ok(result && result[1].ok === false && /בזמן/.test(result[1].error));
 });

@@ -11,10 +11,14 @@
 // events.receipts([...]) whenever something happens.
 
 const SEND_GAP_MS = [800, 1800]; // pause between consecutive sends from one batch: bursts look robotic to WhatsApp
+export const SEND_TIMEOUT_MS = 45000; // a send that takes longer is reported as failed (it may still go out)
 const MAX_PENDING_REPORTS = 500;
 
 export class Gateway {
-  constructor({ api, createSession, log = console.log, sleep = (ms) => new Promise((r) => setTimeout(r, ms)), random = Math.random }) {
+  constructor({
+    api, createSession, log = console.log, sleep = (ms) => new Promise((r) => setTimeout(r, ms)), random = Math.random,
+    backgroundSends = true, sendTimeoutMs = SEND_TIMEOUT_MS,
+  }) {
     this.api = api;
     this.createSession = createSession;
     this.log = log;
@@ -24,6 +28,10 @@ export class Gateway {
     this.lastReported = new Map(); // account id -> JSON of last status report (skip exact duplicates)
     this.pendingReports = []; // messages/receipts/send results that could not be delivered to the app yet
     this.nextPollMs = null; // the app tells us how soon to come back (fast when busy)
+    this.backgroundSends = backgroundSends; // sends run beside the polling loop, so a slow send never stops the heartbeat
+    this.sendTimeoutMs = sendTimeoutMs;
+    this.outboxQueue = [];
+    this.draining = null;
   }
 
   // Deliver something to the app; if the app is unreachable keep it and retry on the next pass (bounded).
@@ -114,25 +122,38 @@ export class Gateway {
       }
     }
 
-    await this.sendOutbox(outbox);
+    const drained = this.sendOutbox(outbox);
+    if (!this.backgroundSends) await drained;
     return accounts.length;
   }
 
-  async sendOutbox(items) {
+  // Queue the items and make sure one drain loop is running. Returns the promise of that loop.
+  sendOutbox(items) {
+    this.outboxQueue.push(...items);
+    if (!this.draining && this.outboxQueue.length) {
+      this.draining = this.drain().finally(() => {
+        this.draining = null;
+      });
+    }
+    return this.draining || Promise.resolve();
+  }
+
+  async drain() {
     let first = true;
-    for (const item of items) {
-      const session = this.sessions.get(item.account_id);
+    while (this.outboxQueue.length) {
+      const item = this.outboxQueue.shift();
       if (!first) {
         const [min, max] = SEND_GAP_MS;
         await this.sleep(min + this.random() * (max - min));
       }
       first = false;
+      const session = this.sessions.get(item.account_id);
       let result;
       if (!session || !session.isConnected()) {
         result = { ok: false, error: 'החשבון לא מחובר' };
       } else {
         try {
-          const sent = await session.send(item);
+          const sent = await this.withTimeout(session.send(item), this.sendTimeoutMs);
           result = { ok: true, wamid: sent?.wamid || null };
         } catch (e) {
           this.log(`send #${item.id} failed: ${e.message}`);
@@ -141,6 +162,14 @@ export class Gateway {
       }
       await this.deliver(`send result #${item.id}`, () => this.api.reportResult(item.id, result));
     }
+  }
+
+  withTimeout(promise, ms) {
+    let timer;
+    const timeout = new Promise((_, reject) => {
+      timer = setTimeout(() => reject(new Error('השליחה לוואטסאפ לא הסתיימה בזמן - ייתכן שההודעה לא נשלחה')), ms);
+    });
+    return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
   }
 
   async remove(id, session) {
