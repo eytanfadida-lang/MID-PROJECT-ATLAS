@@ -169,11 +169,15 @@ export class Gateway {
 
 // HTTP client for the Atlas gateway API (/gateway/*). `getToken` is called again after a 401 so a
 // regenerated token file is picked up without restarting the process.
-export function createApi({ baseUrl, getToken, fetchImpl = fetch }) {
+export const REQUEST_TIMEOUT_MS = 20000;
+
+export function createApi({ baseUrl, getToken, fetchImpl = fetch, timeoutMs = REQUEST_TIMEOUT_MS }) {
   let token = getToken();
   async function request(path, options = {}, retry = true) {
+    // A request that hangs would freeze the whole polling loop (and the heartbeat the app uses to tell the gateway is alive)
     const response = await fetchImpl(`${baseUrl}${path}`, {
       ...options,
+      signal: AbortSignal.timeout(timeoutMs),
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', ...(options.headers || {}) },
     });
     if (response.status === 401 && retry) {
@@ -202,7 +206,7 @@ export function createApi({ baseUrl, getToken, fetchImpl = fetch }) {
     },
     // Fetch an attachment the admin uploaded in the app (public static file) so it can be sent through WhatsApp.
     async downloadAttachment(path) {
-      const response = await fetchImpl(`${baseUrl}${path}`);
+      const response = await fetchImpl(`${baseUrl}${path}`, { signal: AbortSignal.timeout(timeoutMs * 3) });
       if (!response.ok) throw new Error(`GET ${path} -> HTTP ${response.status}`);
       return Buffer.from(await response.arrayBuffer());
     },

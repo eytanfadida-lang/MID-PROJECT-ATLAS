@@ -122,3 +122,14 @@ export async function whySkipped(message, lookupLidToPhone) {
   if (!info) return `not a chat message (${Object.keys(unwrap(message.message)).join(',') || 'empty'})`;
   return 'unknown';
 }
+
+// WhatsApp delivers messages that arrived while we were offline (a restart, a dropped connection) as "append" upserts,
+// the same type as the big history download that follows linking a device. Accept an "append" message only if it is
+// a recent message from the customer; old history is ignored.
+export const APPEND_MAX_AGE_SECONDS = 12 * 60 * 60;
+
+export function isRecentIncoming(message, nowSeconds = Math.floor(Date.now() / 1000), maxAge = APPEND_MAX_AGE_SECONDS) {
+  if (!message?.key || message.key.fromMe) return false;
+  const timestamp = toNumber(message.messageTimestamp);
+  return timestamp > 0 && nowSeconds - timestamp <= maxAge;
+}

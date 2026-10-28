@@ -5,7 +5,7 @@ import pino from 'pino';
 import { randomBytes } from 'node:crypto';
 import { rm } from 'node:fs/promises';
 import { join } from 'node:path';
-import { MAX_MEDIA_BYTES, buildContent, toReceipts, toRecord, whySkipped } from './messages.js';
+import { MAX_MEDIA_BYTES, buildContent, isRecentIncoming, toReceipts, toRecord, whySkipped } from './messages.js';
 
 const RECONNECT_DELAYS_MS = [2000, 5000, 10000, 30000];
 const FIRST_QR_TTL_S = 60; // WhatsApp keeps the first QR for 60s, later ones for 20s
@@ -99,12 +99,15 @@ export function createBaileysSessionFactory({ authDir, api, log = console.log })
 
     async function handleUpsert(socket, { messages, type }) {
       // "notify" = new/just-delivered messages (including ones that arrived while we were offline). "append" is history.
+      let incoming = messages;
       if (type !== 'notify') {
-        log(`#${account.id} upsert ignored (type ${type}, ${messages.length} message(s))`);
-        return;
+        // "append" also carries messages that arrived while we were offline: keep the recent ones from customers
+        incoming = type === 'append' ? messages.filter((m) => isRecentIncoming(m)) : [];
+        log(`#${account.id} upsert type ${type}: ${messages.length} message(s), ${incoming.length} recent`);
+        if (!incoming.length) return;
       }
       const records = [];
-      for (const message of messages) {
+      for (const message of incoming) {
         try {
           if (sentIds.has(message.key?.id)) continue; // echo of something we just sent
           const lookup = async (lid) => socket.signalRepository?.lidMapping?.getPNForLID?.(lid) ?? null;

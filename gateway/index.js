@@ -53,7 +53,11 @@ async function loop() {
   let failures = 0;
   while (!stopping) {
     try {
+      const startedAt = Date.now();
       await gateway.tick();
+      const took = Date.now() - startedAt;
+      // The app treats the gateway as offline if it has not polled for 30s: make slow passes visible in the log
+      if (took > 5000) stamp(`slow pass: ${took}ms`);
       failures = 0;
     } catch (e) {
       failures += 1;

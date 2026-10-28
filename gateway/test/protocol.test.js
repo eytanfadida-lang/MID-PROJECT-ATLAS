@@ -182,3 +182,11 @@ test('api client throws on server errors', async () => {
   const api = createApi({ baseUrl: 'http://x', getToken: () => 't', fetchImpl: async () => ({ ok: false, status: 500, json: async () => ({}) }) });
   await assert.rejects(api.sync(), /HTTP 500/);
 });
+
+test('api requests are aborted when the app does not answer (so the loop cannot hang)', async () => {
+  const fetchImpl = (url, opts) => new Promise((resolve, reject) => {
+    opts.signal.addEventListener('abort', () => reject(opts.signal.reason));
+  });
+  const api = createApi({ baseUrl: 'http://x', getToken: () => 't', fetchImpl, timeoutMs: 50 });
+  await assert.rejects(api.sync());
+});

@@ -1,7 +1,7 @@
 // Tests for turning WhatsApp messages into app records (pure functions, no connection): `npm test`
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { buildContent, describe, mapReceiptStatus, resolvePhone, toReceipts, toRecord, unwrap } from '../messages.js';
+import { buildContent, describe, isRecentIncoming, mapReceiptStatus, resolvePhone, toReceipts, toRecord, unwrap } from '../messages.js';
 
 const key = (over = {}) => ({ id: 'ABC', remoteJid: '972501234567@s.whatsapp.net', fromMe: false, ...over });
 
@@ -81,4 +81,15 @@ test('outgoing content: text, image with caption, audio, and documents', () => {
 test('describe handles contacts and locations', () => {
   assert.equal(describe({ contactMessage: { displayName: 'דנה' } }).body, '[איש קשר: דנה]');
   assert.equal(describe({ locationMessage: {} }).body, '[מיקום]');
+});
+
+test('offline ("append") messages: only recent ones from customers are accepted', () => {
+  const now = 1_800_000_000;
+  const msg = (over = {}, ts = now - 600) => ({ key: { id: 'A', fromMe: false, ...over }, messageTimestamp: ts });
+  assert.equal(isRecentIncoming(msg(), now), true);
+  assert.equal(isRecentIncoming(msg({}, now - 13 * 3600), now), false, 'old history');
+  assert.equal(isRecentIncoming(msg({ fromMe: true }), now), false, 'our own messages are not imported from history');
+  assert.equal(isRecentIncoming({ key: { id: 'A' } }, now), false, 'no timestamp');
+  assert.equal(isRecentIncoming(null, now), false);
+  assert.equal(isRecentIncoming({ key: { id: 'A', fromMe: false }, messageTimestamp: { toNumber: () => now - 60 } }, now), true);
 });
