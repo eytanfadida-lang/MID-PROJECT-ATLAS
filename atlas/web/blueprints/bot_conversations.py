@@ -2,7 +2,7 @@ import datetime
 import re
 from pathlib import Path
 
-from flask import Blueprint, render_template, redirect, url_for, request, flash, abort, jsonify
+from flask import Blueprint, current_app, render_template, redirect, url_for, request, flash, abort, jsonify
 from werkzeug.utils import secure_filename
 
 from atlas.data.context import get_repos
@@ -174,23 +174,8 @@ def toggle_bot_pause(phone):
     return redirect(url_for("bot_conversations.view_conversation", phone=phone))
 
 
-@bp.route("/<phone>")
-@admin_required
-def view_conversation(phone):
-    repos = get_repos()
-    # לסמן כ"נקרא" לפני שמביאים את רשימת השיחות - כדי שהשיחה הנוכחית כבר תוצג כנקראת
-    # ברשימה בצד, בלי לחכות לרענון הבא.
-    # בקשת רענון אוטומטי (poll=1) מסמנת כנקרא רק אם הלשונית באמת גלויה (visible=1) - אחרת
-    # הודעה שהגיעה בזמן שהמנהלת בלשונית אחרת הייתה מסומנת כנקראת בלי שראתה אותה
-    is_poll = request.args.get("poll") == "1"
-    if not is_poll or request.args.get("visible") == "1":
-        repos.customer_bot_messages.mark_read(phone)
-    conversations = _with_names(
-        _with_number_labels(repos.customer_bot_messages.get_conversation_summaries(), repos), repos
-    )
-    messages = repos.customer_bot_messages.get_by_phone(phone)
-    if not messages:
-        abort(404)
+# הקשר התבנית של פאנל השיחה הפתוחה (כותרת, הודעות, שדה תשובה) - משותף לעמוד המלא ולקטע (fragment)
+def _thread_context(repos, phone, messages, active_conversation):
     latest_number_id = repos.customer_bot_messages.get_latest_bot_phone_number_id(phone)
     active_bot_label = linked_whatsapp.label_for(repos, latest_number_id) or whatsapp_bot.describe_phone_number_id(latest_number_id)
     # שיחה דרך חשבון מקושר שלא מחובר כרגע - התבנית מציגה אזהרה במקום שדה כתיבה פעיל
@@ -202,17 +187,49 @@ def view_conversation(phone):
             linked_unavailable = "החשבון שדרכו התנהלה השיחה נמחק, ולכן אי אפשר לענות כאן."
         elif active_linked["status"] != "connected":
             linked_unavailable = "החשבון שדרכו התנהלה השיחה לא מחובר כרגע. אפשר לחבר אותו מחדש בעמוד האינטגרציות."
+    return dict(
+        active_phone=phone, messages=messages, active_bot_label=active_bot_label,
+        active_conversation=active_conversation, linked_unavailable=linked_unavailable,
+    )
+
+
+@bp.route("/<phone>")
+@admin_required
+def view_conversation(phone):
+    repos = get_repos()
+    # לסמן כ"נקרא" לפני שמביאים את רשימת השיחות - כדי שהשיחה הנוכחית כבר תוצג כנקראת
+    # ברשימה בצד, בלי לחכות לרענון הבא.
+    # בקשת רענון אוטומטי (poll=1) מסמנת כנקרא רק אם הלשונית באמת גלויה (visible=1) - אחרת
+    # הודעה שהגיעה בזמן שהמנהלת בלשונית אחרת הייתה מסומנת כנקראת בלי שראתה אותה
+    is_poll = request.args.get("poll") == "1"
+    if not is_poll or request.args.get("visible") == "1":
+        repos.customer_bot_messages.mark_read(phone)
+    messages = repos.customer_bot_messages.get_by_phone(phone)
+    if not messages:
+        abort(404)
+
+    # fragment=1: פתיחת שיחה מתוך הרשימה בלי לטעון את כל הדף - מחזירה רק את פאנל השיחה (בלי שליפת כל
+    # הרשימה), והחתימה הנוכחית בכותרת כדי שהרענון האוטומטי לא יטען שוב מיותר
+    if request.args.get("fragment") == "1":
+        summaries = _with_names(_with_number_labels(repos.customer_bot_messages.get_conversation_summaries(phone), repos), repos)
+        html = render_template(
+            "bot_conversations/_thread.html",
+            **_thread_context(repos, phone, messages, summaries[0] if summaries else None),
+        )
+        response = current_app.response_class(html, mimetype="text/html")
+        response.headers["X-Chat-Signature"] = repos.customer_bot_messages.get_state_signature()
+        return response
+
+    conversations = _with_names(
+        _with_number_labels(repos.customer_bot_messages.get_conversation_summaries(), repos), repos
+    )
     active_conversation = next((c for c in conversations if c["phone"] == phone), None)
     return render_template(
         "bot_conversations/index.html",
         conversations=conversations,
-        active_phone=phone,
-        messages=messages,
-        active_bot_label=active_bot_label,
-        active_conversation=active_conversation,
         signature=repos.customer_bot_messages.get_state_signature(),
         number_labels=_number_labels(conversations),
-        linked_unavailable=linked_unavailable,
+        **_thread_context(repos, phone, messages, active_conversation),
     )
 
 

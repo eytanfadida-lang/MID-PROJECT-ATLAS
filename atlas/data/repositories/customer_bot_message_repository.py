@@ -82,7 +82,7 @@ class CustomerBotMessageRepository:
     # direction='in') חדשה (לפי id, לא timestamp - ראו mark_read) מאז שהשיחה נפתחה לאחרונה.
     # הודעות יוצאות (תגובה ידנית/אוטומטית/אוטומציה) לא הופכות שיחה ל"לא נקראה" - זו הודעה
     # שאנחנו שלחנו ביודעין, לא משהו שהלקוחה שלחה אלינו וטרם ראינו
-    def get_conversation_summaries(self):
+    def get_conversation_summaries(self, phone=None):
         rows = self.conn.execute(f"""
             SELECT phone,
                    COUNT(*) AS message_count,
@@ -97,10 +97,10 @@ class CustomerBotMessageRepository:
                    (SELECT last_read_message_id FROM bot_conversation_read_state r
                     WHERE r.phone = m1.phone) AS last_read_message_id
             FROM {TABLE_NAME} m1
-            WHERE m1.deleted_at IS NULL
+            WHERE m1.deleted_at IS NULL {"AND m1.phone = ?" if phone is not None else ""}
             GROUP BY phone
             ORDER BY last_message_at DESC
-        """).fetchall()
+        """, (phone,) if phone is not None else ()).fetchall()
         return [
             {
                 "phone": row[0],

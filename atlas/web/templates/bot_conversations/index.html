@@ -58,98 +58,7 @@
     </div>
 
     <div class="chat-app-thread">
-        {% if messages %}
-        <div class="chat-thread-header">
-            <div class="chat-header-main">
-                <a href="{{ url_for('bot_conversations.list_conversations') }}" class="chat-back" aria-label="חזרה לרשימת השיחות">→</a>
-                <span class="chat-list-avatar chat-header-avatar">{{ (active_conversation.full_name or active_phone or '?')[:1] }}</span>
-                <div class="chat-header-title">
-                    <strong>{{ active_conversation.full_name or active_phone }}</strong>
-                    <span class="chat-header-sub">{% if active_conversation.full_name %}<bdi dir="ltr">{{ active_phone }}</bdi> · {% endif %}דרך: {{ active_bot_label }}</span>
-                </div>
-                <div class="chat-header-actions">
-                    {% if not active_conversation.is_linked %}
-                    <form method="post" action="{{ url_for('bot_conversations.toggle_bot_pause', phone=active_phone) }}">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                        {% if active_conversation.bot_paused %}
-                        <button type="submit" class="btn btn-sm" title="הבוט לא עונה כרגע בשיחה הזו - לחצי כדי להחזיר אותו">בוט מושהה - הפעלה מחדש</button>
-                        {% else %}
-                        <button type="submit" class="btn btn-ghost btn-sm" title="משהה את תגובות הבוט בשיחה הזו, כדי שלא יפריע כשאת מתכתבת ישירות">השהה בוט</button>
-                        {% endif %}
-                    </form>
-                    {% endif %}
-                    {% if active_conversation.last_incoming_message_id %}
-                    <form method="post" action="{{ url_for('bot_conversations.mark_unread', phone=active_phone) }}">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                        <button type="submit" class="btn btn-ghost btn-sm" title="חוזר לרשימה ומסמן את השיחה כלא נקראה">● סמן כלא נקרא</button>
-                    </form>
-                    {% endif %}
-                </div>
-            </div>
-            {% if active_conversation.membership_type_name %}
-            <div class="hint">
-                מנוי: {{ active_conversation.membership_type_name }}
-                {% if active_conversation.membership_start_date or active_conversation.membership_end_date %}
-                    · {{ active_conversation.membership_start_date or '?' }} עד {{ active_conversation.membership_end_date or '?' }}
-                {% endif %}
-                {% if active_conversation.debt and active_conversation.debt not in ('0', '0.0', '0.00') %} · <span class="badge badge-red">חוב {{ active_conversation.debt }}</span>{% endif %}
-                {% if active_conversation.cancelled %} · <span class="badge badge-gray">מנוי בוטל</span>{% elif active_conversation.active == False %} · <span class="badge badge-gray">לא פעילה</span>{% endif %}
-            </div>
-            {% endif %}
-            {% if active_conversation.synced_at %}
-            <div class="hint">נתוני Arbox עודכנו לאחרונה: {{ active_conversation.synced_at | format_lead_datetime }}</div>
-            {% endif %}
-        </div>
-        <div class="chat-thread">
-            {% set day = namespace(last='') %}
-            {% for m in messages %}
-            {% set this_day = (m.created_at | format_lead_datetime)[-10:] %}
-            {% if this_day != day.last %}
-            {% set day.last = this_day %}
-            <div class="chat-day-sep"><span>{{ this_day }}</span></div>
-            {% endif %}
-            {# הרווחים בתבנית מוסרים בכוונה ({%- -%}): הבועה היא white-space: pre-wrap, ולכן כל רווח/שורה בין
-               התגיות היה נשמר ומוסיף שורה ריקה בראש הבועה #}
-            <div class="chat-bubble {{ 'chat-bubble-in' if m.direction == 'in' else 'chat-bubble-out' }}">{# -#}
-                <button type="button" class="chat-msg-delete" data-url="{{ url_for('bot_conversations.delete_message', phone=active_phone, message_id=m.id) }}" title="מחק מהיומן" aria-label="מחק הודעה מהיומן"><svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6M10 11v6M14 11v6"/></svg></button>
-                {%- if m.body -%}
-                <button type="button" class="chat-msg-edit" data-url="{{ url_for('bot_conversations.edit_message', phone=active_phone, message_id=m.id) }}" data-body="{{ m.body }}" data-direction="{{ m.direction }}" title="ערוך ביומן" aria-label="ערוך הודעה ביומן"><svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg></button>
-                {%- endif -%}
-                {%- if m.attachment_url -%}
-                    {%- if m.attachment_url.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.webp')) -%}
-                    <a href="{{ m.attachment_url }}" target="_blank" rel="noopener"><img src="{{ m.attachment_url }}" class="chat-attachment-image" alt="תמונה מצורפת"></a>
-                    {%- elif m.attachment_url.lower().endswith(('.mp4', '.3gp', '.mov', '.webm')) -%}
-                    <video src="{{ m.attachment_url }}" class="chat-attachment-image" controls></video>
-                    {%- elif m.attachment_url.lower().endswith(('.ogg', '.oga', '.mp3', '.aac', '.amr', '.wav', '.m4a')) -%}
-                    <audio src="{{ m.attachment_url }}" controls></audio>
-                    {%- else -%}
-                    <a href="{{ m.attachment_url }}" target="_blank" rel="noopener" class="chat-attachment-file">קובץ מצורף</a>
-                    {%- endif -%}
-                {%- endif -%}
-                {%- if m.body %}{{ m.body | collapse_blank_lines }}{% endif %}<span class="chat-time">{{ m.created_at | format_lead_datetime }}</span>
-                {%- if m.direction == 'out' and m.delivery_status %}<span class="chat-status chat-status-{{ m.delivery_status }}">{{ {'queued': 'שולח...', 'sent': 'נשלחה', 'delivered': 'נמסרה', 'read': 'נקראה', 'failed': 'לא נשלחה'}.get(m.delivery_status, '') }}</span>{% endif -%}{# -#}
-            </div>
-            {% endfor %}
-        </div>
-
-        {% if linked_unavailable %}
-        <div class="chat-linked-warn" role="status">{{ linked_unavailable }} <a href="{{ url_for('integrations.index') }}">לעמוד האינטגרציות</a></div>
-        {% else %}
-        <form method="post" action="{{ url_for('bot_conversations.reply', phone=active_phone) }}"
-              class="chat-reply-form" enctype="multipart/form-data">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-            <label class="chat-attach-btn" title="צירוף קובץ/תמונה">
-                <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M21 11.5 12.6 20a5 5 0 0 1-7-7L14 4.6a3.3 3.3 0 0 1 4.7 4.7l-8.4 8.4a1.7 1.7 0 0 1-2.4-2.4l7.7-7.7"/></svg>
-                <input type="file" name="attachment" id="chat-attachment" hidden>
-            </label>
-            <span class="chat-attach-name" id="chat-attach-name" hidden></span>
-            <textarea name="body" id="chat-body" rows="1" placeholder="כתוב הודעה..." title="Ctrl+Enter לשליחה"></textarea>
-            <button type="submit" class="chat-send-btn" id="chat-send" aria-label="שליחה" title="שליחה (Ctrl+Enter)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M22 2 11 13"/><path d="M22 2l-7 20-4-9-9-4z"/></svg></button>
-        </form>
-        {% endif %}
-        {% else %}
-        <div class="chat-app-empty">בחר/י שיחה מהרשימה</div>
-        {% endif %}
+    {% include "bot_conversations/_thread.html" %}
     </div>
 </div>
 
@@ -218,8 +127,10 @@
     // טופס תשובה: Ctrl+Enter שולח (Enter רגיל לא - כדי לא לשלוח בטעות ללקוחה), שם הקובץ המצורף
     // מוצג, וכפתור השליחה מושבת כשאין לא טקסט ולא קובץ. הטופס לא מוחלף ברענון האוטומטי,
     // כך שטקסט שהתחילו לכתוב לא נמחק
-    var form = document.querySelector('.chat-reply-form');
-    if (form) {
+    var form = null;
+    function bindForm() {
+        form = document.querySelector('.chat-reply-form');
+        if (!form) return;
         var body = document.getElementById('chat-body');
         var file = document.getElementById('chat-attachment');
         var fileName = document.getElementById('chat-attach-name');
@@ -340,6 +251,7 @@
 
         refresh();
     }
+    bindForm();
 
     // --- רענון אוטומטי: בודקים כל כמה שניות "חתימת מצב" זולה, ורק כשהיא משתנה טוענים מחדש את
     // הרשימה ואת השיחה הפתוחה (אותו עמוד, מוחלפים רק החלקים שהשתנו - גלילה, חיפוש וטקסט שנכתב
@@ -469,6 +381,92 @@
             }).catch(function () { btn.disabled = false; });
         });
     }
+
+    // --- מעבר בין שיחות בלי לטעון את כל הדף: לחיצה על שיחה ברשימה מביאה מהשרת רק את פאנל השיחה
+    // (fragment=1) ומחליפה אותו; הרשימה, החיפוש והסינון נשארים. כתובת הדף מתעדכנת (pushState) כך שכפתור
+    // "חזרה" ורענון עובדים כרגיל. אם משהו נכשל - נופלים לניווט רגיל ---
+    var openSeq = 0;
+    function setView(mode) {
+        document.body.classList.toggle('page-chat-thread', mode === 'thread');
+        document.body.classList.toggle('page-chat-list', mode !== 'thread');
+    }
+    function recountUnread() {
+        var n = itemsEl.querySelectorAll('.chat-list-row[data-unread="1"]').length;
+        var el = document.getElementById('chat-count-unread');
+        if (el) el.textContent = n;
+        updateTitle();
+    }
+    function highlightActive(pathname) {
+        itemsEl.querySelectorAll('.chat-list-item').forEach(function (a) {
+            var on = pathname !== null && a.pathname === pathname;
+            a.classList.toggle('active', on);
+            if (!on) return;
+            a.classList.remove('chat-list-item-unread');
+            var dot = a.querySelector('.chat-unread-dot');
+            if (dot) dot.remove();
+            a.parentElement.dataset.unread = '0';
+            var mark = a.parentElement.querySelector('.chat-mark-unread');
+            if (mark) mark.remove();
+        });
+        recountUnread();
+    }
+    function resetThreadState() {
+        pendingBubbles = [];
+        thread = threadWrap.querySelector('.chat-thread');
+        lastThreadHtml = thread ? thread.innerHTML : null;
+        if (thread) thread.scrollTop = thread.scrollHeight;
+        bindForm();
+    }
+    function openConversation(url, push) {
+        var seq = ++openSeq;
+        var target = new URL(url, window.location.href);
+        var fragmentUrl = new URL(target.href);
+        fragmentUrl.searchParams.set('fragment', '1');
+        return fetch(fragmentUrl.toString(), { credentials: 'same-origin' }).then(function (r) {
+            if (!r.ok) throw new Error('bad status');
+            var signature = r.headers.get('X-Chat-Signature');
+            return r.text().then(function (html) { return { html: html, signature: signature }; });
+        }).then(function (res) {
+            if (seq !== openSeq) return;  // נלחצה שיחה אחרת בינתיים
+            var probe = document.createElement('div');
+            probe.innerHTML = res.html;
+            if (!probe.querySelector('.chat-thread')) throw new Error('not a conversation');
+            threadWrap.innerHTML = res.html;
+            resetThreadState();
+            setView('thread');
+            if (push) history.pushState({ chat: true }, '', target.pathname);
+            if (res.signature) lastSignature = res.signature;
+            highlightActive(target.pathname);
+            var activeItem = itemsEl.querySelector('.chat-list-item.active');
+            if (activeItem && activeItem.scrollIntoView) activeItem.scrollIntoView({ block: 'nearest' });
+        }).catch(function () {
+            if (seq === openSeq) window.location.href = target.href;
+        });
+    }
+    function showList(push) {
+        openSeq++;
+        threadWrap.innerHTML = '<div class="chat-app-empty">בחר/י שיחה מהרשימה</div>';
+        resetThreadState();
+        setView('list');
+        highlightActive(null);
+        if (push) history.pushState({ chat: true }, '', app.dataset.listUrl);
+    }
+    itemsEl.addEventListener('click', function (e) {
+        var link = e.target.closest('a.chat-list-item');
+        if (!link || e.defaultPrevented || e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
+        e.preventDefault();
+        openConversation(link.href, true);
+    });
+    threadWrap.addEventListener('click', function (e) {
+        var back = e.target.closest('.chat-back');
+        if (!back || e.defaultPrevented || e.ctrlKey || e.metaKey || e.shiftKey) return;
+        e.preventDefault();
+        showList(true);
+    });
+    window.addEventListener('popstate', function () {
+        var m = window.location.pathname.match(/^\/bot-conversations\/([^\/]+)$/);
+        if (m && m[1] !== '_state') openConversation(window.location.href, false); else showList(false);
+    });
 
     // "סמן כלא נקרא" מהרשימה: שולח ברקע ומרענן מיד, בלי לעבור עמוד (האירוע מאזין על המכולה, כך
     // שממשיך לעבוד גם אחרי שהרשימה מוחלפת ברענון אוטומטי)
