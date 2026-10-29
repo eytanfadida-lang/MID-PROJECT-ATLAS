@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block page_title %}חיפוש - מנהל תורים{% endblock %}
+{% block page_heading %}חיפוש{% endblock %}
+
+{% block content %}
+<form method="get" action="{{ url_for('search.results') }}" class="search-page-form" role="search">
+    <input type="search" name="q" value="{{ query }}" placeholder="חיפוש לפי שם, טלפון או אימייל" aria-label="חיפוש" dir="auto" autofocus>
+    <button type="submit" class="btn">חיפוש</button>
+</form>
+
+{% if not query %}
+<p class="empty-state">הקלידי שם, טלפון או אימייל כדי לחפש בלידים, בלקוחות ובשיחות הבוט.</p>
+{% elif too_short %}
+<p class="empty-state">הקלידי לפחות שני תווים.</p>
+{% elif total_all == 0 %}
+<p class="empty-state">לא נמצאו תוצאות עבור "{{ query }}".</p>
+{% else %}
+
+{% if leads %}
+<section class="search-group">
+    <h2>לידים <small>{{ totals.leads }}</small></h2>
+    <ul class="search-list">
+        {% for l in leads %}
+        <li><a href="{{ url_for('leads.edit', lead_id=l.id) }}">
+            <strong>{{ l.full_name or l.phone }}</strong>
+            <span dir="ltr">{{ l.phone }}</span>
+            {% if l.status %}<span class="search-tag">{{ l.status }}</span>{% endif %}
+        </a></li>
+        {% endfor %}
+    </ul>
+    {% if totals.leads > leads | length %}<a class="search-more" href="{{ url_for('leads.list_leads', phone=query) }}">כל הלידים שנמצאו ({{ totals.leads }})</a>{% endif %}
+</section>
+{% endif %}
+
+{% if customers %}
+<section class="search-group">
+    <h2>לקוחות <small>{{ totals.customers }}</small></h2>
+    <ul class="search-list">
+        {% for c in customers %}
+        <li><a href="{{ url_for('customers.detail', customer_id=c.id) }}">
+            <strong>{{ c.name or c.phone }}</strong>
+            <span dir="ltr">{{ c.phone }}</span>
+            {% if c.email %}<span class="search-tag">{{ c.email }}</span>{% endif %}
+        </a></li>
+        {% endfor %}
+    </ul>
+</section>
+{% endif %}
+
+{% if chats %}
+<section class="search-group">
+    <h2>שיחות בוט <small>{{ totals.chats }}</small></h2>
+    <ul class="search-list">
+        {% for c in chats %}
+        <li><a href="{{ url_for('bot_conversations.view_conversation', phone=c.phone) }}">
+            <strong>{{ c.full_name or c.phone }}</strong>
+            <span dir="ltr">{{ c.phone }}</span>
+            <span class="search-preview">{{ c.last_message_body }}</span>
+        </a></li>
+        {% endfor %}
+    </ul>
+</section>
+{% endif %}
+
+{% endif %}
+{% endblock %}

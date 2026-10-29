@@ -27,7 +27,14 @@
         <div class="topbar">
             <a href="#" class="topbar-back" id="topbar-back" aria-label="חזרה" hidden>→</a>
             <div class="brand">מנהל תורים</div>
+            {% if current_user %}
+            <form method="get" action="{{ url_for('search.results') }}" class="topbar-search" role="search">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+                <input type="search" name="q" placeholder="חיפוש לקוחות, לידים ושיחות" aria-label="חיפוש כללי" autocomplete="off" dir="auto" value="{{ request.args.get('q', '') if request.endpoint == 'search.results' else '' }}">
+            </form>
+            {% endif %}
             <div class="topbar-user">
+                {% if current_user %}<a href="{{ url_for('search.results') }}" class="theme-toggle topbar-search-link" aria-label="חיפוש"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></a>{% endif %}
                 {% if current_user %}
                     {% if current_user.role == ROLE_ADMIN %}<button type="button" class="theme-toggle desktop-only" id="push-bell" aria-label="התראות על הודעות חדשות" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/></svg></button>{% endif %}
                     <button type="button" class="theme-toggle js-theme-toggle" id="theme-toggle" aria-label="החלף מצב צבע"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></button>

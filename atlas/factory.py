@@ -29,6 +29,7 @@ from atlas.web.blueprints.customers import bp as customers_bp
 from atlas.web.blueprints.users import bp as users_bp
 from atlas.web.blueprints.push import bp as push_bp
 from atlas.web.blueprints.integrations import bp as integrations_bp
+from atlas.web.blueprints.search import bp as search_bp
 from atlas.web.blueprints.gateway import bp as gateway_bp
 from atlas.web.blueprints.bot_conversations import bp as bot_conversations_bp
 from atlas.web.blueprints.automations import bp as automations_bp
@@ -236,6 +237,7 @@ def create_app():
     app.register_blueprint(bot_conversations_bp)
     app.register_blueprint(push_bp)
     app.register_blueprint(integrations_bp)
+    app.register_blueprint(search_bp)
     app.register_blueprint(gateway_bp)
     app.register_blueprint(automations_bp)
     app.register_blueprint(whatsapp_templates_bp)
