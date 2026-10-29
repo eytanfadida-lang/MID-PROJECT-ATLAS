@@ -8114,3 +8114,72 @@ body.dark .chat-bubble-out .chat-status-read {
 body.dark .chat-bubble-out .chat-status-failed {
     color: #ffb4a9;
 }
+
+/* =====================================================================================================
+   עמוד הלידים (מחשב): מקסימום שורות על המסך - שורות דחוסות יותר, סרגלים עליונים נמוכים יותר,
+   וסרגל הפעולות המרובות מופיע רק כשנבחר ליד. כל העמודות נשארות. במובייל (כרטיסים) לא נוגעים.
+   ===================================================================================================== */
+@media (min-width: 801px) {
+    body.page-leads-list .leads-toolbar {
+        padding: 4px 10px;
+        margin-bottom: 2px;
+        gap: 8px;
+    }
+
+    body.page-leads-list .leads-toolbar .btn,
+    body.page-leads-list .leads-toolbar button,
+    body.page-leads-list .leads-toolbar input[type=text] {
+        min-height: 28px;
+        padding-block: 3px;
+        font-size: 13px;
+    }
+
+    body.page-leads-list .leads-tabs {
+        gap: 18px;
+        margin-bottom: 4px;
+    }
+
+    body.page-leads-list .leads-tabs a {
+        padding: 4px 0;
+        font-size: 14px;
+    }
+
+    body.page-leads-list .leads-tabs small {
+        font-size: 12px;
+    }
+
+    body.page-leads-list .bulk-actions-bar:not(.has-selection) {
+        display: none;
+    }
+
+    body.page-leads-list .bulk-actions-bar {
+        padding: 4px 10px;
+        margin-bottom: 4px;
+    }
+
+    body.page-leads-list .table-scroll {
+        margin-bottom: 30px;
+    }
+
+    .leads-table th {
+        padding: 4px 6px;
+        font-size: 12px;
+    }
+
+    .leads-table td {
+        padding: 2px 6px;
+        font-size: 13px;
+        line-height: 1.25;
+    }
+
+    .leads-table select.status-select,
+    .leads-table select.assigned-select {
+        min-height: 0;
+        padding-block: 1px;
+        font-size: 12px;
+    }
+
+    .leads-table .whatsapp-icon {
+        line-height: 1;
+    }
+}
