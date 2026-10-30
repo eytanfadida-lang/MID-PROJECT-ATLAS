@@ -1,0 +1,79 @@
+import datetime
+import re
+
+import pandas as pd
+
+from atlas.services import time_utils
+
+ROLE_BADGE_CLASSES = {
+    "admin": "badge-red",
+    "user": "badge-gray",
+}
+
+
+# ממירה DataFrame לרשימת dict-ים רגילים לשימוש ב-Jinja, עם NaN/NaT מוחלף ב-None
+# (כדי שלא יודפס "nan" בטמפלט על עמודות ריקות, למשל customer_id שלא קושר עדיין)
+# שמות ימי השבוע בעברית לפי datetime.weekday() (שני=0 ... ראשון=6)
+_HEBREW_WEEKDAYS = ["שני", "שלישי", "רביעי", "חמישי", "שישי", "שבת", "ראשון"]
+
+
+# כותרת יום לרשימת התורים: "היום, יום שני 26.10" / "מחר, יום שלישי 27.10" / "יום רביעי 28.10".
+# date_iso בפורמט YYYY-MM-DD; ערך לא תקין מוחזר כמו שהוא (לא מפיל עמוד בגלל רשומה פגומה)
+def day_label(date_iso, today=None):
+    import datetime
+
+    try:
+        day = datetime.date.fromisoformat(str(date_iso)[:10])
+    except ValueError:
+        return str(date_iso or "ללא תאריך")
+    today = today or datetime.date.today()
+    base = f"יום {_HEBREW_WEEKDAYS[day.weekday()]} {day.day}.{day.month}"
+    if day == today:
+        return f"היום, {base}"
+    if day == today + datetime.timedelta(days=1):
+        return f"מחר, {base}"
+    return base
+
+
+def to_records(df):
+    return df.where(pd.notnull(df), None).to_dict("records")
+
+
+def role_badge_class(role):
+    return ROLE_BADGE_CLASSES.get(role, "badge-gray")
+
+
+# ממירה מספר טלפון ישראלי מקומי (למשל "0501234567") לקישור wa.me תקין (972501234567)
+def whatsapp_link(phone):
+    digits = "".join(ch for ch in (phone or "") if ch.isdigit())
+    if not digits:
+        return None
+    if digits.startswith("0"):
+        digits = "972" + digits[1:]
+    elif not digits.startswith("972"):
+        digits = "972" + digits
+    return f"https://wa.me/{digits}"
+
+
+# מצמצמת כמה שורות ריקות ברצף לשורה ריקה אחת (לכל היותר) - הודעות וואטסאפ אמיתיות
+# (ובמיוחד תשובות LLM) מגיעות לפעמים עם הרבה שורות ריקות רצופות, שעם
+# white-space: pre-wrap נשמרות בדיוק ככה ומנפחות את גובה הבועה בצ'אט לענק
+def collapse_blank_lines(text):
+    if not text:
+        return text
+    return re.sub(r"\n{3,}", "\n\n", text)
+
+
+# מציגה חותמת זמן ISO (למשל "2026-07-31T15:03") כ-"HH:MM DD/MM/YYYY", לתצוגה בטבלאות.
+# הערך הנשמר הוא תמיד naive UTC (datetime.datetime.now() של השרת - ראו atlas/services/
+# time_utils.py) - ממירים לשעון ישראל לפני העיצוב, אחרת השעה (וליד חצות גם התאריך) מוצגים
+# כאילו הם כבר שעון ישראל, בפיגור של 2-3 שעות מהזמן האמיתי
+def format_lead_datetime(value):
+    if not value:
+        return "-"
+    try:
+        parsed = datetime.datetime.fromisoformat(value)
+    except (ValueError, TypeError):
+        return value
+    israel_local = time_utils.naive_utc_to_israel(parsed)
+    return israel_local.strftime("%H:%M %d/%m/%Y")

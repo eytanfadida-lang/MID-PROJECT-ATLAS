@@ -1,0 +1,8597 @@
+* {
+    box-sizing: border-box;
+}
+
+:root {
+    --bg: #f4f7fb;
+    --surface: #ffffff;
+    --surface-2: #f8fafc;
+    --text: #172033;
+    --muted: #64748b;
+    --border: #e2e8f0;
+    --primary: #2563eb;
+    --primary-dark: #1d4ed8;
+    --danger: #dc2626;
+    --danger-dark: #b91c1c;
+    --shadow: 0 12px 32px rgba(15, 23, 42, 0.08);
+}
+
+body.dark {
+    --bg: #07111f;
+    --surface: #0f172a;
+    --surface-2: #111c31;
+    --text: #e2e8f0;
+    --muted: #94a3b8;
+    --border: #243447;
+    --primary: #60a5fa;
+    --primary-dark: #93c5fd;
+    --danger: #f87171;
+    --danger-dark: #fb7185;
+    --shadow: 0 16px 36px rgba(2, 6, 23, 0.45);
+}
+
+body {
+    margin: 0;
+    font-family: "Segoe UI", Tahoma, Arial, sans-serif;
+    background: linear-gradient(135deg, #f8fbff 0%, var(--bg) 100%);
+    color: var(--text);
+    direction: rtl;
+    text-align: right;
+}
+
+/* מסתירים את פס הגלילה של העמוד עצמו (הדפדפן) - הגלילה עצמה נשארת פעילה */
+html, body {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+html::-webkit-scrollbar, body::-webkit-scrollbar {
+    display: none;
+}
+
+.app-shell {
+    min-height: 100vh;
+}
+
+/* --- Top bar --- */
+.topbar {
+    background: linear-gradient(90deg, #16253f 0%, #243b53 100%);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 24px;
+    height: 64px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.14);
+    position: sticky;
+    top: 0;
+    z-index: 30;
+}
+
+.topbar .brand {
+    font-weight: 800;
+    font-size: 20px;
+    letter-spacing: 0.2px;
+}
+
+.topbar .topbar-user {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 14px;
+}
+
+.topbar form {
+    margin: 0;
+}
+
+.topbar button.link-button {
+    background: none;
+    border: none;
+    color: #dbeafe;
+    cursor: pointer;
+    font-size: 14px;
+    text-decoration: underline;
+}
+
+.theme-toggle {
+    border: none;
+    background: rgba(255,255,255,0.14);
+    color: #fff;
+    width: 36px;
+    height: 36px;
+    border-radius: 999px;
+    cursor: pointer;
+    font-size: 16px;
+}
+
+/* --- Layout --- */
+.layout {
+    display: flex;
+    min-height: calc(100vh - 64px);
+    padding: 24px;
+    gap: 14px;
+}
+
+.sidebar {
+    width: 168px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 10px 6px;
+    box-shadow: var(--shadow);
+    align-self: flex-start;
+    position: sticky;
+    top: 64px;
+    z-index: 20;
+}
+
+.sidebar-title {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding: 4px 8px 6px;
+}
+
+.sidebar a {
+    display: block;
+    padding: 7px 8px;
+    margin-bottom: 3px;
+    color: #334155;
+    text-decoration: none;
+    font-size: 13px;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+}
+
+.sidebar a:hover,
+.sidebar a.active {
+    background: linear-gradient(90deg, #e8f0ff 0%, #f8fbff 100%);
+    color: var(--primary-dark);
+    font-weight: 700;
+}
+
+.content {
+    flex: 1;
+    min-width: 0;
+}
+
+.card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    box-shadow: var(--shadow);
+    padding: 24px;
+}
+
+.card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 18px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #eef2f7;
+}
+
+.card h1 {
+    margin: 0;
+    font-size: 22px;
+    color: #111827;
+}
+
+/* בעמוד רשימת הלידים אין כותרת - מפנים את המקום לטובת גובה הטבלה */
+body.page-leads-list .card-header {
+    display: none;
+}
+
+/* בעמוד הלידים: כל העמוד קבוע (בלי גלילה כלל), ורק סקשן הטבלה עצמו גולל.
+   בונים שרשרת flex בגובה מסך מלא (100vh) כך שהגובה ה"נשאר" אחרי הטופבר/תפריט/סרגלים
+   מוקצה כולו לתיבת הטבלה, וזו היחידה עם overflow-y: auto בפועל.
+   הריווח העליון/תחתון מצומצם למינימום כדי למקסם כמה שיותר שורות לידים על המסך */
+body.page-leads-list {
+    height: 100vh;
+    overflow: hidden;
+}
+
+body.page-leads-list .app-shell {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+body.page-leads-list .layout {
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+    padding-top: 4px;
+    padding-bottom: 4px;
+}
+
+body.page-leads-list .content {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+}
+
+body.page-leads-list .card {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+    padding-top: 4px;
+    padding-bottom: 4px;
+}
+
+body.page-leads-list .table-scroll {
+    flex: 1;
+    height: auto;
+    min-height: 0;
+    margin-bottom: 26px;
+}
+
+/* ה-overflow: hidden שהוגדר למעלה על .layout/.card משנה את הקשר הגלילה של position: sticky
+   (בדיוק כמו הבאג שתיקנו בכותרות הטבלה) - .sidebar/.toolbar נדבקים ביחס לקופסה שלהם
+   ולא לחלון הדפדפן, ומקבלים ריווח ענק. בעמוד הזה אין בכלל גלילה, אז sticky מיותר - מבטלים */
+body.page-leads-list .sidebar,
+body.page-leads-list .toolbar {
+    position: static;
+}
+
+.card-accent {
+    width: 54px;
+    height: 8px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, #2563eb 0%, #60a5fa 100%);
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
+}
+
+/* --- Flash messages --- */
+/* מרחף מעל העמוד (position: fixed) ולא תופס מקום בזרימת התוכן - כדי שהופעה/היעלמות
+   של הודעה לא תזיז את שאר העמוד (חשוב במיוחד בעמוד הלידים, שיש בו overflow: hidden
+   סביב הטבלה ואי אפשר "לדחוף" תוכן בלי לשבור את הפריסה הקבועה שלו) */
+.flash-container {
+    position: fixed;
+    top: 14px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 200;
+    width: min(560px, 92vw);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    pointer-events: none;
+}
+
+.flash {
+    pointer-events: auto;
+    padding: 10px 14px;
+    border-radius: 10px;
+    font-size: 14px;
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
+    transition: opacity 0.4s ease, transform 0.4s ease;
+}
+
+.flash-hide {
+    opacity: 0;
+    transform: translateY(-6px);
+    pointer-events: none;
+}
+
+.flash-success {
+    background: linear-gradient(90deg, #ecfdf3 0%, #f5fff8 100%);
+    color: #166534;
+    border: 1px solid #86efac;
+    box-shadow: 0 8px 18px rgba(22, 101, 52, 0.08);
+}
+
+.flash-error {
+    background: linear-gradient(90deg, #fef2f2 0%, #fff7f7 100%);
+    color: #b91c1c;
+    border: 1px solid #fda4af;
+    box-shadow: 0 8px 18px rgba(185, 28, 28, 0.08);
+}
+
+/* --- Toolbar (search/filter/new) --- */
+.toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+    margin-bottom: 10px;
+    padding: 6px 8px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    position: sticky;
+    top: 64px;
+    z-index: 15;
+}
+
+/* סרגל הפעולות המרובות מוערם מתחת לסרגל הכלים הראשי, ולכן דביק קצת יותר נמוך */
+.toolbar.bulk-actions-bar {
+    top: 112px;
+    z-index: 14;
+}
+
+.toolbar form {
+    display: flex;
+    gap: 5px;
+    align-items: center;
+}
+
+.toolbar .btn {
+    padding: 5px 10px;
+    font-size: 12px;
+    box-shadow: none;
+}
+
+.toolbar select,
+.toolbar input[type=text] {
+    padding: 5px 8px;
+    font-size: 12px;
+}
+
+.bulk-count {
+    font-weight: 600;
+    color: #475569;
+    font-size: 12px;
+}
+
+/* --- Table --- */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+    overflow: hidden;
+    border-radius: 12px;
+}
+
+.table-scroll {
+    overflow-x: auto;
+    /* גובה מוגבל + גלילה אנכית פנימית - כך שתיבת הטבלה (ופס הגלילה האופקי המקורי שלה,
+       שיושב בתחתית התיבה) לעולם לא גדלה מעבר לגובה המסך ולא "נעלמת" בגלילת העמוד */
+    height: 79vh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    margin-bottom: 30px;
+}
+
+/* מסתירים רק את פס הגלילה האנכי (בצד ימין) - הגלילה עצמה עדיין עובדת, רק בלי הפס הנראה */
+.table-scroll::-webkit-scrollbar:vertical {
+    display: none;
+}
+
+.leads-table {
+    table-layout: fixed;
+    min-width: 1040px;
+    width: max-content;
+    /* border-collapse: collapse (הגדרת ברירת המחדל של table) שובר position: sticky בכותרות -
+       עוברים ל-separate עם border-spacing: 0 כדי שכותרות העמודות יישארו דביקות בגלילה */
+    border-collapse: separate;
+    border-spacing: 0;
+    /* overflow: hidden (הגדרת ברירת המחדל של table) הופך את הטבלה עצמה להקשר הגלילה של ה-sticky
+       במקום .table-scroll - צריך visible כדי שהדביקות תתייחס לתיבת הגלילה החיצונית */
+    overflow: visible;
+}
+
+th, td {
+    text-align: right;
+    padding: 10px 8px;
+    border-bottom: 1px solid #edf2f7;
+    white-space: nowrap;
+    vertical-align: top;
+}
+
+/* קו הפרדה עדין מאוד בין כל טור, בכל טבלה באתר - לא אחרי הטור האחרון (הקצה השמאלי ב-RTL).
+   צבע עם שקיפות (ולא הקס אטום) כדי שהקו יתמזג עם הרקע ויישאר עדין באמת, לא רק "אפור בהיר" */
+th:not(:last-child), td:not(:last-child) {
+    border-inline-end: 1px solid rgba(15, 23, 42, 0.05);
+}
+
+th {
+    background: linear-gradient(90deg, #f8fafc 0%, #f1f5f9 100%);
+    color: #64748b;
+    font-weight: 700;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+/* כותרות טבלת הלידים דביקות בתוך .table-scroll (שיש לה גלילה אנכית פנימית משלה) */
+.leads-table th {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+}
+
+.leads-table .col-select { width: 32px; text-align: center; }
+.leads-table .col-id { width: 48px; }
+.leads-table .col-name { width: 110px; }
+.leads-table .col-phone { width: 100px; }
+.leads-table .col-status { width: 110px; }
+.leads-table .col-channel { width: 80px; }
+.leads-table .col-branch { width: 80px; }
+.leads-table .col-routings { width: 40px; text-align: center; }
+.leads-table .col-created { width: 120px; }
+.leads-table .col-updated { width: 120px; }
+.leads-table .col-assigned { width: 120px; }
+.leads-table .col-notes {
+    width: 220px;
+    max-width: 220px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.leads-table .col-notes.has-notes {
+    cursor: pointer;
+}
+
+.leads-table .col-notes.has-notes:hover {
+    text-decoration: underline;
+    color: var(--primary-dark);
+}
+
+/* --- Leads stats bar (sticky footer with pagination + aggregate totals). Pagination lives
+   inside this fixed footer, not in the normal page flow: on the leads page .card has
+   overflow:hidden with .table-scroll taking all the flex space, so anything placed after the
+   table in the document would be clipped and never actually visible (same class of bug as the
+   earlier sticky-header fix) */
+.leads-stats-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 4px 16px;
+    background: #1f2937;
+    color: #f1f5f9;
+    font-size: 11px;
+    box-shadow: 0 -4px 16px rgba(15, 23, 42, 0.2);
+    z-index: 40;
+}
+
+.leads-stats-bar strong {
+    color: #93c5fd;
+    font-weight: 700;
+}
+
+.leads-stats-group {
+    display: flex;
+    gap: 18px;
+}
+
+/* --- Leads pagination --- */
+.pagination {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.pagination .btn {
+    padding: 3px 10px;
+    font-size: 12px;
+}
+
+.pagination-current {
+    background: linear-gradient(90deg, var(--primary) 0%, var(--primary-2) 100%);
+    color: #fff;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.pagination-disabled {
+    opacity: 0.35;
+    pointer-events: none;
+}
+
+.pagination-ellipsis {
+    padding: 0 2px;
+    color: #94a3b8;
+}
+
+.pagination-info {
+    color: #cbd5e1;
+}
+
+/* --- Notes panel (side drawer for full note text, opens from the left) --- */
+.notes-panel-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.35);
+    z-index: 49;
+}
+
+.notes-panel {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 320px;
+    max-width: 85vw;
+    background: var(--surface);
+    border-left: none;
+    border-right: 1px solid var(--border);
+    box-shadow: 6px 0 24px rgba(15, 23, 42, 0.18);
+    padding: 18px 20px;
+    z-index: 50;
+    overflow-y: auto;
+}
+
+.notes-panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.notes-panel-body {
+    white-space: pre-wrap;
+    color: #334155;
+    font-size: 14px;
+    line-height: 1.5;
+}
+.leads-table .col-actions { width: 190px; }
+
+.leads-table select.assigned-select {
+    padding: 2px 6px;
+    border-radius: 8px;
+    font-size: 12px;
+}
+
+/* שורות קומפקטיות בטבלת הלידים, כדי להציג יותר לידים על המסך בו-זמנית - רק בטבלת הלידים,
+   בלי להשפיע על טבלאות אחרות (תורים/לקוחות) שחולקות את אותם מחלקות CSS */
+.leads-table th,
+.leads-table td {
+    padding: 6px 6px;
+}
+
+.leads-table td {
+    font-size: 13px;
+}
+
+.leads-table select.status-select {
+    padding: 2px 28px 2px 8px;
+    font-size: 12px;
+}
+
+.leads-table .actions-row .icon-btn {
+    width: 26px;
+    height: 26px;
+    font-size: 12px;
+}
+
+.leads-table .actions-row .btn,
+.leads-table .actions-row button {
+    padding: 4px 7px;
+    font-size: 12px;
+}
+
+tr:hover td {
+    background: #fbfdff;
+}
+
+.empty-state {
+    color: #64748b;
+    padding: 20px 0;
+    font-size: 15px;
+    background: #f8fafc;
+    border: 1px dashed #cbd5e1;
+    border-radius: 12px;
+    text-align: center;
+}
+
+.actions-row {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.actions-row .btn,
+.actions-row button {
+    padding: 6px 8px;
+    font-size: 12px;
+    line-height: 1;
+}
+
+.actions-row .icon-btn {
+    width: 30px;
+    height: 30px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    padding: 0;
+    color: #ffffff;
+    font-size: 13px;
+    font-family: "Segoe UI Symbol", "Arial Unicode MS", sans-serif;
+}
+
+.actions-row .icon-btn:hover {
+    color: #ffffff;
+}
+
+.actions-row form {
+    margin: 0;
+}
+
+.phone-cell {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.duplicate-phone {
+    color: #dc2626;
+    font-size: 15px;
+    line-height: 1;
+}
+
+.whatsapp-icon {
+    display: inline-flex;
+    align-items: center;
+    color: #25d366;
+    line-height: 0;
+    flex-shrink: 0;
+}
+
+.whatsapp-icon:hover {
+    color: #1ebe5b;
+}
+
+/* --- Badges --- */
+.badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #fff;
+}
+
+.badge-blue { background: #2f80ed; }
+.badge-orange { background: #f2994a; }
+.badge-teal { background: #17a2b8; }
+.badge-purple { background: #9b59b6; }
+.badge-gray { background: #95a5a6; }
+.badge-green { background: #27ae60; }
+.badge-red { background: #e74c3c; }
+
+select.status-select {
+    background-color: #fff;
+    color: #1f2937;
+    border: 1px solid #cbd5e1;
+    border-radius: 999px;
+    padding: 4px 32px 4px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    background-image: radial-gradient(circle 5px at calc(100% - 15px) center, var(--status-color, #95a5a6) 100%, transparent 100%);
+    background-repeat: no-repeat;
+}
+
+/* צ'יפ סטטוס (נקודת צבע + טקסט) - לתצוגה בעמוד ניהול הסטטוסים */
+.status-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 14px;
+    border-radius: 999px;
+    background: #fff;
+    border: 1px solid #cbd5e1;
+    font-size: 12px;
+    font-weight: 600;
+    color: #1f2937;
+}
+
+.status-chip::before {
+    content: "";
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    background: var(--status-color, #95a5a6);
+}
+
+/* --- Buttons & forms --- */
+.btn {
+    display: inline-block;
+    padding: 9px 16px;
+    border-radius: 999px;
+    border: none;
+    background: linear-gradient(90deg, var(--primary) 0%, var(--primary-2) 100%);
+    color: #fff;
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 6px 14px rgba(37, 99, 235, 0.2);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 18px rgba(37, 99, 235, 0.24);
+}
+
+.btn-danger {
+    background: linear-gradient(90deg, var(--danger) 0%, #ef4444 100%);
+    box-shadow: 0 6px 14px rgba(220, 38, 38, 0.2);
+}
+
+.btn-danger:hover {
+    box-shadow: 0 8px 18px rgba(220, 38, 38, 0.24);
+}
+
+.btn-secondary {
+    background: linear-gradient(90deg, #64748b 0%, #94a3b8 100%);
+    box-shadow: 0 6px 14px rgba(100, 116, 139, 0.16);
+}
+
+input[type=text], input[type=password], input[type=email],
+input[type=number], input[type=date], input[type=time], select, textarea {
+    padding: 9px 12px;
+    border: 1px solid #cbd5e1;
+    border-radius: 10px;
+    font-size: 14px;
+    font-family: inherit;
+    background: #fff;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+input[type=text]:focus, input[type=password]:focus, input[type=email]:focus,
+input[type=number]:focus, input[type=date]:focus, input[type=time]:focus, select:focus, textarea:focus {
+    outline: none;
+    border-color: #60a5fa;
+    box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.2);
+}
+
+label {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 13px;
+    color: #475569;
+    font-weight: 700;
+}
+
+.form-group {
+    margin-bottom: 14px;
+    max-width: 360px;
+}
+
+.form-group label {
+    text-align: right;
+}
+
+.form-group textarea {
+    width: 100%;
+    box-sizing: border-box;
+    resize: vertical;
+}
+
+.hint {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 4px;
+}
+
+.form-card {
+    max-width: 480px;
+}
+
+/* עמוד אוטומציות מאוחד (רשימה + עריכה inline, בלי עמוד פרטים נפרד) - ראו
+   atlas/web/templates/automations/list.html */
+.automations-message-preview {
+    white-space: normal;
+    max-width: 280px;
+}
+
+/* ללא זה, תיאור תזמון ארוך (כמו "לקוחות פעילים (Arbox, X סוגי מנוי נבחרים, סניפים: ...) -
+   חד-פעמי ב-..." של arbox_active_members) מתרחב כשורה אחת ללא גבול (ברירת המחדל: white-space:
+   nowrap מ-th/td למעלה) ומעוות את שאר הטבלה - אותו תיקון בדיוק כמו automations-message-preview */
+.automations-schedule-summary {
+    white-space: normal;
+    max-width: 260px;
+}
+
+.automations-details-row td {
+    white-space: normal;
+    background: var(--surface-2);
+    padding: 16px;
+}
+
+.automations-details h4 {
+    margin: 18px 0 8px;
+}
+
+.automations-details h4:first-child {
+    margin-top: 0;
+}
+
+.automations-details table {
+    white-space: normal;
+}
+
+/* בחירה מרובה של סוגי מנוי (אוטומציית "לקוחות פעילים") - תיבת חיפוש + רשימת checkbox-ים
+   גוללת, ראו _schedule_fields.html data-for="arbox_active_members" */
+.automations-membership-types {
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    padding: 8px;
+    background: #fff;
+}
+
+.automations-membership-search {
+    width: 100%;
+    margin-bottom: 8px;
+    box-sizing: border-box;
+}
+
+.automations-membership-select-all {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 6px;
+}
+
+.automations-membership-list {
+    max-height: 220px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.automations-membership-option {
+    display: block;
+    padding: 2px 0;
+}
+
+.automations-message-history ul {
+    list-style: none;
+    padding: 0;
+    margin: 8px 0 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.automations-message-history li {
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    padding: 10px;
+    background: #fff;
+}
+
+/* קטגוריות מתקפלות בעמוד האוטומציות (reminders/retention/broadcast/manual/immediate, ראו
+   _automation_category בבלופרינט) - מכווצות כברירת מחדל, נפתחות בלחיצה על הכותרת */
+.automations-category {
+    margin-bottom: 16px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.automations-category summary {
+    cursor: pointer;
+    padding: 12px 16px;
+    font-weight: 700;
+    font-size: 15px;
+    background: linear-gradient(90deg, #f8fafc 0%, #f1f5f9 100%);
+    list-style: none;
+}
+
+.automations-category summary::-webkit-details-marker {
+    display: none;
+}
+
+.automations-category summary::before {
+    content: "▸";
+    display: inline-block;
+    margin-inline-end: 8px;
+    transition: transform 0.15s ease;
+}
+
+.automations-category[open] summary::before {
+    transform: rotate(90deg);
+}
+
+.automations-category .automations-table {
+    margin: 0;
+}
+
+/* תת-קבוצה לפי שם משותף בתוך קטגוריה (למשל "לקוחות שעזבו - 14/35 ימים", ראו
+   _subgroup_by_name בבלופרינט/automationsToggleGroup ב-list.html) - שורת כותרת ניתנת ללחיצה
+   בתוך הטבלה עצמה (לא <details> אמיתי - אי אפשר לקנן <details> בתוך <tr>) */
+.automations-group-header-row {
+    cursor: pointer;
+    background: var(--surface-2);
+    font-weight: 600;
+}
+
+.automations-group-header-row:hover {
+    background: #eef2f7;
+}
+
+.automations-group-arrow {
+    display: inline-block;
+    transition: transform 0.15s ease;
+}
+
+.automations-group-header-row.expanded .automations-group-arrow {
+    transform: rotate(90deg);
+}
+
+.automations-group-member td:first-child {
+    padding-inline-start: 28px;
+}
+
+/* לשוניות בפאנל הפירוט של אוטומציה (הודעה/תזמון/נמענים/הרצות אחרונות) - במקום לערום את כל
+   הסעיפים זה מתחת לזה (היה תופס המון גובה), מציגים סעיף אחד בכל פעם. ראו automationsSwitchTab
+   ב-list.html. דפוס לשוניות רגיל, לא <details> - כי צריך לזכור "מי פעילה" בין כל הלשוניות יחד */
+.automations-tab-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    border-bottom: 2px solid var(--border);
+    margin-bottom: 16px;
+}
+
+.automations-tab-btn {
+    padding: 8px 16px;
+    border: none;
+    background: none;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-muted, #64748b);
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+}
+
+.automations-tab-btn:hover {
+    color: var(--primary);
+}
+
+.automations-tab-btn.active {
+    color: var(--primary);
+    border-bottom-color: var(--primary);
+}
+
+.automations-tab-panel .form-card {
+    margin-top: 0;
+}
+
+/* --- עיצוב מחודש של עמוד האוטומציות: כותרת פעולות, כרטיסי סיכום, מתג הפעלה, שורות ופירוט.
+   הכל מוגבל למחלקות עם קידומת automations / auto-stat / switch / num-pill, כך שאין השפעה על
+   שאר העמודים (הערה: .stat-card של לוח הבקרה הוא כלל נפרד, לכן כאן השם auto-stat) --- */
+.btn-ghost {
+    background: var(--surface);
+    color: var(--text);
+    border: 1px solid var(--border);
+    box-shadow: none;
+}
+
+.btn-ghost:hover {
+    background: var(--surface-2);
+    border-color: var(--primary);
+    color: var(--primary);
+    box-shadow: none;
+}
+
+.btn-sm {
+    padding: 5px 12px;
+    font-size: 12px;
+}
+
+.btn-ghost.active {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: #fff;
+}
+
+.automations-header {
+    margin-bottom: 16px;
+}
+
+.automations-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.automations-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.auto-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 14px 16px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-inline-start: 4px solid var(--primary);
+    border-radius: 12px;
+}
+
+.auto-stat .auto-stat-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--muted);
+}
+
+.auto-stat .auto-stat-value {
+    font-size: 26px;
+    font-weight: 800;
+    line-height: 1.1;
+    color: var(--text);
+}
+
+.auto-stat-green { border-inline-start-color: #16a34a; }
+.auto-stat-blue { border-inline-start-color: #2563eb; }
+.auto-stat-red { border-inline-start-color: #dc2626; }
+.auto-stat-gray { border-inline-start-color: #94a3b8; }
+
+/* קטגוריות */
+.automations-category {
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.automations-category summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    background: var(--surface-2);
+    color: var(--text);
+    border-bottom: 1px solid transparent;
+    transition: background 0.15s ease;
+}
+
+.automations-category summary:hover {
+    background: var(--border);
+}
+
+.automations-category[open] summary {
+    border-bottom-color: var(--border);
+}
+
+.automations-category-title {
+    flex: 1;
+}
+
+.automations-category-meta {
+    display: inline-flex;
+    gap: 6px;
+}
+
+.category-pill {
+    padding: 2px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--muted);
+}
+
+.category-pill-green {
+    background: #dcfce7;
+    border-color: #86efac;
+    color: #166534;
+}
+
+.automations-table-wrap {
+    overflow-x: auto;
+}
+
+/* טבלה */
+.automations-table thead th {
+    background: var(--surface-2);
+    color: var(--muted);
+    border-bottom: 1px solid var(--border);
+}
+
+.automations-table td {
+    vertical-align: middle;
+    border-bottom-color: var(--border);
+}
+
+.automations-table tr:hover td {
+    background: var(--surface-2);
+}
+
+.automations-name {
+    font-weight: 700;
+    white-space: normal;
+    min-width: 140px;
+}
+
+.automations-row.is-off .automations-name,
+.automations-row.is-off .automations-schedule-summary,
+.automations-row.is-off .automations-message-preview {
+    opacity: 0.55;
+}
+
+.automations-schedule-summary,
+.automations-message-preview {
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--muted);
+}
+
+.automations-num {
+    text-align: center;
+}
+
+.automations-row-actions {
+    text-align: left;
+}
+
+/* מתג הפעלה/כיבוי - מחליף את כפתור "כבה/הפעל" הנפרד. עדיין <button type=submit> בתוך אותו
+   form, ולכן ההתנהגות בשרת (toggle_automation) לא משתנה. RTL: ה"ידית" נעה לימין כשכבוי */
+.automations-toggle-form {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+}
+
+.switch {
+    position: relative;
+    width: 40px;
+    height: 22px;
+    padding: 0;
+    border: none;
+    border-radius: 999px;
+    background: #cbd5e1;
+    cursor: pointer;
+    transition: background 0.2s ease;
+    flex-shrink: 0;
+}
+
+.switch:focus-visible {
+    outline: 3px solid rgba(96, 165, 250, 0.5);
+    outline-offset: 2px;
+}
+
+.switch-knob {
+    position: absolute;
+    top: 3px;
+    right: 3px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.3);
+    transition: transform 0.2s ease;
+}
+
+.switch.on {
+    background: #16a34a;
+}
+
+.switch.on .switch-knob {
+    transform: translateX(-18px);
+}
+
+.switch-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--muted);
+    min-width: 36px;
+}
+
+.num-pill {
+    display: inline-block;
+    min-width: 28px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+    text-align: center;
+}
+
+.num-ok { background: #dcfce7; color: #166534; }
+.num-fail { background: #fee2e2; color: #b91c1c; }
+.num-zero { background: transparent; color: var(--muted); font-weight: 500; }
+
+.automations-empty {
+    padding: 40px 20px;
+}
+
+.automations-empty-icon {
+    font-size: 36px;
+    margin-bottom: 8px;
+}
+
+/* פאנל הפירוט: לשוניות בסגנון "פילים" ופאנל על כרטיס */
+.automations-details-row td {
+    border-top: 1px solid var(--border);
+    box-shadow: inset 0 3px 6px -4px rgba(15, 23, 42, 0.12);
+}
+
+.automations-tab-bar {
+    border-bottom: none;
+    gap: 6px;
+    padding: 4px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    width: fit-content;
+    max-width: 100%;
+}
+
+.automations-tab-btn {
+    border-radius: 999px;
+    margin-bottom: 0;
+    border-bottom: none;
+    padding: 6px 16px;
+    color: var(--muted);
+}
+
+.automations-tab-btn.active {
+    background: var(--primary);
+    color: #fff;
+}
+
+.automations-tab-btn:not(.active):hover {
+    background: var(--surface-2);
+}
+
+.automations-details .form-card,
+.automations-message-history li {
+    background: var(--surface);
+}
+
+.automations-message-history li,
+.automations-membership-types {
+    border-color: var(--border);
+}
+
+/* מצב כהה - בעמוד הזה היו צבעים קבועים (#fff, #f1f5f9) שנשארו בהירים */
+body.dark .automations-category-title,
+body.dark .automations-name {
+    color: var(--text);
+}
+
+body.dark .category-pill-green {
+    background: #14532d;
+    border-color: #166534;
+    color: #bbf7d0;
+}
+
+body.dark .num-ok { background: #14532d; color: #bbf7d0; }
+body.dark .num-fail { background: #7f1d1d; color: #fecaca; }
+body.dark .switch { background: #475569; }
+body.dark .switch.on { background: #22c55e; }
+body.dark .automations-membership-types,
+body.dark .automations-membership-list label {
+    background: var(--surface);
+    color: var(--text);
+}
+
+body.dark .automations-table-wrap input,
+body.dark .automations-details input[type=text],
+body.dark .automations-details input[type=number],
+body.dark .automations-details input[type=time],
+body.dark .automations-details input[type=date],
+body.dark .automations-details select,
+body.dark .automations-details textarea {
+    background: var(--surface);
+    color: var(--text);
+    border-color: var(--border);
+}
+
+body.dark .automations-details label {
+    color: var(--muted);
+}
+
+@media (max-width: 720px) {
+    .automations-stats {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+/* עמוד תבניות וואטסאפ - אותו תיקון בדיוק כמו automations-schedule-summary: בלי זה, תוכן
+   תבנית ארוך (יכול להיות כמה שורות אצל תבניות שיווקיות ישנות) מתרחב כשורה אחת בלי גבול
+   ועובר את רוחב העמוד, במקום להיעטף בתוך העמודה שלו */
+.whatsapp-templates-content {
+    white-space: normal;
+    max-width: 420px;
+}
+
+.day-list, .hour-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.day-list a, .hour-list a {
+    padding: 10px 16px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    text-decoration: none;
+    color: #1f2937;
+}
+
+.day-list a:hover, .hour-list a:hover {
+    background: #e8edf5;
+}
+
+.section {
+    margin-top: 24px;
+}
+
+.dashboard-hero {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    padding: 18px 20px;
+    border-radius: 18px;
+    margin-bottom: 16px;
+    background: linear-gradient(135deg, rgba(37, 99, 235, 0.12) 0%, rgba(96, 165, 250, 0.08) 100%);
+    border: 1px solid rgba(37, 99, 235, 0.16);
+}
+
+.dashboard-hero h2 {
+    margin: 0 0 6px;
+    font-size: 20px;
+    color: var(--text);
+}
+
+.dashboard-hero p {
+    margin: 0;
+    color: var(--muted);
+}
+
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 16px;
+    margin-top: 16px;
+}
+
+.stat-card {
+    background: linear-gradient(135deg, var(--surface) 0%, var(--surface-2) 100%);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 18px;
+    box-shadow: var(--shadow);
+}
+
+.stat-card .stat-title {
+    color: var(--muted);
+    font-size: 13px;
+    margin-bottom: 8px;
+}
+
+.stat-card .stat-value {
+    font-size: 28px;
+    font-weight: 800;
+    color: var(--text);
+}
+
+.stat-card .stat-caption {
+    margin-top: 6px;
+    color: var(--muted);
+    font-size: 13px;
+}
+
+.dashboard-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.dashboard-panels {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 16px;
+    margin-top: 18px;
+}
+
+.panel-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 16px;
+    box-shadow: var(--shadow);
+}
+
+.panel-title {
+    font-size: 15px;
+    font-weight: 700;
+    margin-bottom: 10px;
+    color: var(--text);
+}
+
+.recent-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.recent-list li {
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+}
+
+.recent-list strong {
+    display: block;
+    margin-bottom: 4px;
+}
+
+.recent-list span {
+    color: var(--muted);
+    font-size: 13px;
+}
+
+.actions-row {
+    display: flex;
+    gap: 8px;
+}
+
+/* --- Login page --- */
+.login-page {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    background: linear-gradient(135deg, #14213d 0%, #1d4ed8 100%);
+}
+
+.login-card::before {
+    content: "";
+    display: block;
+    width: 100%;
+    height: 6px;
+    background: linear-gradient(90deg, #2563eb 0%, #60a5fa 100%);
+    border-radius: 999px;
+    margin-bottom: 18px;
+}
+
+.login-card {
+    background: rgba(255, 255, 255, 0.97);
+    border-radius: 20px;
+    padding: 32px;
+    width: 340px;
+    box-shadow: 0 20px 45px rgba(0, 0, 0, 0.2);
+}
+
+.login-card h1 {
+    font-size: 20px;
+    margin-top: 0;
+    margin-bottom: 18px;
+    text-align: center;
+    color: #0f172a;
+}
+
+.chat-thread {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-width: 680px;
+    background: #e9edef;
+    background-image: linear-gradient(rgba(0,0,0,0.02), rgba(0,0,0,0.02));
+    padding: 18px;
+    border-radius: 12px;
+}
+
+body.dark .chat-thread {
+    background: #0b141a;
+}
+
+.chat-bubble {
+    max-width: 60%;
+    padding: 5px 9px;
+    border-radius: 8px;
+    font-size: 13px;
+    line-height: 1.3;
+    white-space: pre-wrap;
+    color: #111b21;
+    box-shadow: 0 1px 1px rgba(0, 0, 0, 0.08);
+}
+
+.chat-bubble .chat-time {
+    display: inline-block;
+    margin-right: 8px;
+    font-size: 10.5px;
+    white-space: nowrap;
+    color: rgba(17, 27, 33, 0.5);
+}
+
+.chat-bubble-in {
+    align-self: flex-start;
+    background: #ffffff;
+    border-radius: 8px 8px 8px 2px;
+}
+
+body.dark .chat-bubble-in {
+    background: #202c33;
+    color: #e9edef;
+}
+
+body.dark .chat-bubble-in .chat-time {
+    color: rgba(233, 237, 239, 0.55);
+}
+
+.chat-bubble-out {
+    align-self: flex-end;
+    background: #d9fdd3;
+    border-radius: 8px 8px 2px 8px;
+}
+
+body.dark .chat-bubble-out {
+    background: #005c4b;
+    color: #e9edef;
+}
+
+body.dark .chat-bubble-out .chat-time {
+    color: rgba(233, 237, 239, 0.55);
+}
+
+.chat-app {
+    display: flex;
+    height: 72vh;
+    min-height: 420px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.chat-app-list {
+    width: 320px;
+    flex-shrink: 0;
+    overflow-y: auto;
+    border-left: 1px solid var(--border);
+    background: var(--surface);
+}
+
+.chat-app-thread {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.chat-app-thread .chat-thread {
+    flex: 1;
+    overflow-y: auto;
+    max-width: none;
+    border-radius: 0;
+    margin: 0;
+}
+
+.chat-app-empty {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--muted);
+    background: #e9edef;
+}
+
+body.dark .chat-app-empty {
+    background: #0b141a;
+}
+
+.chat-reply-form {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    padding: 10px 12px;
+    border-top: 1px solid var(--border);
+    background: var(--surface);
+}
+
+.chat-reply-form textarea {
+    flex: 1;
+    resize: none;
+    min-height: 36px;
+    max-height: 36px;
+    padding: 8px 12px;
+    line-height: 1.3;
+    border-radius: 18px;
+}
+
+.chat-attach-btn {
+    flex-shrink: 0;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 18px;
+    color: var(--muted);
+    transition: background 0.15s ease;
+}
+
+.chat-attach-btn:hover {
+    background: var(--surface-2);
+}
+
+.chat-attachment-image {
+    display: block;
+    max-width: 260px;
+    max-height: 260px;
+    border-radius: 6px;
+    margin-bottom: 4px;
+}
+
+.chat-attachment-file {
+    display: inline-block;
+    color: inherit;
+    text-decoration: underline;
+    margin-bottom: 4px;
+}
+
+.chat-list-item.active {
+    background: var(--surface-2);
+}
+
+.chat-list-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    text-decoration: none;
+    color: var(--text);
+    border-bottom: 1px solid var(--border);
+    transition: background 0.15s ease;
+}
+
+.chat-list-item:last-child {
+    border-bottom: none;
+}
+
+.chat-list-item:hover {
+    background: var(--surface-2);
+}
+
+.chat-list-avatar {
+    flex-shrink: 0;
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    background: var(--primary);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+}
+
+.chat-list-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.chat-list-top {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.chat-list-name {
+    font-weight: 600;
+}
+
+.chat-list-time {
+    font-size: 12px;
+    color: var(--muted);
+    flex-shrink: 0;
+}
+
+.chat-list-preview {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: var(--muted);
+    margin-top: 2px;
+}
+
+.chat-list-preview-text {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+}
+
+/* שיחה עם הודעה חדשה שלא נקראה - כמו בוואטסאפ: שם מודגש + נקודה ירוקה */
+.chat-list-item-unread .chat-list-name {
+    font-weight: 800;
+    color: var(--text);
+}
+
+.chat-list-item-unread .chat-list-preview-text {
+    color: var(--text);
+    font-weight: 600;
+}
+
+.chat-unread-dot {
+    flex-shrink: 0;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #25d366;
+}
+
+.chat-list-number {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 2px;
+}
+
+.chat-thread-header {
+    flex-shrink: 0;
+    padding: 8px 16px;
+    font-size: 12px;
+    color: var(--muted);
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+}
+
+/* --- מצב כהה גלובלי: צבעים שהוגדרו קבוע בהיר (#fff, #111827, #334155...) ולכן "נעלמו" או נשארו
+   בהירים כשהמשתנים (--surface/--text וכו') התהפכו. בלוק אחד מרוכז, כדי לא לפזר תיקונים בין כללים */
+body.dark {
+    background: linear-gradient(135deg, #0a1424 0%, var(--bg) 100%);
+}
+
+body.dark .card h1,
+body.dark .card h2,
+body.dark .card h3,
+body.dark .card h4 {
+    color: var(--text);
+}
+
+body.dark .card-header {
+    border-bottom-color: var(--border);
+}
+
+body.dark .sidebar a {
+    color: var(--muted);
+}
+
+body.dark .sidebar a:hover,
+body.dark .sidebar a.active {
+    background: linear-gradient(90deg, rgba(96, 165, 250, 0.18) 0%, rgba(96, 165, 250, 0.06) 100%);
+    color: var(--primary-dark);
+}
+
+body.dark th {
+    background: var(--surface-2);
+    color: var(--muted);
+}
+
+body.dark th,
+body.dark td {
+    border-bottom-color: var(--border);
+}
+
+body.dark th:not(:last-child),
+body.dark td:not(:last-child) {
+    border-inline-end-color: rgba(148, 163, 184, 0.08);
+}
+
+body.dark tr:hover td {
+    background: var(--surface-2);
+}
+
+body.dark .table-scroll {
+    border-color: var(--border);
+}
+
+body.dark .empty-state {
+    background: var(--surface-2);
+    border-color: var(--border);
+    color: var(--muted);
+}
+
+body.dark input[type=text],
+body.dark input[type=password],
+body.dark input[type=email],
+body.dark input[type=number],
+body.dark input[type=date],
+body.dark input[type=time],
+body.dark input[type=search],
+body.dark select,
+body.dark textarea {
+    background: var(--surface-2);
+    color: var(--text);
+    border-color: var(--border);
+    color-scheme: dark;
+}
+
+body.dark input::placeholder,
+body.dark textarea::placeholder {
+    color: var(--muted);
+}
+
+body.dark input[type=text]:focus,
+body.dark input[type=password]:focus,
+body.dark input[type=email]:focus,
+body.dark input[type=number]:focus,
+body.dark input[type=date]:focus,
+body.dark input[type=time]:focus,
+body.dark select:focus,
+body.dark textarea:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.25);
+}
+
+body.dark label,
+body.dark .bulk-count {
+    color: var(--muted);
+}
+
+body.dark select.status-select,
+body.dark .status-chip {
+    background-color: var(--surface-2);
+    color: var(--text);
+    border-color: var(--border);
+}
+
+body.dark .flash-success {
+    background: #14532d;
+    color: #bbf7d0;
+    border-color: #166534;
+}
+
+body.dark .flash-error {
+    background: #7f1d1d;
+    color: #fecaca;
+    border-color: #991b1b;
+}
+
+body.dark .notes-panel-body {
+    color: var(--text);
+}
+
+body.dark .day-list a,
+body.dark .hour-list a {
+    color: var(--text);
+    border-color: var(--border);
+}
+
+body.dark .day-list a:hover,
+body.dark .hour-list a:hover {
+    background: var(--surface-2);
+}
+
+body.dark .automations-category summary:hover {
+    background: var(--surface-2);
+}
+
+body.dark .automations-group-header-row:hover {
+    background: var(--surface-2);
+}
+
+/* --- עמוד תבניות וואטסאפ (templates/whatsapp_templates/index.html): כרטיסי תבניות עם תצוגת
+   "בועת הודעה", סינון/חיפוש, וטופס יצירה עם תצוגה מקדימה חיה. הכל בקידומת wa- --- */
+.wa-info {
+    margin-bottom: 16px;
+    padding: 10px 14px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+}
+
+.wa-info summary {
+    cursor: pointer;
+    font-weight: 700;
+    font-size: 14px;
+}
+
+.wa-info .hint {
+    margin: 8px 0 0;
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+.wa-section-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin: 8px 0 12px;
+}
+
+.wa-section-head h4,
+.wa-new h4,
+.wa-section-head h2,
+.wa-new h2,
+h2.sub-title {
+    margin: 0;
+    font-size: 16px;
+}
+
+.wa-filters {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 14px;
+}
+
+.wa-filters input[type=text] {
+    min-width: 240px;
+    flex: 1;
+    max-width: 340px;
+}
+
+.wa-chip {
+    padding: 6px 14px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--surface);
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.15s ease;
+}
+
+.wa-chip:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+.wa-chip.active {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: #fff;
+}
+
+.wa-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 14px;
+}
+
+.wa-card {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 14px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+    transition: box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.wa-card:hover {
+    box-shadow: var(--shadow);
+    transform: translateY(-1px);
+}
+
+.wa-card[hidden] {
+    display: none;
+}
+
+.wa-card-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.wa-name {
+    font-family: Consolas, "Courier New", monospace;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text);
+    direction: ltr;
+    overflow-wrap: anywhere;
+}
+
+.wa-meta {
+    display: flex;
+    gap: 6px;
+}
+
+.wa-pill-marketing {
+    background: #fef3c7;
+    border-color: #fcd34d;
+    color: #92400e;
+}
+
+.wa-bubble {
+    padding: 8px 12px;
+    background: #d9fdd3;
+    color: #111b21;
+    border-radius: 10px 10px 2px 10px;
+    box-shadow: 0 1px 1px rgba(0, 0, 0, 0.08);
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.wa-bubble-text {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+.wa-bubble-footer {
+    margin-top: 6px;
+    font-size: 11px;
+    color: rgba(17, 27, 33, 0.55);
+}
+
+.wa-var {
+    padding: 0 4px;
+    border-radius: 4px;
+    background: rgba(37, 99, 235, 0.15);
+    color: #1d4ed8;
+    font-weight: 700;
+    direction: ltr;
+    unicode-bidi: isolate;
+}
+
+.wa-placeholder {
+    color: rgba(17, 27, 33, 0.45);
+}
+
+/* טופס יצירה + תצוגה מקדימה זה לצד זה */
+.wa-new {
+    margin-top: 28px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+    scroll-margin-top: 80px;
+}
+
+.wa-new-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 320px;
+    gap: 24px;
+    align-items: start;
+    margin-top: 14px;
+}
+
+.wa-form .form-group {
+    max-width: 560px;
+}
+
+.wa-form .form-group input,
+.wa-form .form-group select {
+    width: 100%;
+    margin-bottom: 6px;
+}
+
+.wa-preview {
+    position: sticky;
+    top: 84px;
+}
+
+.wa-preview-title {
+    margin-bottom: 8px;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--muted);
+}
+
+.wa-preview-thread {
+    min-height: 140px;
+    max-width: none;
+}
+
+.wa-bubble-preview {
+    align-self: flex-end;
+    max-width: 92%;
+}
+
+@media (max-width: 900px) {
+    .wa-new-layout {
+        grid-template-columns: 1fr;
+    }
+    .wa-preview {
+        position: static;
+    }
+}
+
+body.dark .wa-bubble {
+    background: #005c4b;
+    color: #e9edef;
+}
+
+body.dark .wa-bubble-footer {
+    color: rgba(233, 237, 239, 0.6);
+}
+
+body.dark .wa-placeholder {
+    color: rgba(233, 237, 239, 0.5);
+}
+
+body.dark .wa-var {
+    background: rgba(147, 197, 253, 0.2);
+    color: #bfdbfe;
+}
+
+body.dark .wa-pill-marketing {
+    background: #78350f;
+    border-color: #92400e;
+    color: #fde68a;
+}
+
+/* --- בלאקליסט גלובלי (templates/automations/blacklist.html), קידומת bl- --- */
+.bl-callout {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+    padding: 12px 16px;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-inline-start: 4px solid #dc2626;
+    border-radius: 12px;
+    color: #991b1b;
+}
+
+.bl-callout p {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.bl-callout-icon {
+    font-size: 20px;
+}
+
+.bl-add {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 12px;
+    margin-bottom: 24px;
+    padding: 14px 16px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+}
+
+.bl-add-field {
+    flex: 1;
+    min-width: 180px;
+    max-width: 280px;
+}
+
+.bl-add-field label {
+    margin-bottom: 4px;
+}
+
+.bl-add-field input {
+    width: 100%;
+}
+
+.bl-table-wrap {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+}
+
+.bl-table {
+    margin: 0;
+}
+
+.bl-table thead th {
+    background: var(--surface-2);
+    color: var(--muted);
+}
+
+.bl-table td {
+    vertical-align: middle;
+}
+
+.bl-row[hidden] {
+    display: none;
+}
+
+.bl-phone {
+    font-family: Consolas, "Courier New", monospace;
+    font-weight: 600;
+    text-align: right;
+}
+
+.btn-ghost-danger:hover {
+    background: #fef2f2;
+    border-color: #dc2626;
+    color: #dc2626;
+}
+
+body.dark .bl-callout {
+    background: #450a0a;
+    border-color: #7f1d1d;
+    border-inline-start-color: #f87171;
+    color: #fecaca;
+}
+
+body.dark .btn-ghost-danger:hover {
+    background: #450a0a;
+    border-color: #f87171;
+    color: #fecaca;
+}
+
+/* --- טופס אוטומציה (new.html + פאנל העריכה ברשימה, דרך _schedule_fields/_message_fields),
+   קידומת af-. רוב השינוי הוא על המחלקות הקיימות של הפרטיאלים כדי שלא ייגעו בלוגיקה --- */
+.af-form {
+    max-width: 800px;
+    margin-inline: auto;
+}
+
+.af-section {
+    margin-bottom: 18px;
+    padding: 18px 20px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.af-section-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0 0 14px;
+    font-size: 16px;
+}
+
+.af-step {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: var(--primary);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 800;
+}
+
+.af-actions {
+    display: flex;
+    gap: 10px;
+    padding-top: 4px;
+}
+
+.af-form .form-group,
+.automations-tab-panel .form-group {
+    max-width: 560px;
+}
+
+.af-form .form-group input[type=text],
+.af-form .form-group input[type=number],
+.af-form .form-group input[type=time],
+.af-form .form-group input[type=datetime-local],
+.af-form .form-group select,
+.automations-tab-panel .form-group input[type=text],
+.automations-tab-panel .form-group input[type=number],
+.automations-tab-panel .form-group input[type=time],
+.automations-tab-panel .form-group input[type=datetime-local],
+.automations-tab-panel .form-group select {
+    width: 100%;
+    margin-bottom: 6px;
+}
+
+/* שדה מספר קטן שנשאר צר (למשל "עד השעה" ליד תפריט) */
+.af-form .form-group input[style*="width:70px"],
+.automations-tab-panel .form-group input[style*="width:70px"] {
+    width: 70px;
+}
+
+.af-form input[type=datetime-local],
+.automations-tab-panel input[type=datetime-local] {
+    padding: 9px 12px;
+    border: 1px solid #cbd5e1;
+    border-radius: 10px;
+    font-size: 14px;
+    font-family: inherit;
+    background: #fff;
+}
+
+.af-form textarea,
+.automations-tab-panel textarea {
+    min-height: 120px;
+    line-height: 1.6;
+}
+
+.af-form .form-card,
+.automations-tab-panel .form-card {
+    max-width: 640px;
+}
+
+/* ההסברים הארוכים בטופס - כקריאת "מידע" ולא כשורת טקסט אפורה צפופה */
+.automations-audience-field .hint,
+.automations-message-mode-field .hint,
+.af-section .hint {
+    margin: 6px 0 0;
+    padding: 8px 12px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-inline-start: 3px solid var(--primary);
+    border-radius: 8px;
+    line-height: 1.7;
+}
+
+.af-weekdays {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.af-weekdays label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+    padding: 6px 12px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    font-weight: 600;
+    cursor: pointer;
+    user-select: none;
+}
+
+.af-weekdays label:has(input:checked) {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: #fff;
+}
+
+.af-weekdays input {
+    accent-color: #fff;
+}
+
+.automations-membership-types {
+    border-color: var(--border);
+    background: var(--surface-2);
+    border-radius: 10px;
+}
+
+.automations-membership-option {
+    padding: 4px 6px;
+    border-radius: 6px;
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.automations-membership-option:hover {
+    background: var(--border);
+}
+
+.automations-audience-field[hidden],
+.automations-message-mode-field[hidden],
+.schedule-field[hidden] {
+    display: none;
+}
+
+body.dark .af-section {
+    background: var(--surface);
+}
+
+body.dark .af-form input[type=datetime-local],
+body.dark .automations-tab-panel input[type=datetime-local] {
+    background: var(--surface-2);
+    color: var(--text);
+    border-color: var(--border);
+    color-scheme: dark;
+}
+
+body.dark .af-weekdays label:has(input:checked) {
+    color: #0f172a;
+}
+
+@media (max-width: 720px) {
+    .af-section {
+        padding: 14px;
+    }
+}
+
+/* --- לוח בקרה (templates/dashboard.html): כרטיסי סטטיסטיקה לחיצים עם אייקון וצבע, ורשימות
+   "אחרונים" עם אווטאר וקישור "הצג הכל". קידומות dash-/panel-/recent-. ה-.stat-card של הלוח
+   הוא כלל קיים (למעלה), כאן רק מרחיבים אותו לפי .dash-stat --- */
+.dashboard-hero h2 {
+    font-size: 22px;
+}
+
+.dashboard-hero p {
+    line-height: 1.6;
+}
+
+.dashboard-actions {
+    justify-content: flex-end;
+}
+
+.dash-stat {
+    position: relative;
+    display: block;
+    overflow: hidden;
+    text-decoration: none;
+    color: inherit;
+    border-inline-start: 4px solid var(--dash-accent, var(--primary));
+    transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+.dash-stat:hover {
+    transform: translateY(-2px);
+    border-color: var(--dash-accent, var(--primary));
+}
+
+.dash-stat:focus-visible {
+    outline: 3px solid rgba(96, 165, 250, 0.5);
+    outline-offset: 2px;
+}
+
+.dash-stat-icon {
+    position: absolute;
+    top: 14px;
+    left: 14px;
+    width: 38px;
+    height: 38px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+    font-size: 18px;
+    background: color-mix(in srgb, var(--dash-accent, var(--primary)) 14%, transparent);
+}
+
+.dash-stat-blue { --dash-accent: #2563eb; }
+.dash-stat-green { --dash-accent: #16a34a; }
+.dash-stat-orange { --dash-accent: #f59e0b; }
+.dash-stat-purple { --dash-accent: #9333ea; }
+.dash-stat-gray { --dash-accent: #94a3b8; }
+
+.panel-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.panel-head .panel-title {
+    margin-bottom: 0;
+}
+
+.panel-link {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--primary);
+    text-decoration: none;
+}
+
+.panel-link:hover {
+    text-decoration: underline;
+}
+
+.recent-list li {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    transition: border-color 0.15s ease;
+}
+
+.recent-list li:hover {
+    border-color: var(--primary);
+}
+
+.recent-body {
+    flex: 1;
+    min-width: 0;
+}
+
+.recent-body strong {
+    margin-bottom: 2px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.recent-list .recent-avatar {
+    flex-shrink: 0;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-2) 100%);
+    color: #fff;
+    font-size: 15px;
+    font-weight: 700;
+}
+
+body.dark .recent-list .recent-avatar {
+    color: #0f172a;
+}
+
+.recent-list .recent-tag {
+    flex-shrink: 0;
+    padding: 2px 10px;
+    border-radius: 999px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 600;
+}
+
+body.dark .dashboard-hero {
+    background: linear-gradient(135deg, rgba(96, 165, 250, 0.14) 0%, rgba(96, 165, 250, 0.05) 100%);
+    border-color: rgba(96, 165, 250, 0.22);
+}
+
+@media (max-width: 720px) {
+    .dashboard-hero {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    .dashboard-actions {
+        justify-content: flex-start;
+    }
+}
+
+/* --- עמוד הלידים (templates/leads/list.html). רק עיצוב - לא נוגעים בשרשרת ה-flex/overflow של
+   body.page-leads-list למעלה, כדי לא לשבור את הפריסה הקבועה (ראו ההערות שם). סרגל הפעולות
+   המרובות מוסתר עד שנבחר ליד, וזה גם מפנה גובה לטבלה --- */
+.bulk-actions-bar[hidden] {
+    display: none;
+}
+
+.bulk-actions-bar {
+    background: color-mix(in srgb, var(--primary) 10%, var(--surface));
+    border-color: color-mix(in srgb, var(--primary) 35%, var(--border));
+}
+
+.bulk-actions-bar .bulk-count {
+    padding: 3px 12px;
+    border-radius: 999px;
+    background: var(--primary);
+    color: #fff;
+    font-size: 12px;
+}
+
+body.dark .bulk-actions-bar .bulk-count {
+    color: #0f172a;
+}
+
+/* כפתורים משניים בסרגלי הכלים של הלידים - מתאר במקום גרדיאנט אפור כבד */
+.leads-toolbar .btn-secondary,
+.bulk-actions-bar .btn-secondary {
+    background: var(--surface);
+    color: var(--text);
+    border: 1px solid var(--border);
+    box-shadow: none;
+}
+
+.leads-toolbar .btn-secondary:hover,
+.bulk-actions-bar .btn-secondary:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+    box-shadow: none;
+}
+
+.leads-toolbar .toolbar-actions {
+    margin-inline-start: auto;
+}
+
+.leads-toolbar input[type=text] {
+    min-width: 190px;
+}
+
+/* טבלה: שורות נבחרות, ריחוף, והיררכיה ויזואלית (שם בולט, מזהה/תאריכים עמומים) */
+.leads-table tr.row-selected td {
+    background: color-mix(in srgb, var(--primary) 12%, var(--surface));
+}
+
+.leads-table tbody tr:hover td {
+    background: var(--surface-2);
+}
+
+.leads-table tbody tr.row-selected:hover td {
+    background: color-mix(in srgb, var(--primary) 16%, var(--surface));
+}
+
+.leads-table td {
+    vertical-align: middle;
+}
+
+.leads-table .col-name {
+    font-weight: 700;
+}
+
+.leads-table .col-id,
+.leads-table .col-created,
+.leads-table .col-updated,
+.leads-table .col-routings,
+.leads-table .col-branch,
+.leads-table .col-channel {
+    color: var(--muted);
+}
+
+.leads-table .col-id {
+    font-size: 11px;
+}
+
+.leads-table .col-phone .phone-cell > span:first-child {
+    direction: ltr;
+    unicode-bidi: isolate;
+}
+
+.leads-table .col-select input,
+#select-all-checkbox {
+    accent-color: var(--primary);
+    cursor: pointer;
+}
+
+.leads-table tr:hover td.col-notes.has-notes {
+    color: var(--text);
+}
+
+/* תפריט הסטטוס/המשויך בתוך השורה - עדין יותר בקליטה, מתבלט רק בריחוף/פוקוס */
+.leads-table select.assigned-select {
+    border-color: transparent;
+    background: transparent;
+    color: var(--text);
+}
+
+.leads-table select.assigned-select:hover,
+.leads-table select.assigned-select:focus {
+    border-color: var(--border);
+    background: var(--surface);
+}
+
+body.dark .leads-table select.status-select {
+    color: var(--text);
+}
+
+body.dark .leads-table select.assigned-select:hover,
+body.dark .leads-table select.assigned-select:focus {
+    background: var(--surface-2);
+}
+
+/* שורת הסטטיסטיקה/עימוד התחתונה: קצת נשימה ובלוק סיכום ברור */
+.leads-stats-bar {
+    padding: 6px 18px;
+    font-size: 12px;
+}
+
+.leads-stats-group span {
+    padding: 2px 10px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.08);
+}
+
+/* פסי גלילה וקונטרולים מובנים (checkbox, date picker וכו') בצבעי מצב כהה */
+body.dark {
+    color-scheme: dark;
+}
+
+/* טפסי ליד חדש / עריכה / המרה: כרטיס בשתי עמודות (הערות ולחצן יוצאים לרוחב מלא) */
+.form-card.lead-form {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px 18px;
+    max-width: 720px;
+    padding: 20px 22px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+}
+
+.lead-form > .form-group {
+    max-width: none;
+    margin: 0;
+}
+
+.lead-form .form-group input[type=text],
+.lead-form .form-group select,
+.lead-form .form-group textarea {
+    width: 100%;
+}
+
+.lead-form .lead-form-wide,
+.lead-form > .btn {
+    grid-column: 1 / -1;
+}
+
+.lead-form > .btn {
+    justify-self: start;
+}
+
+@media (max-width: 640px) {
+    .form-card.lead-form {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* בורר צבע (ניהול סטטוסים) - כפתור צבע מעוגל במקום תיבה מובנית ענקית */
+input[type=color] {
+    width: 46px;
+    height: 30px;
+    padding: 2px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface);
+    cursor: pointer;
+}
+
+.form-card.lead-form {
+    margin-inline: auto;
+}
+
+/* כפתורים משניים בכל סרגלי הכלים באתר: מתאר עדין, עקבי עם עמודי האוטומציות והלידים */
+.toolbar .btn-secondary {
+    background: var(--surface);
+    color: var(--text);
+    border: 1px solid var(--border);
+    box-shadow: none;
+}
+
+.toolbar .btn-secondary:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+    box-shadow: none;
+}
+
+/* --- שיחות בוט הלקוחות (templates/bot_conversations/index.html): חיפוש/סינון ברשימה, כותרת שיחה
+   עם אווטאר, מפרידי ימים, ופס כתיבה מסודר. הבסיס (chat-app/chat-bubble) נשאר כמו שהיה --- */
+.chat-app {
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+}
+
+.chat-list-item[hidden] {
+    display: none;
+}
+
+.chat-list-tools {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    padding: 10px 12px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+}
+
+.chat-list-tools input[type=text] {
+    width: 100%;
+    margin-bottom: 8px;
+    border-radius: 999px;
+}
+
+.chat-list-filters {
+    display: flex;
+    gap: 6px;
+}
+
+.chat-list-filters .wa-chip {
+    padding: 4px 12px;
+    font-size: 12px;
+}
+
+.chat-list-item {
+    border-inline-start: 3px solid transparent;
+}
+
+.chat-list-item.active {
+    border-inline-start-color: var(--primary);
+}
+
+.chat-list-avatar {
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-2) 100%);
+    font-weight: 700;
+}
+
+body.dark .chat-list-avatar {
+    color: #0f172a;
+}
+
+.chat-list-number .badge {
+    margin-inline-start: 4px;
+    padding: 1px 8px;
+    font-size: 10.5px;
+}
+
+.chat-thread-header {
+    padding: 10px 16px;
+    font-size: 12px;
+}
+
+.chat-header-main {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.chat-header-avatar {
+    width: 38px;
+    height: 38px;
+    font-size: 16px;
+}
+
+.chat-header-title {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.chat-header-title strong {
+    font-size: 15px;
+    color: var(--text);
+}
+
+.chat-header-sub {
+    color: var(--muted);
+}
+
+.chat-thread-header .hint {
+    margin: 6px 0 0;
+}
+
+.chat-day-sep {
+    align-self: center;
+    margin: 8px 0 4px;
+}
+
+.chat-day-sep span {
+    display: inline-block;
+    padding: 3px 12px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.85);
+    color: #54656f;
+    font-size: 11px;
+    font-weight: 600;
+    box-shadow: 0 1px 1px rgba(0, 0, 0, 0.08);
+}
+
+body.dark .chat-day-sep span {
+    background: #182229;
+    color: #8696a0;
+}
+
+.chat-bubble {
+    max-width: 72%;
+}
+
+.chat-reply-form {
+    padding: 10px 14px;
+}
+
+.chat-reply-form textarea {
+    border-radius: 20px;
+}
+
+.chat-attach-name {
+    max-width: 160px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 12px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.chat-reply-form .btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+@media (max-width: 800px) {
+    .chat-app {
+        flex-direction: column;
+        height: auto;
+    }
+    .chat-app-list {
+        width: auto;
+        max-height: 34vh;
+        border-left: none;
+        border-bottom: 1px solid var(--border);
+    }
+    .chat-app-thread {
+        min-height: 60vh;
+    }
+}
+
+/* --- לקוחות (templates/customers/*). משתמש גם ב-af-section / auto-stat / recent-avatar שהוגדרו
+   לעמודים אחרים (כרטיס סעיף, כרטיס מספר, אווטאר), כדי לשמור על שפה עיצובית אחת --- */
+.cust-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+}
+
+.cust-bar input[type=text] {
+    flex: 1;
+    max-width: 420px;
+    border-radius: 999px;
+}
+
+.cust-table-wrap {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+}
+
+.cust-table {
+    margin: 0;
+}
+
+.cust-table thead th {
+    background: var(--surface-2);
+    color: var(--muted);
+}
+
+.cust-table td {
+    vertical-align: middle;
+}
+
+.cust-row[hidden] {
+    display: none;
+}
+
+.cust-name-cell {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    text-decoration: none;
+    color: var(--text);
+}
+
+.cust-name {
+    display: flex;
+    flex-direction: column;
+    font-weight: 700;
+}
+
+.cust-name small {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--muted);
+}
+
+.cust-name-cell:hover .cust-name {
+    color: var(--primary);
+}
+
+.cust-link {
+    color: var(--primary);
+    text-decoration: none;
+}
+
+.cust-link:hover {
+    text-decoration: underline;
+}
+
+.cust-address {
+    white-space: normal;
+    max-width: 260px;
+}
+
+.cust-empty,
+.cust-muted {
+    color: var(--muted);
+}
+
+.cust-actions {
+    display: flex;
+    gap: 6px;
+    justify-content: flex-end;
+}
+
+.cust-actions form {
+    margin: 0;
+}
+
+/* פרופיל לקוח */
+.cust-profile {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 18px;
+    padding: 18px 20px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+}
+
+.cust-profile-avatar {
+    width: 56px;
+    height: 56px;
+    font-size: 22px;
+}
+
+.cust-profile-info {
+    flex: 1;
+    min-width: 220px;
+}
+
+.cust-profile-info h2 {
+    margin: 0 0 8px;
+    font-size: 20px;
+}
+
+.cust-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.cust-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    border-radius: 999px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    font-size: 13px;
+}
+
+.cust-chip-link {
+    color: var(--primary);
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.cust-chip-link:hover {
+    text-decoration: underline;
+}
+
+.cust-profile-stats {
+    display: flex;
+    gap: 10px;
+}
+
+.cust-profile-stats .auto-stat {
+    min-width: 96px;
+    padding: 10px 14px;
+}
+
+.cust-profile-delete {
+    margin: 0;
+}
+
+.cust-actions-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 16px;
+}
+
+.cust-actions-grid .af-section {
+    margin-bottom: 0;
+}
+
+.cust-actions-grid .form-group {
+    max-width: none;
+}
+
+.cust-actions-grid .form-group input,
+.cust-actions-grid .form-group select {
+    width: 100%;
+}
+
+.af-section .af-step {
+    font-size: 13px;
+}
+
+body.dark .cust-profile-avatar {
+    color: #0f172a;
+}
+
+/* אווטאר בעמודי לקוחות (מחוץ ל-.recent-list, שם הכלל המקורי חל) */
+.cust-name-cell .recent-avatar,
+.cust-profile .recent-avatar {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-2) 100%);
+    color: #fff;
+    font-size: 15px;
+    font-weight: 700;
+}
+
+.cust-profile .cust-profile-avatar {
+    width: 56px;
+    height: 56px;
+    font-size: 22px;
+}
+
+body.dark .cust-name-cell .recent-avatar,
+body.dark .cust-profile .recent-avatar {
+    color: #0f172a;
+}
+
+/* --- תורים / משתמשים / התחברות. משתמש גם ב-cust-table, wa-chip, af-weekdays, lead-form שהוגדרו
+   לעמודים אחרים, כדי לשמור על שפה עיצובית אחת --- */
+.appt-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 14px;
+}
+
+.appt-filters {
+    margin-bottom: 0;
+}
+
+.appt-search {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-inline-start: auto;
+}
+
+.appt-search input[type=text] {
+    min-width: 200px;
+    border-radius: 999px;
+}
+
+.appt-count {
+    margin-bottom: 10px;
+}
+
+a.wa-chip {
+    text-decoration: none;
+    display: inline-block;
+}
+
+.appt-when {
+    white-space: nowrap;
+}
+
+.appt-when strong,
+.appt-when small {
+    display: block;
+}
+
+.appt-when small {
+    margin-top: 2px;
+    color: var(--muted);
+    font-size: 11px;
+}
+
+/* מחוון שלבים בקביעת תור: יום > שעה > פרטים */
+.appt-steps {
+    display: flex;
+    gap: 8px;
+    list-style: none;
+    padding: 0;
+    margin: 0 0 18px;
+    counter-reset: step;
+}
+
+.appt-steps li {
+    counter-increment: step;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 14px;
+    border-radius: 999px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.appt-steps li::before {
+    content: counter(step);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--border);
+    color: var(--text);
+    font-size: 11px;
+}
+
+.appt-steps li.active {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: #fff;
+}
+
+.appt-steps li.active::before {
+    background: rgba(255, 255, 255, 0.3);
+    color: #fff;
+}
+
+.appt-steps li.done {
+    color: var(--text);
+}
+
+.appt-steps li.done::before {
+    content: "✓";
+    background: #16a34a;
+    color: #fff;
+}
+
+body.dark .appt-steps li.active {
+    color: #0f172a;
+}
+
+body.dark .appt-steps li.active::before {
+    background: rgba(15, 23, 42, 0.25);
+    color: #0f172a;
+}
+
+/* בחירת יום/שעה: כרטיסים גדולים ללחיצה */
+.pick-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 10px;
+}
+
+.pick-grid a {
+    padding: 16px 12px;
+    text-align: center;
+    font-size: 16px;
+    font-weight: 700;
+    background: var(--surface);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    transition: all 0.15s ease;
+}
+
+.pick-grid a:hover {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: #fff;
+    transform: translateY(-2px);
+    box-shadow: var(--shadow);
+}
+
+body.dark .pick-grid a:hover {
+    background: var(--primary);
+    color: #0f172a;
+}
+
+/* עמוד התחברות */
+.login-page {
+    position: relative;
+    overflow: hidden;
+    padding: 20px;
+}
+
+.login-page::before,
+.login-page::after {
+    content: "";
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(60px);
+    opacity: 0.45;
+    pointer-events: none;
+}
+
+.login-page::before {
+    width: 360px;
+    height: 360px;
+    background: #60a5fa;
+    top: -120px;
+    left: 0;
+}
+
+.login-page::after {
+    width: 300px;
+    height: 300px;
+    background: #8b5cf6;
+    bottom: -100px;
+    right: 0;
+}
+
+.login-card {
+    position: relative;
+    z-index: 1;
+    width: 380px;
+    max-width: 100%;
+    text-align: center;
+}
+
+.login-logo {
+    width: 60px;
+    height: 60px;
+    margin: 0 auto 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 18px;
+    background: linear-gradient(135deg, #2563eb 0%, #60a5fa 100%);
+    box-shadow: 0 10px 24px rgba(37, 99, 235, 0.35);
+    font-size: 28px;
+}
+
+.login-card h1 {
+    margin-bottom: 4px;
+}
+
+.login-subtitle {
+    margin: 0 0 20px;
+    color: #64748b;
+    font-size: 14px;
+}
+
+.login-card .flash {
+    margin-bottom: 14px;
+    text-align: right;
+}
+
+.login-form {
+    text-align: right;
+}
+
+.login-form .form-group {
+    max-width: none;
+}
+
+.login-form .form-group label {
+    color: #475569;
+}
+
+.login-form .form-group input {
+    width: 100%;
+    padding: 11px 14px;
+    background: #fff;
+    color: #0f172a;
+    border-color: #cbd5e1;
+}
+
+.login-password-wrap {
+    position: relative;
+}
+
+.login-password-wrap input {
+    padding-inline-start: 44px;
+}
+
+.login-toggle {
+    position: absolute;
+    top: 50%;
+    inset-inline-start: 8px;
+    transform: translateY(-50%);
+    border: none;
+    background: none;
+    cursor: pointer;
+    font-size: 16px;
+    line-height: 1;
+    padding: 4px 6px;
+    border-radius: 6px;
+}
+
+.login-toggle:hover {
+    background: #f1f5f9;
+}
+
+.login-submit {
+    width: 100%;
+    padding: 12px;
+    font-size: 15px;
+    margin-top: 4px;
+}
+
+/* --- תפריט צד: אייקוני SVG אחידים (צבע לפי currentColor, לכן עובדים גם במצב כהה), קבוצות "ראשי" ו"ניהול",
+   סימון ברור לעמוד הפעיל, ותפריט אופקי נגלל במסך צר --- */
+.sidebar {
+    width: 204px;
+    padding: 12px 10px;
+}
+
+.sidebar-title {
+    padding: 4px 10px 8px;
+}
+
+.sidebar-title-sep {
+    margin-top: 10px;
+    padding-top: 14px;
+    border-top: 1px solid var(--border);
+}
+
+.sidebar .nav-link {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    padding: 9px 12px;
+    margin-bottom: 2px;
+    color: var(--muted);
+    font-size: 14px;
+    font-weight: 600;
+    border-radius: 10px;
+    text-decoration: none;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+.sidebar .nav-icon {
+    flex-shrink: 0;
+    width: 19px;
+    height: 19px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    opacity: 0.85;
+    transition: transform 0.15s ease, opacity 0.15s ease;
+}
+
+body .sidebar .nav-link:hover {
+    background: var(--surface-2);
+    color: var(--text);
+    font-weight: 600;
+}
+
+body .sidebar .nav-link:hover .nav-icon {
+    opacity: 1;
+    transform: scale(1.08);
+}
+
+body .sidebar .nav-link.active {
+    background: color-mix(in srgb, var(--primary) 12%, transparent);
+    color: var(--primary);
+    font-weight: 700;
+}
+
+body .sidebar .nav-link.active .nav-icon {
+    opacity: 1;
+}
+
+/* פס צבע בצד ההתחלה (ימין ב-RTL) של הפריט הפעיל */
+.sidebar .nav-link.active::before {
+    content: "";
+    position: absolute;
+    inset-block: 8px;
+    inset-inline-start: -9px;
+    width: 4px;
+    border-radius: 0 4px 4px 0;
+    background: var(--primary);
+}
+
+[dir="rtl"] .sidebar .nav-link.active::before {
+    border-radius: 4px 0 0 4px;
+}
+
+.sidebar .nav-link:focus-visible {
+    outline: 3px solid rgba(96, 165, 250, 0.5);
+    outline-offset: -2px;
+}
+
+body.dark .sidebar .nav-link:hover {
+    background: var(--surface-2);
+    color: var(--text);
+}
+
+body.dark .sidebar .nav-link.active {
+    background: color-mix(in srgb, var(--primary) 18%, transparent);
+    color: var(--primary);
+}
+
+@media (max-width: 800px) {
+    .layout {
+        flex-direction: column;
+        padding: 12px;
+    }
+
+    .sidebar {
+        position: static;
+        width: auto;
+        align-self: stretch;
+        display: flex;
+        gap: 4px;
+        overflow-x: auto;
+        padding: 8px;
+    }
+
+    .sidebar-title {
+        display: none;
+    }
+
+    .sidebar .nav-link {
+        flex-shrink: 0;
+        margin-bottom: 0;
+        padding: 8px 12px;
+        white-space: nowrap;
+    }
+
+    .sidebar .nav-link.active::before {
+        display: none;
+    }
+}
+
+@media (max-width: 800px) {
+    .sidebar {
+        scrollbar-width: none;
+    }
+    .sidebar::-webkit-scrollbar {
+        display: none;
+    }
+}
+
+/* צבע נפרד לכל אייקון בתפריט (--nav-color מוגדר ב-style של כל קישור ב-base.html) + כותרות קבוצה גדולות יותר */
+.sidebar-title {
+    font-size: 15px;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    text-transform: none;
+}
+
+.sidebar .nav-icon {
+    stroke: var(--nav-color, currentColor);
+    opacity: 1;
+}
+
+body .sidebar .nav-link.active {
+    background: color-mix(in srgb, var(--nav-color, var(--primary)) 14%, transparent);
+    color: var(--text);
+}
+
+body.dark .sidebar .nav-link.active {
+    background: color-mix(in srgb, var(--nav-color, var(--primary)) 22%, transparent);
+    color: var(--text);
+}
+
+.sidebar .nav-link.active::before {
+    background: var(--nav-color, var(--primary));
+}
+
+/* עמוד הלידים: נעילה קשיחה של המסמך עצמו - העמוד לא גולל בכלל, ורק .table-scroll גולל בתוך עצמו.
+   סרגלי הכלים והפעולות המרובות (flex-shrink: 0) ותפריט הצד תמיד נשארים במקומם */
+html:has(body.page-leads-list) {
+    height: 100%;
+    overflow: hidden;
+    overscroll-behavior: none;
+}
+
+body.page-leads-list {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    overscroll-behavior: none;
+}
+
+body.page-leads-list .toolbar,
+body.page-leads-list .sidebar {
+    flex-shrink: 0;
+}
+
+body.page-leads-list .table-scroll {
+    overscroll-behavior: contain;
+}
+
+/* בשאר העמודים: תפריט הצד נשאר דבק בגלילה, עם מרווח מהטופ-בר, וגולל פנימית אם הוא ארוך מהמסך */
+@media (min-width: 801px) {
+    body:not(.page-leads-list) .sidebar {
+        position: sticky;
+        top: 76px;
+        max-height: calc(100vh - 92px);
+        overflow-y: auto;
+        scrollbar-width: thin;
+    }
+}
+
+/* סרגל הפעולות המרובות בלידים מוצג תמיד; בלי בחירה המונה אפור והסרגל עמום קלות, עם בחירה - כחול */
+.bulk-actions-bar:not(.has-selection) {
+    background: var(--surface-2);
+    border-color: var(--border);
+}
+
+.bulk-actions-bar:not(.has-selection) .bulk-count {
+    background: var(--border);
+    color: var(--muted);
+}
+
+body.dark .bulk-actions-bar:not(.has-selection) .bulk-count {
+    color: var(--muted);
+}
+
+/* --- שיחות בוט: שורת שיחה עם כפתור "סמן כלא נקרא" ופעולה בראש השיחה. הגבול בין שיחות עבר
+   מה-<a> לשורה העוטפת (.chat-list-row), כי עכשיו בתוכה יש גם כפתור --- */
+.chat-list-row {
+    position: relative;
+    border-bottom: 1px solid var(--border);
+}
+
+.chat-list-row:last-child {
+    border-bottom: none;
+}
+
+.chat-list-row[hidden] {
+    display: none;
+}
+
+.chat-list-row .chat-list-item,
+.chat-list-row .chat-list-item:last-child {
+    border-bottom: none;
+}
+
+.chat-mark-unread {
+    position: absolute;
+    inset-block-end: 8px;
+    inset-inline-end: 10px;
+    padding: 2px 10px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--surface);
+    color: var(--muted);
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.chat-list-row:hover .chat-mark-unread,
+.chat-mark-unread:focus-visible {
+    opacity: 1;
+}
+
+.chat-mark-unread:hover {
+    color: #16a34a;
+    border-color: #16a34a;
+}
+
+.chat-mark-unread:disabled {
+    opacity: 0.5;
+    cursor: wait;
+}
+
+/* במסכי מגע אין ריחוף - הכפתור מוצג תמיד, בעדינות */
+@media (hover: none) {
+    .chat-mark-unread {
+        opacity: 0.8;
+    }
+}
+
+.chat-header-actions {
+    margin: 0;
+    margin-inline-start: auto;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.chat-thread-header .chat-header-main {
+    flex-wrap: wrap;
+}
+
+/* --- מחיקת הודעה מהיומן: כפתור פח בפינת כל בועה, מופיע בריחוף (במסכי מגע - תמיד, עמום) --- */
+.chat-bubble {
+    position: relative;
+}
+
+.chat-msg-delete {
+    position: absolute;
+    inset-block-start: 3px;
+    inset-inline-end: 3px;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    border: none;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.9);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+    font-size: 12px;
+    line-height: 24px;
+    text-align: center;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.15s ease, background 0.15s ease;
+}
+
+.chat-bubble:hover .chat-msg-delete,
+.chat-msg-delete:focus-visible {
+    opacity: 1;
+}
+
+.chat-msg-delete:hover {
+    background: #fee2e2;
+}
+
+.chat-msg-delete:disabled {
+    opacity: 0.4;
+    cursor: wait;
+}
+
+body.dark .chat-msg-delete {
+    background: rgba(32, 44, 51, 0.95);
+}
+
+body.dark .chat-msg-delete:hover {
+    background: #7f1d1d;
+}
+
+@media (hover: none) {
+    .chat-msg-delete {
+        opacity: 0.6;
+    }
+}
+
+.chat-msg-delete svg {
+    display: block;
+    margin: 5px;
+    fill: none;
+    stroke: #b91c1c;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+body.dark .chat-msg-delete svg {
+    stroke: #fca5a5;
+}
+
+/* הבועה היא white-space: pre-wrap (לשמירת שורות בהודעות), והכפתור יורש אותה - הרווחים שבתוך הכפתור
+   היו נשמרים ודוחפים את האייקון מחוץ לעיגול. מאפסים ומרכזים את האייקון */
+.chat-msg-delete {
+    white-space: normal;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.chat-msg-delete svg {
+    margin: 0;
+}
+
+/* כפתור המחיקה יושב על הפינה של הבועה (חצי בחוץ, כמו תג) - כך שלא מכסה את השעה או הטקסט */
+.chat-msg-delete {
+    inset-block-start: -10px;
+    inset-inline-end: -10px;
+    z-index: 2;
+}
+
+/* כפתור העריכה - אותו דפוס בדיוק כמו המחיקה (עיגול צף על פינת הבועה), רק צבוע כחול
+   (לא אדום, כי זו לא פעולה הרסנית) ויושב צמוד למחיקה במקום עליה */
+.chat-msg-edit {
+    position: absolute;
+    inset-block-start: -10px;
+    inset-inline-end: 24px;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    border: none;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.9);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.15s ease, background 0.15s ease;
+    white-space: normal;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2;
+}
+
+.chat-bubble:hover .chat-msg-edit,
+.chat-msg-edit:focus-visible {
+    opacity: 1;
+}
+
+.chat-msg-edit:hover {
+    background: #dbeafe;
+}
+
+.chat-msg-edit:disabled {
+    opacity: 0.4;
+    cursor: wait;
+}
+
+body.dark .chat-msg-edit {
+    background: rgba(32, 44, 51, 0.95);
+}
+
+body.dark .chat-msg-edit:hover {
+    background: #1e3a5f;
+}
+
+@media (hover: none) {
+    .chat-msg-edit {
+        opacity: 0.6;
+    }
+}
+
+.chat-msg-edit svg {
+    display: block;
+    margin: 0;
+    fill: none;
+    stroke: #1d4ed8;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+body.dark .chat-msg-edit svg {
+    stroke: #93c5fd;
+}
+
+/* --- שליחת הודעה ברקע: בועת "שולח…", בועה שנכשלה עם "נסה שוב", ותיבת כתיבה שגדלה --- */
+.chat-bubble-pending {
+    opacity: 0.8;
+}
+
+.chat-bubble-pending .chat-pending-status {
+    font-style: italic;
+}
+
+.chat-bubble-failed {
+    opacity: 1;
+    background: #fee2e2;
+    border: 1px solid #fca5a5;
+    color: #7f1d1d;
+}
+
+.chat-failed-box {
+    margin-top: 6px;
+    padding-top: 6px;
+    border-top: 1px dashed #fca5a5;
+    white-space: normal;
+}
+
+.chat-failed-msg {
+    margin-bottom: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.4;
+    word-break: break-word;
+}
+
+.chat-failed-btn {
+    margin-inline-end: 6px;
+    padding: 3px 12px;
+    border: 1px solid #dc2626;
+    border-radius: 999px;
+    background: #fff;
+    color: #b91c1c;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.chat-failed-btn:hover {
+    background: #dc2626;
+    color: #fff;
+}
+
+body.dark .chat-bubble-failed {
+    background: #450a0a;
+    border-color: #7f1d1d;
+    color: #fecaca;
+}
+
+body.dark .chat-failed-box {
+    border-top-color: #7f1d1d;
+}
+
+body.dark .chat-failed-btn {
+    background: transparent;
+    color: #fca5a5;
+    border-color: #f87171;
+}
+
+/* תיבת הכתיבה גדלה עם הטקסט (ראו autoGrow בסקריפט) */
+.chat-reply-form {
+    align-items: flex-end;
+}
+
+.chat-reply-form textarea {
+    max-height: 120px;
+    overflow-y: auto;
+}
+
+/* =====================================================================================================
+   מובייל (עד 800px): סרגל ניווט תחתון + גיליון "עוד", טבלאות ככרטיסים, טפסים נוחים למגע, ושיחות במסך מלא.
+   הבלוק הזה בסוף הקובץ בכוונה - הוא דורס את כללי שולחן העבודה שלמעלה רק במסך צר.
+   בלי תג ה-viewport ב-base.html (נוסף יחד עם הבלוק הזה) הטלפון היה מציג את האתר ברוחב של מחשב.
+   ===================================================================================================== */
+
+/* רכיבי המובייל מוסתרים בשולחן עבודה */
+.bottom-nav,
+.more-sheet,
+.more-backdrop,
+.topbar-back,
+.chat-back {
+    display: none;
+}
+
+@media (max-width: 800px) {
+    :root {
+        --topbar-h: 52px;
+        --bottomnav-h: 60px;
+        --safe-t: env(safe-area-inset-top, 0px);
+        --safe-b: env(safe-area-inset-bottom, 0px);
+    }
+
+    html {
+        -webkit-text-size-adjust: 100%;
+        scrollbar-width: none;
+    }
+
+    body {
+        -webkit-tap-highlight-color: transparent;
+        overflow-x: hidden;
+    }
+
+    body.more-open {
+        overflow: hidden;
+    }
+
+    a, button, select, input, label, summary {
+        touch-action: manipulation;
+    }
+
+    /* --- טופ-בר --- */
+    .topbar {
+        height: calc(var(--topbar-h) + var(--safe-t));
+        padding: var(--safe-t) 12px 0;
+        justify-content: flex-start;
+        gap: 4px;
+    }
+
+    .topbar .brand {
+        flex: 1;
+        font-size: 17px;
+    }
+
+    .topbar .desktop-only,
+    .topbar .js-theme-toggle {
+        display: none;
+    }
+
+    .topbar-back {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 40px;
+        height: 40px;
+        margin-inline-start: -8px;
+        border-radius: 50%;
+        color: #fff;
+        font-size: 24px;
+        text-decoration: none;
+    }
+
+    .topbar-back[hidden] {
+        display: none;
+    }
+
+    .topbar-back:active {
+        background: rgba(255, 255, 255, 0.16);
+    }
+
+    /* --- פריסה: תפריט הצד נעלם (יש סרגל תחתון), תוכן ברוחב מלא עם מקום לסרגל --- */
+    .layout {
+        flex-direction: column;
+        min-height: 0;
+        padding: 10px 10px calc(var(--bottomnav-h) + var(--safe-b) + 14px);
+        gap: 10px;
+    }
+
+    .sidebar {
+        display: none;
+    }
+
+    .card {
+        padding: 14px;
+        border-radius: 16px;
+    }
+
+    .card-header {
+        margin-bottom: 12px;
+        padding-bottom: 10px;
+    }
+
+    .card h1 {
+        font-size: 18px;
+    }
+
+    .card-accent {
+        display: none;
+    }
+
+    .flash-container {
+        top: calc(var(--topbar-h) + var(--safe-t) + 8px);
+        width: 94vw;
+    }
+
+    /* --- סרגל תחתון --- */
+    .bottom-nav {
+        display: flex;
+        position: fixed;
+        inset-inline: 0;
+        bottom: 0;
+        z-index: 60;
+        height: calc(var(--bottomnav-h) + var(--safe-b));
+        padding-bottom: var(--safe-b);
+        background: var(--surface);
+        border-top: 1px solid var(--border);
+        box-shadow: 0 -4px 18px rgba(15, 23, 42, 0.08);
+    }
+
+    .bn-item {
+        position: relative;
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 3px;
+        padding: 6px 2px;
+        border: none;
+        background: none;
+        color: var(--muted);
+        font-family: inherit;
+        font-size: 11px;
+        font-weight: 600;
+        text-decoration: none;
+        cursor: pointer;
+    }
+
+    .bn-icon {
+        width: 24px;
+        height: 24px;
+        fill: none;
+        stroke: var(--nav-color, currentColor);
+        stroke-width: 1.8;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        opacity: 0.75;
+        transition: transform 0.12s ease;
+    }
+
+    .bn-more .bn-icon circle {
+        fill: var(--nav-color, currentColor);
+        stroke: none;
+    }
+
+    .bn-item:active .bn-icon {
+        transform: scale(0.9);
+    }
+
+    .bn-item.active {
+        color: var(--text);
+    }
+
+    .bn-item.active .bn-icon {
+        opacity: 1;
+        stroke-width: 2.3;
+    }
+
+    .bn-item.active::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        width: 30px;
+        height: 3px;
+        border-radius: 0 0 4px 4px;
+        background: var(--nav-color, var(--primary));
+    }
+
+    /* --- גיליון "עוד" --- */
+    .more-backdrop {
+        display: block;
+        position: fixed;
+        inset: 0;
+        z-index: 70;
+        background: rgba(15, 23, 42, 0.5);
+    }
+
+    .more-sheet {
+        display: block;
+        position: fixed;
+        inset-inline: 0;
+        bottom: 0;
+        z-index: 80;
+        max-height: 88vh;
+        max-height: 88dvh;
+        overflow-y: auto;
+        padding: 8px 16px calc(16px + var(--safe-b));
+        background: var(--surface);
+        border-radius: 22px 22px 0 0;
+        box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.28);
+        animation: sheet-up 0.2s ease;
+    }
+
+    .more-backdrop[hidden],
+    .more-sheet[hidden] {
+        display: none;
+    }
+
+    @keyframes sheet-up {
+        from { transform: translateY(40px); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
+    }
+
+    .more-handle {
+        width: 40px;
+        height: 4px;
+        margin: 4px auto 12px;
+        border-radius: 4px;
+        background: var(--border);
+    }
+
+    .more-user {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 4px 4px 14px;
+    }
+
+    .more-avatar {
+        width: 42px;
+        height: 42px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        background: linear-gradient(135deg, var(--primary) 0%, var(--primary-2) 100%);
+        color: #fff;
+        font-size: 18px;
+        font-weight: 700;
+    }
+
+    body.dark .more-avatar {
+        color: #0f172a;
+    }
+
+    .more-user-info {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+        font-size: 16px;
+    }
+
+    .more-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 8px;
+        margin-bottom: 12px;
+    }
+
+    .more-tile {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 6px;
+        padding: 12px 2px;
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        background: var(--surface-2);
+        color: var(--text);
+        font-size: 12px;
+        font-weight: 600;
+        text-decoration: none;
+    }
+
+    .more-tile svg {
+        width: 24px;
+        height: 24px;
+        fill: none;
+        stroke: var(--nav-color);
+        stroke-width: 1.8;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+    }
+
+    .more-tile.active {
+        border-color: var(--nav-color);
+        background: color-mix(in srgb, var(--nav-color) 14%, transparent);
+    }
+
+    .more-actions {
+        padding-top: 6px;
+        border-top: 1px solid var(--border);
+    }
+
+    .more-actions form {
+        margin: 0;
+    }
+
+    .more-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        width: 100%;
+        min-height: 50px;
+        padding: 12px 8px;
+        border: none;
+        border-radius: 10px;
+        background: none;
+        color: var(--text);
+        font: inherit;
+        font-size: 15px;
+        font-weight: 600;
+        text-align: right;
+        text-decoration: none;
+        cursor: pointer;
+    }
+
+    .more-row[hidden] {
+        display: none;
+    }
+
+    .more-row:active {
+        background: var(--surface-2);
+    }
+
+    .more-row-danger {
+        color: #dc2626;
+    }
+
+    .more-hint {
+        margin: 0;
+        padding: 0 8px 8px;
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.5;
+    }
+
+    .more-hint[hidden] {
+        display: none;
+    }
+
+    /* --- טפסים ומגע: 16px מונע זום אוטומטי באייפון, וגובה 44px = יעד לחיצה נוח --- */
+    body input[type=text],
+    body input[type=password],
+    body input[type=email],
+    body input[type=number],
+    body input[type=date],
+    body input[type=time],
+    body input[type=datetime-local],
+    body input[type=search],
+    body select,
+    body textarea {
+        font-size: 16px !important;
+        min-height: 44px;
+    }
+
+    body textarea {
+        min-height: 88px;
+    }
+
+    .chat-reply-form textarea {
+        min-height: 44px;
+    }
+
+    input[type=checkbox],
+    input[type=radio] {
+        width: 20px;
+        height: 20px;
+    }
+
+    .btn {
+        min-height: 44px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .btn-sm,
+    .btn.btn-sm {
+        min-height: 40px;
+        padding: 8px 14px;
+        font-size: 14px;
+    }
+
+    .form-group,
+    .form-card,
+    .af-form .form-group,
+    .automations-tab-panel .form-group,
+    .automations-tab-panel .form-card,
+    .wa-form .form-group {
+        max-width: none;
+    }
+
+    .form-card.lead-form {
+        grid-template-columns: 1fr;
+        padding: 14px;
+    }
+
+    .af-form {
+        max-width: none;
+    }
+
+    .af-section {
+        padding: 14px;
+    }
+
+    .toolbar,
+    body .toolbar {
+        position: static;
+        flex-wrap: wrap;
+        gap: 8px;
+        padding: 8px;
+    }
+
+    .toolbar form {
+        width: 100%;
+        flex-wrap: wrap;
+    }
+
+    .toolbar select,
+    .toolbar input[type=text] {
+        flex: 1 1 140px;
+        min-width: 0;
+    }
+
+    .toolbar .btn {
+        font-size: 14px;
+        padding: 8px 14px;
+    }
+
+    .automations-actions {
+        gap: 8px;
+    }
+
+    .automations-actions .btn {
+        flex: 1 1 auto;
+    }
+
+    /* --- טבלאות כרטיסים: כל שורה הופכת לכרטיס; data-label בכל תא הופך לתווית --- */
+    .mobile-cards,
+    .mobile-cards tbody {
+        display: block;
+        width: 100% !important;
+        min-width: 0 !important;
+        border: none;
+        border-radius: 0;
+        font-size: 14px;
+    }
+
+    .mobile-cards thead {
+        display: none;
+    }
+
+    .mobile-cards tr {
+        display: block;
+        margin-bottom: 10px;
+        padding: 12px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+    }
+
+    .mobile-cards tr[hidden],
+    .mobile-cards td[hidden] {
+        display: none;
+    }
+
+    .mobile-cards tr:last-child {
+        margin-bottom: 0;
+    }
+
+    .mobile-cards td {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        width: auto;
+        max-width: none !important;
+        padding: 5px 0 !important;
+        border: none !important;
+        background: transparent !important;
+        white-space: normal !important;
+        text-align: right;
+    }
+
+    .mobile-cards td::before {
+        content: attr(data-label);
+        flex-shrink: 0;
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    .mobile-cards td:not([data-label])::before,
+    .mobile-cards td[data-label=""]::before {
+        content: none;
+    }
+
+    .mobile-cards td.m-title {
+        justify-content: flex-start;
+        margin-bottom: 4px;
+        padding-bottom: 9px !important;
+        border-bottom: 1px solid var(--border) !important;
+        font-size: 16px;
+        font-weight: 700;
+    }
+
+    .mobile-cards td[colspan] {
+        display: block;
+    }
+
+    .mobile-cards td.automations-row-actions,
+    .mobile-cards td:last-child:not([data-label]):not(.m-title) {
+        justify-content: flex-end;
+    }
+
+    .cust-table-wrap,
+    .bl-table-wrap,
+    .automations-table-wrap {
+        border: none;
+        border-radius: 0;
+        overflow: visible;
+    }
+
+    .cust-actions {
+        width: 100%;
+    }
+
+    .cust-actions .btn {
+        flex: 1;
+    }
+
+    .appt-when {
+        display: flex;
+        align-items: baseline;
+        gap: 10px;
+    }
+
+    .appt-when strong,
+    .appt-when small {
+        display: inline;
+        font-size: 16px;
+    }
+
+    .appt-when small {
+        font-size: 13px;
+        font-weight: 500;
+    }
+
+    /* --- לוח בקרה --- */
+    .dashboard-hero {
+        padding: 14px;
+    }
+
+    .dashboard-hero h2 {
+        font-size: 18px;
+    }
+
+    .dashboard-actions {
+        width: 100%;
+    }
+
+    .dashboard-actions .btn {
+        flex: 1 1 calc(50% - 6px);
+    }
+
+    .dashboard-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+    }
+
+    .dash-stat {
+        padding: 12px;
+    }
+
+    .dash-stat .stat-value {
+        font-size: 24px;
+    }
+
+    .dash-stat .stat-caption {
+        font-size: 12px;
+    }
+
+    .dash-stat-icon {
+        width: 30px;
+        height: 30px;
+        top: 10px;
+        left: 10px;
+        font-size: 15px;
+    }
+
+    .dashboard-panels {
+        grid-template-columns: 1fr;
+    }
+
+    /* --- רשימות ושדות חיפוש --- */
+    .appt-head {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .appt-search {
+        margin: 0;
+        width: 100%;
+    }
+
+    .appt-search input[type=text] {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .cust-bar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .cust-bar input[type=text] {
+        max-width: none;
+    }
+
+    .bl-add {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .bl-add-field {
+        max-width: none;
+    }
+
+    .wa-filters input[type=text] {
+        flex: 1 1 100%;
+        max-width: none;
+        min-width: 0;
+    }
+
+    .wa-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .pick-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+
+    .cust-profile {
+        padding: 14px;
+    }
+
+    .cust-profile-stats {
+        width: 100%;
+    }
+
+    .cust-profile-stats .auto-stat {
+        flex: 1;
+    }
+
+    .cust-actions-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .automations-stats {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    /* --- אוטומציות: לשוניות נגללות, פאנל פירוט כרטיס מלא --- */
+    .automations-tab-bar {
+        width: 100%;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        scrollbar-width: none;
+    }
+
+    .automations-tab-btn {
+        flex-shrink: 0;
+    }
+
+    .automations-category summary {
+        flex-wrap: wrap;
+    }
+
+    .mobile-cards tr.automations-details-row {
+        padding: 0;
+        background: var(--surface-2);
+    }
+
+    .mobile-cards tr.automations-details-row td {
+        padding: 12px !important;
+    }
+
+    .automations-row-actions .btn {
+        flex: 1;
+    }
+
+    /* --- לידים: כרטיס לכל ליד (גריד), והעמוד גולל כרגיל (בשולחן עבודה הוא נעול וגולל רק הטבלה) --- */
+    html:has(body.page-leads-list) {
+        height: auto;
+        overflow: visible;
+        overscroll-behavior: auto;
+    }
+
+    body.page-leads-list {
+        position: static;
+        inset: auto;
+        height: auto;
+        overflow: visible;
+        overscroll-behavior: auto;
+    }
+
+    body.page-leads-list .app-shell {
+        display: block;
+        height: auto;
+    }
+
+    body.page-leads-list .layout {
+        display: flex;
+        overflow: visible;
+        padding-top: 10px;
+        padding-bottom: calc(var(--bottomnav-h) + var(--safe-b) + 14px);
+    }
+
+    body.page-leads-list .content,
+    body.page-leads-list .card {
+        display: block;
+        overflow: visible;
+        min-height: 0;
+        padding-top: 14px;
+        padding-bottom: 14px;
+    }
+
+    body.page-leads-list .table-scroll {
+        height: auto;
+        overflow: visible;
+        margin-bottom: 0;
+        border: none;
+    }
+
+    .leads-table.mobile-cards tr {
+        display: grid;
+        grid-template-columns: 34px 1fr auto;
+        grid-template-areas:
+            "sel name phone"
+            "status status status"
+            "assigned assigned assigned"
+            "notes notes notes"
+            "created channel branch"
+            "actions actions actions";
+        gap: 8px 10px;
+        align-items: center;
+    }
+
+    .leads-table.mobile-cards td {
+        display: block;
+        min-width: 0;
+        width: auto;
+        padding: 0 !important;
+    }
+
+    .leads-table.mobile-cards td::before {
+        content: none;
+    }
+
+    .leads-table .col-select {
+        grid-area: sel;
+        text-align: center;
+    }
+
+    .leads-table .col-select input {
+        width: 24px;
+        height: 24px;
+    }
+
+    .leads-table .col-name {
+        grid-area: name;
+        font-size: 16px;
+        font-weight: 700;
+        white-space: normal;
+    }
+
+    .leads-table .col-phone {
+        grid-area: phone;
+    }
+
+    .leads-table .col-status {
+        grid-area: status;
+    }
+
+    .leads-table .col-assigned {
+        grid-area: assigned;
+    }
+
+    .leads-table .col-assigned select.assigned-select {
+        border-color: var(--border);
+        background: var(--surface-2);
+    }
+
+    .leads-table .col-status select,
+    .leads-table .col-assigned select {
+        width: 100%;
+        min-height: 44px;
+    }
+
+    .leads-table select.status-select {
+        padding-inline-end: 34px;
+    }
+
+    .leads-table .col-notes {
+        grid-area: notes;
+        width: auto;
+        max-width: none;
+        display: -webkit-box !important;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        white-space: normal;
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.5;
+    }
+
+    .leads-table .col-notes:empty {
+        display: none !important;
+    }
+
+    .leads-table .col-created {
+        grid-area: created;
+        font-size: 12px;
+    }
+
+    .leads-table .col-channel {
+        grid-area: channel;
+        text-align: center;
+        font-size: 12px;
+    }
+
+    .leads-table .col-branch {
+        grid-area: branch;
+        text-align: left;
+        font-size: 12px;
+    }
+
+    .leads-table .col-updated,
+    .leads-table .col-routings,
+    .leads-table .col-id {
+        display: none !important;
+    }
+
+    .leads-table .col-actions {
+        grid-area: actions;
+        display: flex !important;
+        justify-content: flex-end;
+        gap: 10px;
+        padding-top: 4px !important;
+        border-top: 1px solid var(--border) !important;
+    }
+
+    .leads-table .actions-row .icon-btn,
+    .leads-table .actions-row .btn {
+        width: 44px;
+        height: 44px;
+        min-height: 44px;
+        padding: 0;
+        font-size: 18px;
+    }
+
+    .leads-table tr.row-selected {
+        background: color-mix(in srgb, var(--primary) 10%, var(--surface));
+        border-color: var(--primary);
+    }
+
+    .tel-link {
+        color: inherit;
+        text-decoration: none;
+        font-weight: 600;
+    }
+
+    .phone-cell {
+        gap: 10px;
+    }
+
+    .whatsapp-icon svg {
+        width: 22px;
+        height: 22px;
+    }
+
+    .bulk-actions-bar,
+    body .toolbar.bulk-actions-bar {
+        position: sticky;
+        top: calc(var(--topbar-h) + var(--safe-t) + 6px);
+        z-index: 25;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        scrollbar-width: none;
+    }
+
+    .bulk-actions-bar > *,
+    .bulk-actions-bar form {
+        flex-shrink: 0;
+        width: auto;
+        flex-wrap: nowrap;
+    }
+
+    .leads-stats-bar {
+        position: static;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+        margin-top: 12px;
+        padding: 12px;
+        border-radius: 14px;
+    }
+
+    .pagination {
+        justify-content: center;
+    }
+
+    .pagination .btn,
+    .pagination-current {
+        min-width: 40px;
+        min-height: 40px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .leads-stats-group {
+        justify-content: center;
+    }
+
+    .notes-panel {
+        width: 100%;
+        max-width: 100%;
+    }
+
+    /* --- שיחות בוט: ברשימה - רשימה במסך מלא; בשיחה - מסך מלא עם כפתור חזרה וסרגל כתיבה צמוד למטה --- */
+    body.page-chat-list .card {
+        padding: 0;
+        background: transparent;
+        border: none;
+        box-shadow: none;
+    }
+
+    body.page-chat-list .card-header {
+        display: none;
+    }
+
+    body.page-chat-list .chat-app {
+        height: calc(100vh - var(--topbar-h) - var(--safe-t) - var(--bottomnav-h) - var(--safe-b) - 24px);
+        height: calc(100dvh - var(--topbar-h) - var(--safe-t) - var(--bottomnav-h) - var(--safe-b) - 24px);
+        min-height: 320px;
+        border-radius: 16px;
+        background: var(--surface);
+    }
+
+    body.page-chat-list .chat-app-list {
+        width: 100%;
+        border: none;
+    }
+
+    body.page-chat-list .chat-app-thread {
+        display: none;
+    }
+
+    body.page-chat-thread .topbar,
+    body.page-chat-thread .bottom-nav,
+    body.page-chat-thread .sidebar,
+    body.page-chat-thread .card-header {
+        display: none;
+    }
+
+    body.page-chat-thread .layout {
+        padding: 0;
+    }
+
+    body.page-chat-thread .card {
+        padding: 0;
+        border: none;
+        border-radius: 0;
+        box-shadow: none;
+        background: transparent;
+    }
+
+    body.page-chat-thread .chat-app {
+        position: fixed;
+        inset: 0;
+        z-index: 50;
+        height: 100vh;
+        height: 100dvh;
+        min-height: 0;
+        border: none;
+        border-radius: 0;
+        background: var(--surface);
+    }
+
+    body.page-chat-thread .chat-app-list {
+        display: none;
+    }
+
+    body.page-chat-thread .chat-app-thread {
+        width: 100%;
+    }
+
+    .chat-back {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        width: 40px;
+        height: 40px;
+        margin-inline-start: -8px;
+        border-radius: 50%;
+        color: var(--text);
+        font-size: 24px;
+        text-decoration: none;
+    }
+
+    .chat-back:active {
+        background: var(--surface-2);
+    }
+
+    .chat-thread-header {
+        padding: calc(8px + var(--safe-t)) 12px 8px;
+    }
+
+    .chat-header-actions {
+        width: 100%;
+        display: flex;
+        gap: 6px;
+        margin: 0;
+        overflow-x: auto;
+        scrollbar-width: none;
+    }
+
+    .chat-header-actions form {
+        flex-shrink: 0;
+        margin: 0;
+    }
+
+    .chat-bubble {
+        max-width: 86%;
+        font-size: 15px;
+    }
+
+    .chat-app-thread .chat-thread {
+        padding: 12px 10px;
+        overscroll-behavior: contain;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .chat-reply-form {
+        padding: 8px 10px calc(8px + var(--safe-b));
+    }
+
+    .chat-reply-form .btn {
+        min-height: 44px;
+    }
+
+    .chat-list-tools {
+        padding: 10px;
+    }
+
+    .chat-list-item {
+        padding: 12px;
+    }
+
+    .chat-mark-unread {
+        opacity: 0.85;
+    }
+
+    /* --- תבניות וואטסאפ / טופס תבנית --- */
+    .wa-new-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .wa-preview {
+        position: static;
+    }
+
+    /* --- התחברות --- */
+    .login-card {
+        padding: 24px 18px;
+    }
+}
+
+@media (max-width: 380px) {
+    .more-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .dashboard-actions .btn {
+        flex: 1 1 100%;
+    }
+
+    .pick-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+/* --- תיקוני מובייל (סבב 2) --- */
+@media (max-width: 800px) {
+    /* רשימת שיחות: מילוי כל הגובה (כלל מובייל ישן הגביל אותה ל-34vh) וללא פסי גלילה גלויים */
+    body.page-chat-list .chat-app {
+        flex-direction: column;
+    }
+
+    body.page-chat-list .chat-app-list {
+        flex: 1;
+        max-height: none;
+        min-height: 0;
+    }
+
+    .chat-app-list,
+    .chat-thread,
+    textarea,
+    .more-sheet {
+        scrollbar-width: none;
+    }
+
+    .chat-app-list::-webkit-scrollbar,
+    .chat-thread::-webkit-scrollbar,
+    textarea::-webkit-scrollbar {
+        display: none;
+    }
+
+    /* בחירת יום/שעה: התאריך לא נשבר באמצע */
+    .pick-grid a {
+        padding: 14px 4px;
+        font-size: 15px;
+        white-space: nowrap;
+    }
+
+    /* לידים: סרגל כלים מסודר - "ליד חדש" ברוחב מלא ושאר הפעולות בשורה */
+    .leads-toolbar {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(104px, 1fr));
+        gap: 8px;
+    }
+
+    .leads-toolbar > .btn {
+        min-height: 40px;
+        padding: 6px 10px;
+        font-size: 13px;
+        text-align: center;
+    }
+
+    .leads-toolbar > .btn:first-child {
+        grid-column: 1 / -1;
+        min-height: 44px;
+        font-size: 15px;
+    }
+
+    .leads-toolbar .toolbar-actions {
+        grid-column: 1 / -1;
+        margin: 0;
+    }
+}
+
+/* --- תיקוני שולחן עבודה שנחשפו בבדיקה: קישורי חיוג ללא עיצוב קישור, וקישור "שינוי סיסמה" בטופ-בר --- */
+.tel-link {
+    color: inherit;
+    text-decoration: none;
+}
+
+.tel-link:hover {
+    text-decoration: underline;
+}
+
+.topbar a.link-button {
+    color: #dbeafe;
+    font-size: 14px;
+    text-decoration: underline;
+}
+
+/* =====================================================================================================
+   רצפת איכות (נגישות) - ניגודיות, מיקוד מקלדת, והפחתת תנועה. לא משנה את הזהות העיצובית, רק מבטיחה שהטקסט
+   קריא (WCAG AA = יחס ניגודיות 4.5:1 לטקסט קטן) ושהניווט במקלדת נראה, ושמי שביקשה פחות תנועה מקבלת פחות.
+   ===================================================================================================== */
+
+/* גוון הקצה של גרדיאנט הכפתורים/האווטארים: התכלת הקודם (#3b82f6) נתן רק 3.7:1 מול טקסט לבן */
+:root {
+    --primary-2: #3372d8;
+}
+
+body.dark {
+    --primary-2: #3b82f6;
+}
+
+/* תגיות צבע: טקסט לבן על הגוונים הקודמים נתן 2.2-2.9:1 (אפור/כתום/ירוק) - מוכהים עד 4.6:1 ומעלה, באותו גוון */
+.badge-blue { background: #2a73d5; }
+.badge-orange { background: #a26631; }
+.badge-teal { background: #127f91; }
+.badge-purple { background: #9b59b6; }
+.badge-gray { background: #6b7677; }
+.badge-green { background: #1e8549; }
+.badge-red { background: #cf4435; }
+
+/* כפתור משני וכפתור סכנה: סוף הגרדיאנט היה בהיר מדי מול טקסט לבן */
+.btn-secondary {
+    background: linear-gradient(90deg, #566275 0%, #606e83 100%);
+}
+
+.btn-danger {
+    background: linear-gradient(90deg, var(--danger) 0%, #d83a3a 100%);
+}
+
+/* מצב כהה: הצבע הראשי בהיר (#60a5fa), ולכן טקסט כהה עליו (7:1) ולא לבן (2.5:1) */
+body.dark .btn:not(.btn-ghost),
+body.dark .btn.pagination-current,
+body.dark .wa-chip.active,
+body.dark .automations-tab-btn.active,
+body.dark .btn-ghost.active,
+body.dark .af-step,
+body.dark .more-avatar {
+    color: #0b1220;
+}
+
+body.dark .btn-secondary {
+    background: linear-gradient(90deg, #7c8aa3 0%, #94a3b8 100%);
+}
+
+body.dark .btn-danger {
+    background: linear-gradient(90deg, #f87171 0%, #ef4444 100%);
+}
+
+/* מיקוד מקלדת: טבעת ברורה וקבועה לכל רכיב שאפשר להגיע אליו עם Tab (אפס-ספציפיות, לא דורס כללים ייעודיים) */
+:where(a, button, summary, select, input, textarea, [tabindex]):focus-visible {
+    outline: 3px solid #1d4ed8;
+    outline-offset: 2px;
+}
+
+body.dark :where(a, button, summary, select, input, textarea, [tabindex]):focus-visible {
+    outline-color: #93c5fd;
+}
+
+/* מי שהגדירה במכשיר "הפחתת תנועה" לא מקבלת אנימציות/מעברים (גיליון עוד, טעינת בועות, ריחוף וכו') */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}
+
+/* =====================================================================================================
+   "יומן סטודיו" - שלב 1: זהות חדשה (צבעים, אותיות, מעטפת) ולוח הבקרה.
+   רעיון: סטודיו לחיטוב = סרט מדידה ולוח אימונים. דיו בגוון שזיף, גיר קריר, וצהוב סרט-מדידה שמופיע רק
+   כשמשהו דורש תשומת לב (שיחה שמחכה, ליד חדש, האימון שמתקיים עכשיו). משטחים שטוחים עם מסגרת דקה - בלי
+   גרדיאנטים ובלי צללים. אייקונים בצבע אחד: צבע מסמן מצב, לא קישוט. הבלוק הזה מגדיר מחדש את משתני הצבע
+   שכל האתר כבר משתמש בהם, ולכן רוב העמודים מתעדכנים לבד; עמודים שעדיין לא עובדו (שלבים 2-3) מקבלים
+   את הצבעים והאותיות החדשים אבל לא את המבנה החדש.
+   ===================================================================================================== */
+
+/* אותיות מאוחסנות באתר (בלי בקשה חיצונית, עובד גם בלי אינטרנט): Assistant לטקסט, Secular One לשעות/כותרות.
+   שתיהן ברישיון SIL Open Font License (ראו static/fonts/LICENSE.txt) */
+@font-face { font-family: 'Assistant'; font-style: normal; font-weight: 400 800; font-display: swap;
+  src: url('/static/fonts/assistant-hebrew.woff2') format('woff2');
+  unicode-range: U+0307-0308, U+0590-05FF, U+200C-2010, U+20AA, U+25CC, U+FB1D-FB4F; }
+@font-face { font-family: 'Assistant'; font-style: normal; font-weight: 400 800; font-display: swap;
+  src: url('/static/fonts/assistant-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: 'Secular One'; font-style: normal; font-weight: 400; font-display: swap;
+  src: url('/static/fonts/secular-one-hebrew.woff2') format('woff2');
+  unicode-range: U+0307-0308, U+0590-05FF, U+200C-2010, U+20AA, U+25CC, U+FB1D-FB4F; }
+@font-face { font-family: 'Secular One'; font-style: normal; font-weight: 400; font-display: swap;
+  src: url('/static/fonts/secular-one-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+
+:root {
+    --ink: #35213f;
+    --accent: #f2c230;
+    --on-accent: #35213f;
+    --bg: #f4f3f7;
+    --surface: #ffffff;
+    --surface-2: #f7f6fa;
+    --text: #35213f;
+    --muted: #6b5f73;
+    --border: #e3dfe8;
+    --border-strong: #cfc6d8;
+    --primary: #35213f;
+    --primary-dark: #271830;
+    --primary-2: #35213f;
+    --danger: #b93a2e;
+    --danger-dark: #9a2f25;
+    --shadow: none;
+    --topbar: #35213f;
+    --font-body: "Assistant", "Segoe UI", Tahoma, Arial, sans-serif;
+    --font-display: "Secular One", "Assistant", "Segoe UI", sans-serif;
+}
+
+body.dark {
+    --bg: #150e1a;
+    --surface: #1f1626;
+    --surface-2: #271c2f;
+    --text: #f0eaf4;
+    --muted: #b4a7bf;
+    --border: #3a2d45;
+    --border-strong: #51405f;
+    --primary: #f2c230;
+    --primary-dark: #ffd75e;
+    --primary-2: #f2c230;
+    --danger: #f08a7e;
+    --danger-dark: #f5a69c;
+    --shadow: none;
+    --topbar: #0f0913;
+}
+
+body,
+body.dark {
+    background: var(--bg);
+}
+
+body {
+    font-family: var(--font-body);
+}
+
+button,
+input,
+select,
+textarea {
+    font-family: inherit;
+}
+
+/* --- מעטפת --- */
+.topbar {
+    background: var(--topbar);
+    box-shadow: none;
+}
+
+.topbar .brand,
+.login-card h1 {
+    font-family: var(--font-display);
+    font-weight: 400;
+}
+
+.card {
+    border-radius: 14px;
+    box-shadow: none;
+}
+
+.card-accent {
+    display: none;
+}
+
+.card-header:has(h1:empty) {
+    display: none;
+}
+
+.card h1 {
+    font-family: var(--font-display);
+    font-weight: 400;
+    font-size: 26px;
+    color: var(--text);
+}
+
+.card-header {
+    border-bottom-color: var(--border);
+}
+
+.sidebar {
+    border-radius: 14px;
+    box-shadow: none;
+}
+
+/* אייקונים בצבע אחד (צבע הטקסט): הצבע הצבעוני הקודם לא סימן שום דבר */
+.sidebar .nav-icon,
+.bn-icon,
+.more-tile svg {
+    stroke: currentColor;
+    opacity: 1;
+}
+
+.bn-more .bn-icon circle {
+    fill: currentColor;
+}
+
+body .sidebar .nav-link.active,
+body.dark .sidebar .nav-link.active {
+    background: var(--surface-2);
+    color: var(--text);
+}
+
+.sidebar .nav-link.active::before {
+    background: var(--accent);
+}
+
+body .sidebar .nav-link:hover,
+body.dark .sidebar .nav-link:hover {
+    background: var(--surface-2);
+}
+
+.bn-item.active::before {
+    background: var(--accent);
+}
+
+.bn-item.active {
+    color: var(--text);
+}
+
+.more-tile.active {
+    border-color: var(--text);
+    background: var(--surface-2);
+}
+
+/* תגית מספר בסרגלי הניווט: צהוב = יש מה לטפל */
+.nav-count,
+.bn-count {
+    min-width: 22px;
+    height: 22px;
+    padding: 0 6px;
+    border-radius: 11px;
+    background: var(--accent);
+    color: var(--on-accent);
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 22px;
+    text-align: center;
+}
+
+.nav-count {
+    margin-inline-start: auto;
+}
+
+.nav-count[hidden],
+.bn-count[hidden] {
+    display: none;
+}
+
+.bn-count {
+    position: absolute;
+    top: 5px;
+    inset-inline-end: calc(50% - 26px);
+    min-width: 20px;
+    height: 20px;
+    line-height: 20px;
+    font-size: 11px;
+}
+
+/* כפתורים: משטח שטוח וצבע אחד; ללא גרדיאנט, צל או "ריחוף" */
+.btn {
+    border-radius: 10px;
+    box-shadow: none;
+    font-weight: 700;
+}
+
+.btn:hover {
+    transform: none;
+    box-shadow: none;
+    filter: brightness(1.18);
+}
+
+.btn-secondary,
+.btn-ghost {
+    background: var(--surface);
+    color: var(--text);
+    border: 1.5px solid var(--border-strong);
+    box-shadow: none;
+}
+
+.btn-secondary:hover,
+.btn-ghost:hover {
+    background: var(--surface-2);
+    border-color: var(--text);
+    color: var(--text);
+    filter: none;
+}
+
+body.dark .btn-secondary,
+body.dark .btn-ghost {
+    background: var(--surface);
+    color: var(--text);
+}
+
+.btn-danger {
+    background: var(--danger);
+    border: 1.5px solid var(--danger);
+    color: #fff;
+}
+
+body.dark .btn-danger {
+    color: #2a1a33;
+}
+
+/* שדות: מסגרת כהה במיקוד + טבעת צהובה, במקום הכחול הכללי */
+input[type=text]:focus, input[type=password]:focus, input[type=email]:focus,
+input[type=number]:focus, input[type=date]:focus, input[type=time]:focus, select:focus, textarea:focus {
+    border-color: var(--text);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 55%, transparent);
+}
+
+/* התחברות: דיו שטוח וצהוב, בלי כתמי אור וגרדיאנט */
+.login-page {
+    background: var(--ink);
+}
+
+.login-page::before,
+.login-page::after {
+    display: none;
+}
+
+.login-card {
+    box-shadow: none;
+}
+
+.login-card::before {
+    background: var(--accent);
+}
+
+.login-logo {
+    background: var(--accent);
+    box-shadow: none;
+}
+
+/* --- לוח הבקרה: "היום בסטודיו" --- */
+.studio-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 14px;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+}
+
+.studio-title {
+    margin: 0;
+    font-family: var(--font-display);
+    font-weight: 400;
+    font-size: 36px;
+    line-height: 1.05;
+}
+
+.studio-date {
+    margin: 4px 0 0;
+    color: var(--muted);
+    font-size: 16px;
+}
+
+.studio-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.studio-counts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px 34px;
+    margin-bottom: 26px;
+}
+
+.studio-count {
+    display: flex;
+    flex-direction: column;
+}
+
+.studio-count strong {
+    align-self: flex-start;
+    font-family: var(--font-display);
+    font-weight: 400;
+    font-size: 30px;
+    line-height: 1.1;
+}
+
+.studio-count span {
+    margin-top: 3px;
+    color: var(--muted);
+    font-size: 14px;
+}
+
+/* מספר שדורש טיפול מסומן בפס צהוב מתחתיו - רק כשהוא באמת גדול מאפס */
+.studio-count.is-attn strong {
+    box-shadow: inset 0 -9px 0 var(--accent);
+}
+
+body.dark .studio-count.is-attn strong {
+    box-shadow: inset 0 -9px 0 color-mix(in srgb, var(--accent) 70%, transparent);
+}
+
+.studio-cols {
+    display: grid;
+    grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+    gap: 28px;
+    align-items: start;
+}
+
+.studio-h {
+    margin: 0 0 8px;
+    color: var(--muted);
+    font-size: 15px;
+    font-weight: 700;
+}
+
+.studio-col-side section + section {
+    margin-top: 24px;
+}
+
+.studio-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.studio-slot {
+    position: relative;
+    display: grid;
+    grid-template-columns: 74px 1fr auto;
+    align-items: center;
+    gap: 12px;
+    padding: 13px 16px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+    text-decoration: none;
+}
+
+.studio-slot:last-child,
+.studio-item:last-child {
+    border-bottom: 0;
+}
+
+.studio-slot:hover,
+.studio-item:hover {
+    background: var(--surface-2);
+}
+
+.studio-time {
+    font-family: var(--font-display);
+    font-size: 25px;
+    line-height: 1;
+}
+
+.studio-slot-body,
+.studio-item-body {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.studio-who {
+    font-weight: 700;
+}
+
+.studio-meta,
+.studio-snippet,
+.studio-when {
+    color: var(--muted);
+    font-size: 14px;
+}
+
+.studio-snippet {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.studio-when {
+    font-size: 13px;
+    white-space: nowrap;
+}
+
+.studio-slot.is-past .studio-time,
+.studio-slot.is-past .studio-who {
+    color: var(--muted);
+    opacity: 0.7;
+}
+
+.studio-slot.is-now {
+    background: color-mix(in srgb, var(--accent) 16%, var(--surface));
+}
+
+.studio-slot.is-now::before {
+    content: "";
+    position: absolute;
+    inset-block: 0;
+    inset-inline-start: 0;
+    width: 5px;
+    background: var(--accent);
+}
+
+.studio-tag {
+    padding: 3px 10px;
+    border-radius: 6px;
+    background: var(--accent);
+    color: var(--on-accent);
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.studio-tag[hidden] {
+    display: none;
+}
+
+.studio-item {
+    display: grid;
+    grid-template-columns: 12px 1fr auto;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+    text-decoration: none;
+}
+
+.studio-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--accent);
+}
+
+.studio-more {
+    display: inline-block;
+    margin-top: 8px;
+    color: var(--text);
+    font-size: 14px;
+    font-weight: 700;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+
+.studio-quiet {
+    margin: 0;
+    padding: 14px 4px;
+    color: var(--muted);
+}
+
+.studio-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 22px 18px;
+    background: var(--surface);
+    border: 1px dashed var(--border-strong);
+    border-radius: 10px;
+}
+
+@media (max-width: 800px) {
+    .studio-title {
+        font-size: 30px;
+    }
+
+    .studio-cols {
+        grid-template-columns: 1fr;
+        gap: 22px;
+    }
+
+    .studio-actions {
+        width: 100%;
+    }
+
+    .studio-actions .btn {
+        flex: 1;
+    }
+
+    .studio-slot {
+        grid-template-columns: 62px 1fr auto;
+        padding: 12px 14px;
+    }
+
+    .studio-time {
+        font-size: 23px;
+    }
+
+    .studio-counts {
+        gap: 12px 24px;
+    }
+}
+
+/* --- שלב 1, גימור: טופ-בר, מתגי SVG, ולוח הבקרה על הרקע עצמו (בלי כרטיס עוטף) --- */
+.theme-toggle svg {
+    width: 18px;
+    height: 18px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.theme-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+}
+
+.topbar a.link-button,
+.topbar button.link-button {
+    color: rgba(255, 255, 255, 0.85);
+    text-decoration-color: rgba(255, 255, 255, 0.4);
+    text-underline-offset: 3px;
+}
+
+body.page-dashboard .card {
+    padding: 4px 2px;
+    background: transparent;
+    border: 0;
+}
+
+@media (max-width: 800px) {
+    body.page-dashboard .card {
+        padding: 0;
+    }
+}
+
+/* כפתורי אייקון משניים (עריכה/המרה בלידים): היו לבנים על רקע כחול-אפור; עכשיו הכפתור המשני בהיר, לכן האייקון כהה */
+.actions-row .icon-btn.btn-secondary,
+.actions-row .icon-btn.btn-secondary:hover,
+.actions-row .icon-btn.btn-ghost,
+.actions-row .icon-btn.btn-ghost:hover {
+    color: var(--text);
+}
+
+.actions-row .icon-btn.btn-danger,
+.actions-row .icon-btn.btn-danger:hover {
+    color: #fff;
+}
+
+body.dark .actions-row .icon-btn.btn-danger,
+body.dark .actions-row .icon-btn.btn-danger:hover {
+    color: #2a1a33;
+}
+
+/* =====================================================================================================
+   "יומן סטודיו" - שלב 2: לידים, שיחות ותורים.
+   ===================================================================================================== */
+
+/* --- לשוניות סינון (סטטוס בלידים, טווח תאריכים בתורים): טקסט עם קו תחתון, והמספר לצידו.
+       לשונית פעילה = קו צהוב. במקום "כדורים" וכפתורים זהים, כדי שיהיה ברור שזה סינון ולא פעולה --- */
+.status-tabs {
+    display: flex;
+    gap: 22px;
+    margin: 0 0 14px;
+    border-bottom: 1px solid var(--border);
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+
+.status-tabs::-webkit-scrollbar {
+    display: none;
+}
+
+.status-tabs a {
+    position: relative;
+    padding: 10px 0;
+    color: var(--muted);
+    font-weight: 600;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.status-tabs a:hover {
+    color: var(--text);
+}
+
+.status-tabs a.on {
+    color: var(--text);
+    font-weight: 700;
+}
+
+.status-tabs a.on::after {
+    content: "";
+    position: absolute;
+    inset-inline: 0;
+    bottom: -1px;
+    height: 3px;
+    background: var(--accent);
+}
+
+.status-tabs small {
+    margin-inline-start: 4px;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+/* --- תורים --- */
+.appt-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 14px;
+    margin-bottom: 4px;
+}
+
+.appt-top .status-tabs {
+    flex: 1;
+    min-width: 0;
+}
+
+.appt-search {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 4px 0 18px;
+}
+
+.appt-search input[type=text] {
+    min-width: 220px;
+    border-radius: 10px;
+}
+
+.appt-day {
+    margin-bottom: 22px;
+}
+
+.appt-day-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+.appt-day-head h3 {
+    margin: 0;
+    font-size: 17px;
+}
+
+.appt-day-head span {
+    color: var(--muted);
+    font-size: 14px;
+}
+
+.appt-slot {
+    position: relative;
+    display: grid;
+    grid-template-columns: 78px minmax(0, 1fr) auto auto;
+    align-items: center;
+    gap: 14px;
+    padding: 13px 16px;
+    border-bottom: 1px solid var(--border);
+}
+
+.appt-slot:last-child {
+    border-bottom: 0;
+}
+
+.appt-main {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.appt-contact {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.appt-contact .tel-link {
+    font-weight: 600;
+    color: var(--text);
+}
+
+.appt-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.appt-actions form {
+    margin: 0;
+}
+
+.appt-slot.is-past .studio-time,
+.appt-slot.is-past .studio-who {
+    color: var(--muted);
+    opacity: 0.7;
+}
+
+.appt-slot.is-now {
+    background: color-mix(in srgb, var(--accent) 16%, var(--surface));
+}
+
+.appt-slot.is-now::before {
+    content: "";
+    position: absolute;
+    inset-block: 0;
+    inset-inline-start: 0;
+    width: 5px;
+    background: var(--accent);
+}
+
+/* --- לידים --- */
+.leads-tabs {
+    margin-top: 2px;
+}
+
+/* ליד חדש (הסטטוס הראשון) מסומן בפס צהוב בצד ההתחלה של השורה */
+.leads-table tr.is-new td:first-child {
+    border-inline-start: 4px solid var(--accent);
+}
+
+/* כפתורי אייקון: SVG אחיד (העורך/המרה/מחיקה היו תווי טקסט שנראו שונה בכל מכשיר) */
+.icon-btn svg {
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    pointer-events: none;
+}
+
+.leads-table .actions-row .icon-btn svg {
+    width: 16px;
+    height: 16px;
+}
+
+/* וואטסאפ/התקשרות כפתורים גדולים - בכרטיס בטלפון בלבד (בשולחן עבודה יש אייקון ליד המספר) */
+.lead-act {
+    display: none;
+}
+
+/* --- שיחות: צבעים של הזהות החדשה במקום ירוק וואטסאפ --- */
+.chat-app {
+    border-color: var(--border);
+    background: var(--surface);
+}
+
+.chat-thread,
+.chat-app-empty {
+    background: var(--bg);
+    background-image: none;
+}
+
+body.dark .chat-thread,
+body.dark .chat-app-empty {
+    background: var(--bg);
+}
+
+.chat-bubble {
+    color: var(--text);
+    box-shadow: none;
+}
+
+.chat-bubble-in,
+body.dark .chat-bubble-in {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+}
+
+.chat-bubble-out,
+body.dark .chat-bubble-out {
+    background: #ece6f1;
+    color: var(--text);
+}
+
+body.dark .chat-bubble-out {
+    background: #3a2d45;
+}
+
+.chat-bubble .chat-time,
+body.dark .chat-bubble-in .chat-time,
+body.dark .chat-bubble-out .chat-time {
+    color: var(--muted);
+}
+
+.chat-day-sep span,
+body.dark .chat-day-sep span {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    box-shadow: none;
+}
+
+.chat-bubble-pending {
+    opacity: 0.75;
+}
+
+.chat-list-avatar,
+.chat-header-avatar {
+    background: var(--ink);
+    color: #fff;
+    font-family: var(--font-display);
+    font-weight: 400;
+}
+
+body.dark .chat-list-avatar,
+body.dark .chat-header-avatar {
+    background: var(--accent);
+    color: var(--on-accent);
+}
+
+.chat-list-item.active {
+    border-inline-start-color: var(--accent);
+    background: var(--surface-2);
+}
+
+.chat-unread-dot {
+    background: var(--accent);
+}
+
+.chat-list-item-unread .chat-list-name {
+    color: var(--text);
+}
+
+.chat-list-tools .wa-chip {
+    border-radius: 8px;
+    border: 1.5px solid var(--border-strong);
+    font-weight: 700;
+}
+
+.chat-list-tools .wa-chip.active {
+    background: var(--ink);
+    border-color: var(--ink);
+    color: #fff;
+}
+
+body.dark .chat-list-tools .wa-chip.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--on-accent);
+}
+
+.chat-send-btn {
+    width: 44px;
+    height: 44px;
+    flex-shrink: 0;
+    display: grid;
+    place-items: center;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: var(--ink);
+    color: #fff;
+    cursor: pointer;
+}
+
+.chat-send-btn svg {
+    width: 20px;
+    height: 20px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    transform: scaleX(-1);
+}
+
+.chat-send-btn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+}
+
+body.dark .chat-send-btn {
+    background: var(--accent);
+    color: var(--on-accent);
+}
+
+.chat-reply-form textarea {
+    background: var(--surface);
+}
+
+.chat-attach-name {
+    border-color: var(--border-strong);
+}
+
+/* --- טלפון --- */
+@media (max-width: 800px) {
+    .appt-top {
+        flex-direction: column-reverse;
+        align-items: stretch;
+        gap: 8px;
+    }
+
+    .appt-top .btn {
+        width: 100%;
+    }
+
+    .appt-search input[type=text] {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .appt-slot {
+        grid-template-columns: 62px minmax(0, 1fr);
+        grid-template-areas:
+            "time main"
+            "contact contact"
+            "actions actions";
+        gap: 8px 12px;
+        padding: 12px 14px;
+    }
+
+    .appt-slot .studio-time {
+        grid-area: time;
+        font-size: 23px;
+    }
+
+    .appt-main {
+        grid-area: main;
+    }
+
+    .appt-contact {
+        grid-area: contact;
+    }
+
+    .appt-actions {
+        grid-area: actions;
+        flex-wrap: wrap;
+    }
+
+    .appt-actions .btn {
+        flex: 1;
+    }
+
+    .leads-tabs {
+        margin-inline: -4px;
+    }
+
+    .leads-table.mobile-cards tr.is-new {
+        border-inline-start: 5px solid var(--accent);
+    }
+
+    .leads-table tr.is-new td:first-child {
+        border-inline-start: 0 !important;
+    }
+
+    .leads-table .col-actions {
+        flex-wrap: wrap;
+    }
+
+    .lead-act {
+        display: inline-flex;
+        flex: 1 1 84px;
+        align-items: center;
+        justify-content: center;
+        min-height: 44px;
+        padding: 0 14px;
+        border: 1.5px solid var(--ink);
+        border-radius: 10px;
+        font-size: 14px;
+        font-weight: 700;
+        text-decoration: none;
+        color: var(--ink);
+        background: var(--surface);
+    }
+
+    .lead-act-wa {
+        background: var(--ink);
+        color: #fff;
+    }
+
+    body.dark .lead-act {
+        border-color: var(--accent);
+        color: var(--accent);
+        background: transparent;
+    }
+
+    body.dark .lead-act-wa {
+        background: var(--accent);
+        color: var(--on-accent);
+    }
+
+    .leads-table .actions-row .icon-btn {
+        width: 44px;
+        height: 44px;
+    }
+
+    .leads-table .actions-row .icon-btn svg {
+        width: 20px;
+        height: 20px;
+    }
+
+    .chat-send-btn {
+        width: 46px;
+        height: 46px;
+    }
+}
+
+/* =====================================================================================================
+   "יומן סטודיו" - שלב 3: לקוחות, משתמשים, אוטומציות, תבניות. אייקוני SVG במקום אימוג'י, ללא פסים צבעוניים.
+   ===================================================================================================== */
+svg.ico {
+    flex-shrink: 0;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.more-row svg {
+    width: 20px;
+    height: 20px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.login-logo svg,
+.login-toggle svg,
+.bl-callout-icon svg,
+.chat-attach-btn svg {
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.login-logo {
+    display: grid;
+    place-items: center;
+    color: var(--on-accent, var(--ink));
+}
+
+.login-toggle {
+    display: grid;
+    place-items: center;
+    color: var(--muted);
+}
+
+.bl-callout-icon {
+    display: inline-grid;
+    place-items: center;
+    color: var(--danger, #b93a2e);
+}
+
+.chat-attach-btn {
+    color: var(--muted);
+}
+
+.chat-attach-btn:hover {
+    color: var(--text);
+}
+
+/* אותו שוליים כמו שאר מסכי הניהול: אין פס צבעוני בצד הכרטיס, המספר נושא את המשמעות */
+.auto-stat,
+.auto-stat-green,
+.auto-stat-blue,
+.auto-stat-red,
+.auto-stat-gray {
+    border-inline-start: 1px solid var(--border);
+    background: var(--surface);
+    border-radius: 10px;
+}
+
+.duplicate-phone {
+    padding: 1px 6px;
+    border-radius: 6px;
+    background: color-mix(in srgb, var(--danger, #b93a2e) 12%, transparent);
+    color: var(--danger, #b93a2e);
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.automations-empty {
+    padding: 36px 20px;
+    border: 1.5px dashed var(--border-strong);
+    border-radius: 12px;
+    background: transparent;
+    color: var(--muted);
+}
+
+.af-section-title {
+    font-family: var(--font-display);
+    font-weight: 400;
+    letter-spacing: 0;
+}
+
+.wa-bubble {
+    background: #ece6f1;
+    box-shadow: none;
+}
+
+body.dark .wa-bubble {
+    background: #3a2d45;
+    color: var(--text);
+}
+
+/* =====================================================================================================
+   לוח האוטומציות: לשוניות קטגוריה, חיפוש/סינון, וכרטיס לכל אוטומציה (ימים, שעה, מתג, חץ פתיחה).
+   המבנה לפי מערכת הניהול שהמשתמשת אוהבת, והצבעים של "יומן סטודיו".
+   ===================================================================================================== */
+.auto-head {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 14px;
+    flex-wrap: wrap;
+    margin-bottom: 18px;
+}
+
+.auto-head-title {
+    margin: 0;
+    font-family: var(--font-display);
+    font-weight: 400;
+    font-size: 26px;
+}
+
+.auto-head-sub {
+    margin: 4px 0 0;
+    color: var(--muted);
+    font-size: 14px;
+}
+
+.auto-head-fail {
+    color: var(--danger);
+    font-weight: 700;
+}
+
+.auto-head-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.auto-cats {
+    display: flex;
+    gap: 4px;
+    padding: 5px;
+    margin-bottom: 16px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+
+.auto-cats::-webkit-scrollbar {
+    display: none;
+}
+
+.auto-cat {
+    flex-shrink: 0;
+    padding: 8px 14px;
+    border: 1px solid transparent;
+    border-radius: 9px;
+    background: none;
+    color: var(--text);
+    font: inherit;
+    font-weight: 600;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.auto-cat small {
+    margin-inline-start: 4px;
+    color: var(--muted);
+    font-weight: 700;
+}
+
+.auto-cat:hover {
+    background: var(--surface);
+}
+
+.auto-cat.on {
+    background: var(--surface);
+    border-color: var(--border-strong);
+    box-shadow: inset 0 -3px 0 var(--accent);
+    font-weight: 700;
+}
+
+.auto-tools {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 18px;
+}
+
+.auto-search {
+    position: relative;
+    display: block;
+    flex: 0 1 320px;
+}
+
+.auto-search svg {
+    position: absolute;
+    top: 50%;
+    inset-inline-start: 12px;
+    transform: translateY(-50%);
+    fill: none;
+    stroke: var(--muted);
+    stroke-width: 2;
+    stroke-linecap: round;
+    pointer-events: none;
+}
+
+.auto-search input {
+    width: 100%;
+    padding-inline-start: 38px;
+    border-radius: 10px;
+}
+
+.auto-tools select {
+    width: auto;
+    border-radius: 10px;
+}
+
+.auto-section {
+    margin-bottom: 26px;
+}
+
+.auto-section-title {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    margin: 0 0 10px;
+    font-size: 17px;
+}
+
+.auto-section-title span {
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.auto-card {
+    margin-bottom: 10px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+}
+
+.auto-card.is-off .auto-card-title {
+    color: var(--muted);
+}
+
+.auto-card.is-open {
+    border-color: var(--border-strong);
+}
+
+.auto-card-head {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    padding: 16px 18px;
+}
+
+.auto-card-main {
+    flex: 1;
+    min-width: 0;
+}
+
+.auto-card-title {
+    margin: 0;
+    font-size: 17px;
+    font-weight: 700;
+}
+
+.auto-card-meta,
+.auto-card-stats {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 4px 0 0;
+    color: var(--muted);
+    font-size: 14px;
+}
+
+.auto-card-stats {
+    gap: 14px;
+    font-size: 13px;
+}
+
+.auto-card-stats .num-ok {
+    color: var(--success, #1e8549);
+    font-weight: 700;
+}
+
+.auto-card-stats .num-fail {
+    color: var(--danger);
+    font-weight: 700;
+}
+
+.auto-sep {
+    opacity: 0.5;
+}
+
+.auto-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: var(--border-strong);
+}
+
+.auto-dot.on {
+    background: #1e8549;
+}
+
+.auto-days {
+    display: flex;
+    gap: 5px;
+}
+
+.auto-day {
+    display: grid;
+    place-items: center;
+    width: 30px;
+    height: 26px;
+    border-radius: 999px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 700;
+    font-family: inherit;
+    padding: 0;
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
+}
+
+.auto-day:hover {
+    border-color: var(--ink);
+}
+
+.auto-day:disabled {
+    cursor: wait;
+    opacity: 0.6;
+}
+
+.auto-day.on {
+    background: var(--ink);
+    border-color: var(--ink);
+    color: #fff;
+}
+
+body.dark .auto-day.on {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--on-accent);
+}
+
+.auto-card.is-off .auto-day.on {
+    opacity: 0.45;
+}
+
+.auto-time {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 84px;
+    padding: 5px 12px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--surface);
+}
+
+.auto-time small {
+    color: var(--muted);
+    font-size: 12px;
+}
+
+.auto-time strong {
+    font-family: var(--font-display);
+    font-weight: 400;
+    font-size: 20px;
+    line-height: 1.2;
+}
+
+.auto-time-input {
+    font-family: var(--font-display);
+    font-weight: 400;
+    font-size: 20px;
+    line-height: 1.2;
+    color: var(--ink);
+    background: transparent;
+    border: none;
+    padding: 0;
+    width: 100%;
+    text-align: center;
+    cursor: pointer;
+}
+
+.auto-time-input:hover,
+.auto-time-input:focus {
+    outline: none;
+    color: var(--accent);
+}
+
+.auto-time-input:disabled {
+    cursor: wait;
+    opacity: 0.6;
+}
+
+body.dark .auto-time-input {
+    color-scheme: dark;
+}
+
+.auto-toggle {
+    margin: 0;
+}
+
+.auto-chevron {
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border: 0;
+    border-radius: 10px;
+    background: none;
+    color: var(--text);
+    cursor: pointer;
+}
+
+.auto-chevron:hover {
+    background: var(--surface-2);
+}
+
+.auto-chevron svg {
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2.2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    transition: transform 0.15s ease;
+}
+
+.auto-chevron[aria-expanded="true"] svg {
+    transform: rotate(180deg);
+}
+
+.auto-card-body {
+    padding: 4px 18px 18px;
+    border-top: 1px solid var(--border);
+    background: var(--surface-2);
+    border-radius: 0 0 12px 12px;
+}
+
+.auto-card-body .automations-details {
+    margin-top: 14px;
+}
+
+.auto-group-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    margin: 0 0 10px;
+    padding: 10px 14px;
+    border: 1.5px dashed var(--border-strong);
+    border-radius: 12px;
+    background: none;
+    color: var(--text);
+    font: inherit;
+    font-weight: 700;
+    text-align: right;
+    cursor: pointer;
+}
+
+.auto-group-head small {
+    color: var(--muted);
+    font-weight: 600;
+}
+
+.auto-group-head svg {
+    width: 20px;
+    height: 20px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2.2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    transform: rotate(90deg);
+    transition: transform 0.15s ease;
+}
+
+.auto-group-head.expanded svg {
+    transform: rotate(0deg);
+}
+
+.auto-card-member {
+    margin-inline-start: 18px;
+}
+
+.auto-card.is-filtered,
+.auto-group-head.is-filtered,
+.auto-section.is-filtered {
+    display: none;
+}
+
+.auto-list.is-filtering .auto-card[data-group][hidden] {
+    display: block;
+}
+
+.auto-list.is-filtering .auto-card.is-filtered[data-group][hidden] {
+    display: none;
+}
+
+.auto-none {
+    padding: 28px;
+    text-align: center;
+    color: var(--muted);
+    border: 1.5px dashed var(--border-strong);
+    border-radius: 12px;
+}
+
+@media (max-width: 800px) {
+    .auto-head-actions .btn {
+        flex: 1;
+    }
+
+    .auto-tools {
+        flex-direction: column;
+    }
+
+    .auto-search {
+        flex-basis: auto;
+    }
+
+    .auto-tools select {
+        width: 100%;
+    }
+
+    .auto-card-head {
+        flex-wrap: wrap;
+        gap: 12px;
+        padding: 14px;
+    }
+
+    .auto-card-main {
+        flex-basis: 100%;
+    }
+
+    .auto-days {
+        flex: 1;
+        gap: 4px;
+    }
+
+    .auto-day {
+        flex: 1;
+        width: auto;
+        min-width: 0;
+    }
+
+    .auto-time {
+        min-width: 70px;
+    }
+
+    .auto-card-body {
+        padding: 4px 12px 14px;
+    }
+
+    .auto-card-member {
+        margin-inline-start: 8px;
+    }
+}
+
+/* =====================================================================================================
+   לוח הבקרה: כרטיסי מדד עם פס עליון צבעוני, סקירת פעילות (קו+שטח), ועוגת ערוצי לידים.
+   צבעי הגרפים נבדקו עם validate_palette (בהיר וכהה): סגול / צהוב / ירוק-ים, ואפור ל"אחר".
+   ===================================================================================================== */
+.viz-root {
+    --series-1: #6250d6;
+    --series-2: #eda100;
+    --series-3: #1baf7a;
+    --series-other: #8a8497;
+    --viz-grid: #e3e0ea;
+}
+
+body.dark .viz-root {
+    --series-1: #9085e9;
+    --series-2: #c98500;
+    --series-3: #199e70;
+    --series-other: #8a8497;
+    --viz-grid: #3a2d45;
+}
+
+.dash-range {
+    display: inline-flex;
+    padding: 3px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--surface-2);
+}
+
+.dash-range a {
+    padding: 6px 12px;
+    border-radius: 7px;
+    color: var(--muted);
+    font-size: 14px;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.dash-range a.on {
+    background: var(--surface);
+    color: var(--text);
+    box-shadow: inset 0 -2px 0 var(--accent);
+}
+
+.kpis {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    gap: 14px;
+    margin-bottom: 18px;
+}
+
+.kpi {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-height: 118px;
+    padding: 14px 16px 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-top: 3px solid var(--ink);
+    border-radius: 10px;
+}
+
+body.dark .kpi {
+    border-top-color: var(--series-1);
+}
+
+.kpi.kpi-attn {
+    border-top-color: var(--accent);
+}
+
+.kpi.kpi-green {
+    border-top-color: #1e8549;
+}
+
+.kpi-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 8px;
+}
+
+.kpi-top svg {
+    width: 26px;
+    height: 26px;
+    flex-shrink: 0;
+    fill: none;
+    stroke: var(--muted);
+    stroke-width: 1.7;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.kpi-title {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--muted);
+    font-size: 15px;
+    font-weight: 600;
+}
+
+.kpi-help {
+    display: inline-grid;
+    place-items: center;
+    width: 16px;
+    height: 16px;
+    border: 1.5px solid var(--muted);
+    border-radius: 50%;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 1;
+    cursor: help;
+}
+
+.kpi-value {
+    font-family: var(--font-display);
+    font-weight: 400;
+    font-size: 34px;
+    line-height: 1.1;
+}
+
+.kpi-link {
+    align-self: flex-start;
+    margin-top: auto;
+    padding: 4px 12px;
+    border-radius: 8px;
+    background: var(--surface-2);
+    color: var(--text);
+    font-size: 13px;
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.dash-charts {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+    gap: 14px;
+    margin-bottom: 26px;
+}
+
+.dash-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.dash-card-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 14px 18px 8px;
+}
+
+.dash-card-head h3 {
+    margin: 0;
+    font-size: 17px;
+}
+
+.dash-card-sub {
+    color: var(--muted);
+    font-size: 13px;
+}
+
+.dash-tabs {
+    display: flex;
+    border-block: 1px solid var(--border);
+    background: var(--surface-2);
+}
+
+.dash-tab {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 10px 18px;
+    border: 0;
+    border-bottom: 3px solid transparent;
+    background: none;
+    color: var(--muted);
+    font: inherit;
+    text-align: right;
+    cursor: pointer;
+}
+
+.dash-tab strong {
+    color: var(--text);
+    font-family: var(--font-display);
+    font-weight: 400;
+    font-size: 26px;
+    line-height: 1.1;
+}
+
+.dash-tab.on {
+    background: var(--surface);
+    border-bottom-color: var(--accent);
+    color: var(--text);
+    font-weight: 700;
+}
+
+.dash-plot {
+    position: relative;
+    padding: 12px 14px 4px;
+}
+
+.dash-svg {
+    display: block;
+    width: 100%;
+    height: auto;
+    touch-action: pan-y;
+}
+
+.dash-grid {
+    stroke: var(--viz-grid);
+    stroke-width: 1;
+}
+
+.dash-axis {
+    fill: var(--muted);
+    font-size: 12.5px;
+    font-family: inherit;
+}
+
+.dash-line {
+    fill: none;
+    stroke: var(--series-1);
+    stroke-width: 2;
+    stroke-linejoin: round;
+}
+
+.dash-area {
+    fill: var(--series-1);
+    opacity: 0.12;
+}
+
+.dash-avg {
+    stroke: var(--muted);
+    stroke-width: 1.5;
+    stroke-dasharray: 5 5;
+}
+
+.dash-avg-label {
+    fill: var(--muted);
+    font-size: 12.5px;
+    font-weight: 700;
+}
+
+.dash-cross {
+    stroke: var(--muted);
+    stroke-width: 1;
+}
+
+.dash-dot {
+    fill: var(--series-1);
+    stroke: var(--surface);
+    stroke-width: 2;
+}
+
+.dash-tip {
+    position: absolute;
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 6px 12px;
+    border: 1px solid var(--border-strong);
+    border-radius: 8px;
+    background: var(--surface);
+    font-size: 13px;
+    pointer-events: none;
+    white-space: nowrap;
+}
+
+.dash-tip[hidden] {
+    display: none;
+}
+
+.dash-tip span {
+    color: var(--muted);
+    font-size: 12px;
+}
+
+.dash-tip strong {
+    font-family: var(--font-display);
+    font-weight: 400;
+    font-size: 18px;
+}
+
+.dash-table {
+    padding: 0 18px 12px;
+    font-size: 14px;
+}
+
+.dash-table summary {
+    cursor: pointer;
+    color: var(--muted);
+    font-weight: 600;
+}
+
+.dash-table-scroll {
+    max-height: 220px;
+    margin-top: 8px;
+    overflow: auto;
+}
+
+.dash-table table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.dash-table th,
+.dash-table td {
+    padding: 4px 8px;
+    border-bottom: 1px solid var(--border);
+    text-align: right;
+}
+
+.dash-donut {
+    padding: 8px 18px 0;
+}
+
+.dash-donut-svg {
+    display: block;
+    width: min(220px, 100%);
+    margin: 0 auto;
+}
+
+.dash-donut-svg circle.sw-1 { stroke: var(--series-1); }
+.dash-donut-svg circle.sw-2 { stroke: var(--series-2); }
+.dash-donut-svg circle.sw-3 { stroke: var(--series-3); }
+.dash-donut-svg circle.sw-other { stroke: var(--series-other); }
+
+.dash-donut-num {
+    fill: var(--text);
+    font-family: var(--font-display);
+    font-size: 34px;
+}
+
+.dash-donut-cap {
+    fill: var(--muted);
+    font-size: 13px;
+}
+
+.dash-legend {
+    list-style: none;
+    margin: 0;
+    padding: 6px 18px 16px;
+}
+
+.dash-legend li {
+    display: grid;
+    grid-template-columns: 14px 1fr auto auto;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 14px;
+}
+
+.dash-legend li:last-child {
+    border-bottom: 0;
+}
+
+.dash-swatch {
+    width: 12px;
+    height: 12px;
+    border-radius: 3px;
+}
+
+.dash-swatch.sw-1 { background: var(--series-1); }
+.dash-swatch.sw-2 { background: var(--series-2); }
+.dash-swatch.sw-3 { background: var(--series-3); }
+.dash-swatch.sw-other { background: var(--series-other); }
+
+.dash-legend-val {
+    font-weight: 700;
+}
+
+.dash-legend-pct {
+    min-width: 48px;
+    color: var(--muted);
+    text-align: left;
+}
+
+@media (max-width: 800px) {
+    .kpis {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+    }
+
+    .kpi:last-child:nth-child(odd) {
+        grid-column: 1 / -1;
+    }
+
+    .kpi {
+        min-height: 104px;
+        padding: 12px;
+    }
+
+    .kpi-value {
+        font-size: 28px;
+    }
+
+    .dash-charts {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .studio-actions {
+        flex-wrap: wrap;
+    }
+}
+
+/* =====================================================================================================
+   תפריט צד בסגנון לוח ניהול: פאנל לבן באורך מלא בקצה המסך, מותג, "פעולות מהירות", פריטים גדולים עם
+   רקע בהיר לפעיל, וכפתור צמצום. רק בשולחן עבודה; בטלפון יש סרגל תחתון.
+   ===================================================================================================== */
+@media (min-width: 801px) {
+    body .layout,
+    body.page-leads-list .layout {
+        padding: 0;
+        gap: 0;
+        align-items: stretch;
+    }
+
+    body .content {
+        padding: 24px;
+    }
+
+    body.page-leads-list .content {
+        padding-top: 16px;
+        padding-bottom: 16px;
+    }
+
+    body .sidebar {
+        position: sticky;
+        display: flex;
+        flex-direction: column;
+        flex-shrink: 0;
+        width: 248px;
+        height: calc(100vh - 64px);
+        padding: 20px 14px 14px;
+        border: 0;
+        border-inline-end: 1px solid var(--border);
+        border-radius: 0;
+        background: var(--surface);
+        overflow: visible;
+    }
+
+    .sidebar-scroll {
+        display: contents;
+    }
+
+    body.sidebar-collapsed .sidebar {
+        width: 76px;
+        padding-inline: 10px;
+    }
+
+    .sidebar-toggle {
+        position: absolute;
+        top: 14px;
+        inset-inline-end: -14px;
+        z-index: 25;
+        display: grid;
+        place-items: center;
+        width: 28px;
+        height: 28px;
+        padding: 0;
+        border: 1px solid var(--border-strong);
+        border-radius: 50%;
+        background: var(--surface);
+        color: var(--text);
+        cursor: pointer;
+    }
+
+    .sidebar-toggle svg {
+        width: 16px;
+        height: 16px;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 2.2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        transform: scaleX(-1);
+    }
+
+    body.sidebar-collapsed .sidebar-toggle svg {
+        transform: none;
+    }
+
+    .sidebar-brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin: 6px 4px 18px;
+    }
+
+    .sidebar-logo {
+        display: grid;
+        place-items: center;
+        width: 42px;
+        height: 42px;
+        flex-shrink: 0;
+        border-radius: 12px;
+        background: var(--ink);
+        color: var(--accent);
+    }
+
+    .sidebar-logo svg {
+        width: 22px;
+        height: 22px;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+    }
+
+    .sidebar-brand-text {
+        display: flex;
+        flex-direction: column;
+        line-height: 1.25;
+    }
+
+    .sidebar-brand-text strong {
+        font-family: var(--font-display);
+        font-weight: 400;
+        font-size: 18px;
+    }
+
+    .sidebar-brand-text small {
+        color: var(--muted);
+        font-size: 13px;
+    }
+
+    .quick-actions {
+        position: relative;
+        margin-bottom: 16px;
+    }
+
+    .quick-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        min-height: 46px;
+        padding: 0 14px;
+        border: 1.5px solid var(--ink);
+        border-radius: 10px;
+        color: var(--ink);
+        font-size: 16px;
+        font-weight: 700;
+        list-style: none;
+        cursor: pointer;
+    }
+
+    .quick-btn::-webkit-details-marker {
+        display: none;
+    }
+
+    .quick-btn svg {
+        width: 20px;
+        height: 20px;
+        flex-shrink: 0;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+    }
+
+    .quick-btn:hover,
+    .quick-actions[open] .quick-btn {
+        background: color-mix(in srgb, var(--ink) 8%, transparent);
+    }
+
+    .quick-btn:focus-visible {
+        outline: 3px solid var(--accent);
+        outline-offset: 2px;
+    }
+
+    body.dark .quick-btn {
+        border-color: var(--accent);
+        color: var(--accent);
+    }
+
+    .quick-menu {
+        position: absolute;
+        z-index: 30;
+        inset-inline: 0;
+        top: calc(100% + 6px);
+        display: flex;
+        flex-direction: column;
+        min-width: 180px;
+        padding: 6px;
+        border: 1px solid var(--border-strong);
+        border-radius: 10px;
+        background: var(--surface);
+    }
+
+    .quick-menu a {
+        padding: 10px 12px;
+        border-radius: 8px;
+        color: var(--text);
+        font-weight: 600;
+        text-decoration: none;
+    }
+
+    .quick-menu a:hover,
+    .quick-menu a:focus-visible {
+        background: var(--surface-2);
+    }
+
+    body .sidebar .nav-link {
+        gap: 14px;
+        min-height: 46px;
+        margin-bottom: 4px;
+        padding: 0 14px;
+        border-radius: 10px;
+        color: var(--text);
+        font-size: 16px;
+        font-weight: 600;
+    }
+
+    body .sidebar .nav-icon {
+        width: 22px;
+        height: 22px;
+        opacity: 1;
+        stroke-width: 1.7;
+    }
+
+    body .sidebar .nav-link:hover,
+    body.dark .sidebar .nav-link:hover {
+        background: var(--surface-2);
+    }
+
+    body .sidebar .nav-link.active,
+    body.dark .sidebar .nav-link.active {
+        background: color-mix(in srgb, var(--ink) 9%, var(--surface));
+        color: var(--ink);
+        font-weight: 700;
+    }
+
+    body.dark .sidebar .nav-link.active {
+        background: #3a2d45;
+        color: #fff;
+    }
+
+    .sidebar .nav-link.active::before {
+        display: none;
+    }
+
+    .sidebar-title {
+        padding: 14px 14px 6px;
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+    }
+
+    .sidebar-title-sep {
+        margin-top: 8px;
+        padding-top: 16px;
+    }
+
+    .sidebar-foot {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        margin-top: auto;
+        padding: 14px 6px 0;
+        border-top: 1px solid var(--border);
+    }
+
+    .sidebar-user {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-width: 0;
+        font-weight: 600;
+    }
+
+    .sidebar-avatar {
+        display: grid;
+        place-items: center;
+        width: 32px;
+        height: 32px;
+        flex-shrink: 0;
+        border-radius: 50%;
+        background: var(--ink);
+        color: #fff;
+        font-family: var(--font-display);
+    }
+
+    body.dark .sidebar-avatar {
+        background: var(--accent);
+        color: var(--on-accent);
+    }
+
+    /* תפריט מצומצם: רק אייקונים. התוויות נשארות לקורא מסך (חיתוך חזותי ולא display:none) */
+    body.sidebar-collapsed .sidebar .nav-link > span:not(.nav-count),
+    body.sidebar-collapsed .sidebar .nav-label,
+    body.sidebar-collapsed .sidebar-brand-text,
+    body.sidebar-collapsed .sidebar-title {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+        white-space: nowrap;
+    }
+
+    body.sidebar-collapsed .sidebar .nav-link,
+    body.sidebar-collapsed .quick-btn {
+        justify-content: center;
+        padding: 0;
+    }
+
+    body.sidebar-collapsed .sidebar .nav-count {
+        position: absolute;
+        top: 4px;
+        inset-inline-end: 6px;
+        min-width: 18px;
+        height: 18px;
+        line-height: 18px;
+        font-size: 11px;
+    }
+
+    body.sidebar-collapsed .sidebar-brand {
+        justify-content: center;
+        margin-inline: 0;
+    }
+
+    body.sidebar-collapsed .sidebar-foot {
+        justify-content: center;
+    }
+
+    body.sidebar-collapsed .sidebar-title-sep {
+        padding: 0;
+        margin: 8px 0;
+        border-top: 1px solid var(--border);
+    }
+}
+
+@media (max-width: 800px) {
+    .sidebar-toggle,
+    .sidebar-brand,
+    .quick-actions,
+    .sidebar-foot {
+        display: none;
+    }
+}
+
+@media (min-width: 801px) {
+    body:not(.page-leads-list) .sidebar {
+        top: 64px;
+        max-height: none;
+        overflow: visible;
+    }
+
+    body.page-leads-list .sidebar {
+        height: auto;
+        align-self: stretch;
+    }
+
+    .kpis {
+        grid-template-columns: repeat(auto-fit, minmax(165px, 1fr));
+    }
+}
+
+@media (min-width: 801px) {
+    body.page-leads-list .sidebar {
+        padding-bottom: 52px;
+    }
+}
+
+/* גלילה עצמית של תפריט הצד: הרשימה גוללת בתוך הפאנל, וכפתור הצמצום (שבולט החוצה) והתחתית נשארים במקומם */
+@media (min-width: 801px) {
+    .sidebar-scroll {
+        display: block;
+        flex: 1;
+        min-height: 0;
+        margin-inline: -6px;
+        padding-inline: 6px;
+        overflow-x: hidden;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        scrollbar-width: thin;
+    }
+
+    body.sidebar-collapsed .sidebar-scroll {
+        margin-inline: -4px;
+        padding-inline: 4px;
+    }
+
+    .sidebar-foot {
+        flex-shrink: 0;
+    }
+}
+
+@media (max-width: 800px) {
+    .sidebar-scroll {
+        display: contents;
+    }
+}
+
+/* =====================================================================================================
+   אינטגרציות: חשבונות וואטסאפ (רשמיים ולא רשמיים) ומודל חיבור עם QR.
+   ===================================================================================================== */
+.int-head {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 14px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+}
+
+.int-title {
+    margin: 0;
+    font-family: var(--font-display);
+    font-weight: 400;
+    font-size: 24px;
+}
+
+.int-sub {
+    margin: 4px 0 0;
+    color: var(--muted);
+    font-size: 14px;
+}
+
+.int-warn {
+    margin-bottom: 16px;
+    padding: 12px 16px;
+    border: 1px solid var(--accent);
+    border-inline-start-width: 5px;
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--accent) 14%, var(--surface));
+    font-size: 14px;
+}
+
+.int-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.int-card {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+}
+
+.int-avatar {
+    display: grid;
+    place-items: center;
+    width: 46px;
+    height: 46px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    background: var(--surface-2);
+    color: #1e8549;
+}
+
+.int-avatar-ok {
+    background: color-mix(in srgb, #1e8549 12%, var(--surface));
+}
+
+.int-wa {
+    width: 26px;
+    height: 26px;
+}
+
+.int-main {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+    flex: 1;
+}
+
+.int-name {
+    font-size: 16px;
+}
+
+.int-phone {
+    margin-inline-start: 8px;
+    color: var(--muted);
+    font-weight: 500;
+}
+
+.int-meta {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--muted);
+    font-size: 14px;
+}
+
+.int-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: var(--border-strong);
+}
+
+.int-dot-connected {
+    background: #1e8549;
+}
+
+.int-dot-waiting_qr,
+.int-dot-starting {
+    background: var(--accent);
+}
+
+.int-dot-error,
+.int-dot-logged_out {
+    background: var(--danger);
+}
+
+.int-chip {
+    padding: 3px 10px;
+    border: 1px solid var(--border-strong);
+    border-radius: 999px;
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.int-chip-official {
+    border-color: #1e8549;
+    color: #1e8549;
+}
+
+.int-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.int-actions form {
+    margin: 0;
+}
+
+.int-modal {
+    width: min(480px, calc(100vw - 24px));
+    padding: 0;
+    border: 1px solid var(--border-strong);
+    border-radius: 16px;
+    background: var(--surface);
+    color: var(--text);
+}
+
+.int-modal::backdrop {
+    background: rgba(24, 14, 30, 0.55);
+}
+
+.int-modal-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+}
+
+.int-modal-head h3 {
+    flex: 1;
+    margin: 0;
+    font-size: 18px;
+}
+
+.int-close {
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    border: 0;
+    border-radius: 10px;
+    background: none;
+    color: var(--text);
+    cursor: pointer;
+}
+
+.int-close:hover {
+    background: var(--surface-2);
+}
+
+.int-close svg {
+    width: 22px;
+    height: 22px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+}
+
+.int-step {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: 20px;
+}
+
+.int-step[hidden] {
+    display: none;
+}
+
+.int-step input[type=text] {
+    width: 100%;
+}
+
+.int-risk {
+    margin: 0;
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--accent) 14%, var(--surface));
+    font-size: 13px;
+}
+
+.int-error {
+    margin: 0;
+    color: var(--danger);
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.int-error[hidden] {
+    display: none;
+}
+
+.int-buttons {
+    display: flex;
+    gap: 10px;
+}
+
+.int-buttons .btn {
+    flex: 1;
+}
+
+.int-qr-wrap {
+    position: relative;
+    align-self: center;
+    padding-bottom: 14px;
+}
+
+.int-qr {
+    display: grid;
+    place-items: center;
+    width: 280px;
+    height: 280px;
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    background: #fff;
+}
+
+.int-qr img {
+    display: block;
+    width: 260px;
+    height: 260px;
+}
+
+.int-qr-wait {
+    color: #6b5f73;
+}
+
+.int-countdown {
+    position: absolute;
+    inset-inline: 0;
+    bottom: -2px;
+    margin-inline: auto;
+    width: max-content;
+    padding: 3px 14px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--surface);
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.int-steps {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin: 6px 0 0;
+    padding-inline-start: 22px;
+    color: var(--text);
+    font-size: 15px;
+}
+
+.int-done {
+    align-items: center;
+    text-align: center;
+}
+
+.int-check {
+    width: 56px;
+    height: 56px;
+    padding: 12px;
+    border-radius: 50%;
+    background: color-mix(in srgb, #1e8549 14%, var(--surface));
+    fill: none;
+    stroke: #1e8549;
+    stroke-width: 2.6;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.int-done .int-buttons {
+    align-self: stretch;
+}
+
+@media (max-width: 800px) {
+    .int-card {
+        flex-wrap: wrap;
+    }
+
+    .int-actions {
+        flex-basis: 100%;
+    }
+
+    .int-actions .btn {
+        flex: 1;
+    }
+
+    .int-actions form {
+        flex: 1;
+        display: flex;
+    }
+
+    .int-qr {
+        width: min(280px, 100%);
+    }
+}
+
+.int-qr img[hidden],
+.int-qr-wait[hidden] {
+    display: none;
+}
+
+/* שיחות דרך חשבון מקושר: בורר מספר ברשימה, סטטוס משלוח בבועה, והודעה כשהחשבון לא מחובר */
+.chat-number-filter {
+    width: 100%;
+    margin-block: 8px;
+    border-radius: 10px;
+}
+
+.chat-status {
+    margin-inline-start: 6px;
+    color: var(--muted);
+    font-size: 11px;
+}
+
+.chat-status-failed {
+    color: var(--danger);
+    font-weight: 700;
+}
+
+.chat-status-read {
+    color: #1e8549;
+    font-weight: 700;
+}
+
+.chat-linked-warn {
+    margin: 10px 14px 14px;
+    padding: 12px 14px;
+    border: 1px solid var(--accent);
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--accent) 14%, var(--surface));
+    font-size: 14px;
+}
+
+/* נגישות: קישור "דילוג לתוכן" (מוצג רק בפוקוס מקלדת) ו-<main> שלא מקבל מסגרת פוקוס כשמדלגים אליו */
+.skip-link {
+    position: absolute;
+    inset-inline-start: 12px;
+    top: -60px;
+    z-index: 1000;
+    padding: 10px 16px;
+    border-radius: 0 0 10px 10px;
+    background: var(--ink);
+    color: #fff;
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.skip-link:focus {
+    top: 0;
+}
+
+main.content:focus {
+    outline: none;
+}
+
+.appt-day-head h2 {
+    margin: 0;
+    font-size: 17px;
+}
+
+h2.auto-section-title,
+h3.auto-card-title {
+    font-family: inherit;
+}
+
+h2.auto-section-title {
+    font-size: 17px;
+}
+
+/* =====================================================================================================
+   מובייל: גודל מטרות מגע. ביקורת איכות מדדה רכיבים קטנים מ-24px (מתחת למינימום של WCAG 2.2) ורבים מתחת ל-44px:
+   אייקון הוואטסאפ (22px), מספרי טלפון וקישורי אימייל בכרטיסים, ימי השבוע באוטומציות (14px רוחב), מתגי ההפעלה,
+   "לא נקרא" ברשימת השיחות. מגדילים את אזור הלחיצה, ובמתגים בלי לשנות את המראה (אזור שקוף סביבם)
+   ===================================================================================================== */
+@media (max-width: 800px) {
+    .whatsapp-icon,
+    .tel-link,
+    .cust-link {
+        display: inline-flex;
+        align-items: center;
+        min-height: 44px;
+        min-width: 44px;
+    }
+
+    .whatsapp-icon {
+        justify-content: center;
+    }
+
+    .btn {
+        min-height: 44px;
+    }
+
+    .wa-chip,
+    .chat-mark-unread {
+        min-height: 40px;
+    }
+
+    .auto-cat {
+        min-height: 44px;
+    }
+
+    .auto-days {
+        flex: 1 1 100%;
+        order: 5;
+    }
+
+    .auto-day {
+        min-height: 40px;
+        min-width: 0;
+    }
+
+    .switch {
+        position: relative;
+    }
+
+    .switch::after {
+        content: "";
+        position: absolute;
+        inset: -12px -6px;
+    }
+}
+
+@media (max-width: 800px) {
+    .kpi-help {
+        width: 24px;
+        height: 24px;
+        font-size: 12px;
+    }
+
+    .dash-table summary {
+        display: flex;
+        align-items: center;
+        min-height: 44px;
+    }
+
+    /* מתג הפעלה: 46x26 במקום 40x22 (מינימום 24px לגובה), הידית בהתאם */
+    .switch {
+        width: 46px;
+        height: 26px;
+    }
+
+    .switch-knob {
+        width: 20px;
+        height: 20px;
+    }
+
+    .switch.on .switch-knob {
+        transform: translateX(-20px);
+    }
+}
+
+/* הודעות יוצאות בצ'אט - ירוק כמו בוואטסאפ (בועת כישלון נשארת אדומה) */
+.chat-bubble-out:not(.chat-bubble-failed),
+body.dark .chat-bubble-out:not(.chat-bubble-failed) {
+    background: #d9fdd3;
+    color: #111b21;
+}
+
+body.dark .chat-bubble-out:not(.chat-bubble-failed) {
+    background: #005c4b;
+    color: #e9edef;
+}
+
+.chat-bubble-out:not(.chat-bubble-failed) .chat-time,
+.chat-bubble-out:not(.chat-bubble-failed) .chat-status:not(.chat-status-failed):not(.chat-status-read) {
+    color: rgba(17, 27, 33, 0.62);
+}
+
+body.dark .chat-bubble-out:not(.chat-bubble-failed) .chat-time,
+body.dark .chat-bubble-out:not(.chat-bubble-failed) .chat-status:not(.chat-status-failed):not(.chat-status-read) {
+    color: rgba(233, 237, 239, 0.7);
+}
+
+/* "נקראה" כחול כמו הוי הכחול בוואטסאפ - ירוק על ירוק לא נקרא */
+.chat-bubble-out .chat-status-read {
+    color: #1565a8;
+}
+
+body.dark .chat-bubble-out .chat-status-read {
+    color: #53bdeb;
+}
+
+.chat-bubble-out .chat-status-failed {
+    color: #b42318;
+}
+
+body.dark .chat-bubble-out .chat-status-failed {
+    color: #ffb4a9;
+}
+
+/* =====================================================================================================
+   עמוד הלידים (מחשב): מקסימום שורות על המסך - שורות דחוסות יותר, סרגלים עליונים נמוכים יותר,
+   וסרגל הפעולות המרובות מופיע רק כשנבחר ליד. כל העמודות נשארות. במובייל (כרטיסים) לא נוגעים.
+   ===================================================================================================== */
+@media (min-width: 801px) {
+    body.page-leads-list .leads-toolbar {
+        padding: 4px 10px;
+        margin-bottom: 2px;
+        gap: 8px;
+    }
+
+    body.page-leads-list .leads-toolbar .btn,
+    body.page-leads-list .leads-toolbar button,
+    body.page-leads-list .leads-toolbar input[type=text] {
+        min-height: 28px;
+        padding-block: 3px;
+        font-size: 13px;
+    }
+
+    body.page-leads-list .leads-tabs {
+        gap: 18px;
+        margin-bottom: 4px;
+    }
+
+    body.page-leads-list .leads-tabs a {
+        padding: 4px 0;
+        font-size: 14px;
+    }
+
+    body.page-leads-list .leads-tabs small {
+        font-size: 12px;
+    }
+
+    body.page-leads-list .bulk-actions-bar:not(.has-selection) {
+        display: none;
+    }
+
+    body.page-leads-list .bulk-actions-bar {
+        padding: 4px 10px;
+        margin-bottom: 4px;
+    }
+
+    body.page-leads-list .table-scroll {
+        margin-bottom: 30px;
+    }
+
+    .leads-table th {
+        padding: 4px 6px;
+        font-size: 12px;
+    }
+
+    .leads-table td {
+        padding: 2px 6px;
+        font-size: 13px;
+        line-height: 1.25;
+    }
+
+    .leads-table select.status-select,
+    .leads-table select.assigned-select {
+        min-height: 0;
+        padding-block: 1px;
+        font-size: 12px;
+    }
+
+    .leads-table .whatsapp-icon {
+        line-height: 1;
+    }
+}
+
+/* =====================================================================================================
+   מראה "מערכת ניהול" נקי (בהשראת Arbox) בצבעים של "יומן סטודיו": סרגל עליון בהיר עם חיפוש גלובלי באמצע,
+   כרטיסים שטוחים עם פס צבע עליון, פינות עדינות, ואותיות קלות יותר (Assistant בלבד, משקלים 400-600).
+   נטען אחרון, כדי לדרוס רק את המראה ולא את המבנה.
+   ===================================================================================================== */
+:root {
+    --font-display: "Assistant", "Segoe UI", Tahoma, Arial, sans-serif;
+    --topbar: #ffffff;
+    --card-stripe: #35213f;
+    --soft-shadow: 0 1px 3px rgba(53, 33, 63, 0.09);
+}
+
+body.dark {
+    --topbar: #1f1626;
+    --card-stripe: #9085e9;
+    --soft-shadow: none;
+}
+
+/* --- סרגל עליון בהיר --- */
+.topbar {
+    height: 52px;
+    background: var(--topbar);
+    color: var(--text);
+    border-bottom: 1px solid var(--border);
+    box-shadow: none;
+    gap: 16px;
+}
+
+.topbar .brand {
+    font-family: var(--font-body);
+    font-weight: 600;
+    font-size: 18px;
+    color: var(--text);
+}
+
+.topbar a.link-button,
+.topbar button.link-button {
+    color: var(--muted);
+    text-decoration-color: var(--border-strong);
+}
+
+.topbar .theme-toggle {
+    background: var(--surface-2);
+    color: var(--text);
+}
+
+.topbar .topbar-user {
+    font-size: 14px;
+    color: var(--text);
+}
+
+.topbar .topbar-search {
+    position: relative;
+    flex: 0 1 560px;
+    margin-inline: auto;
+    min-width: 0;
+}
+
+.topbar-search svg {
+    position: absolute;
+    inset-inline-start: 12px;
+    top: 50%;
+    width: 18px;
+    height: 18px;
+    transform: translateY(-50%);
+    fill: none;
+    stroke: var(--muted);
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    pointer-events: none;
+}
+
+.topbar-search input {
+    width: 100%;
+    height: 36px;
+    padding: 0 40px;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    background: var(--surface-2);
+    color: var(--text);
+    font: inherit;
+    font-size: 14px;
+}
+
+.topbar-search input:focus {
+    border-color: var(--border-strong);
+    background: var(--surface);
+}
+
+.topbar-search-link {
+    display: none;
+}
+
+@media (min-width: 801px) {
+    .topbar .brand {
+        display: none;
+    }
+}
+
+@media (max-width: 800px) {
+    .topbar-search {
+        display: none;
+    }
+
+    .topbar-search-link {
+        display: inline-flex;
+    }
+}
+
+.search-page-form {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 18px;
+}
+
+.search-page-form input {
+    flex: 1;
+    min-width: 0;
+}
+
+.search-group {
+    margin-bottom: 22px;
+}
+
+.search-group h2 {
+    margin: 0 0 8px;
+    font-size: 17px;
+    font-weight: 600;
+}
+
+.search-group h2 small {
+    margin-inline-start: 6px;
+    color: var(--muted);
+    font-weight: 600;
+}
+
+.search-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--surface);
+}
+
+.search-list li + li {
+    border-top: 1px solid var(--border);
+}
+
+.search-list a {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 10px 14px;
+    color: var(--text);
+    text-decoration: none;
+}
+
+.search-list a:hover {
+    background: var(--surface-2);
+}
+
+.search-list strong {
+    min-width: 140px;
+    font-weight: 600;
+}
+
+.search-tag {
+    padding: 2px 10px;
+    border-radius: 999px;
+    background: var(--surface-2);
+    color: var(--muted);
+    font-size: 12px;
+}
+
+.search-preview {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    color: var(--muted);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.search-more {
+    display: inline-block;
+    margin-top: 8px;
+    font-weight: 600;
+}
+
+/* --- כרטיסים: שטוחים, פינות עדינות, צל קל במקום מסגרת, ופס צבע עליון --- */
+.card,
+.kpi,
+.dash-card,
+.auto-card,
+.table-scroll,
+.chat-app {
+    border-radius: 6px;
+}
+
+body:not(.dark) .kpi,
+body:not(.dark) .dash-card {
+    border-inline-color: transparent;
+    border-bottom-color: transparent;
+    box-shadow: var(--soft-shadow);
+}
+
+
+body:not(.page-dashboard):not(.page-leads-list):not(.page-chat-list):not(.page-chat-thread) .card {
+    border-top: 3px solid var(--card-stripe);
+}
+
+.kpi {
+    border-top-width: 3px;
+}
+
+/* --- אותיות קלות: כותרות 600, מספרים גדולים 500, תוויות רגילות --- */
+.card h1,
+.studio-title,
+.login-card h1,
+.af-section-title,
+.auto-head-title,
+.int-title {
+    font-weight: 600;
+}
+
+.kpi-value,
+.dash-tab strong,
+.dash-donut-num,
+.studio-count strong,
+.studio-time,
+.auto-time strong,
+.dash-tip strong {
+    font-weight: 500;
+}
+
+.kpi-title,
+.dash-card-sub {
+    font-weight: 400;
+}
+
+.kpi-value {
+    font-size: 38px;
+}
+
+/* --- ניווט צד: פריט פעיל בגוון בהיר של צבע הדיו, והאייקון בצבע הדיו --- */
+body .sidebar .nav-link.active {
+    background: color-mix(in srgb, var(--ink) 8%, var(--surface));
+}
+
+body.dark .sidebar .nav-link.active {
+    background: var(--surface-2);
+}
+
+.dash-charts .dash-card {
+    border-top: 3px solid #6250d6;
+}
+
+.dash-charts .dash-card:nth-child(2) {
+    border-top-color: #1baf7a;
+}
+
+body.dark .dash-charts .dash-card {
+    border-top-color: #9085e9;
+}
+
+body.dark .dash-charts .dash-card:nth-child(2) {
+    border-top-color: #199e70;
+}
+
+/* =====================================================================================================
+   תפריט צד קומפקטי: בלי כותרות קבוצה (קו מפריד בלבד), שורות נמוכות יותר, כפתור "צמצום תפריט" גלוי בתחתית,
+   ופס אייקונים צר. הסרגל העליון נמוך יותר (52px), אז גם גובה התפריט מתעדכן.
+   ===================================================================================================== */
+.sidebar-collapse-btn {
+    display: none;
+}
+
+@media (min-width: 801px) {
+    body .sidebar {
+        top: 52px;
+        width: 224px;
+        height: calc(100vh - 52px);
+        padding: 14px 12px 10px;
+    }
+
+    body.page-leads-list .sidebar {
+        height: auto;
+    }
+
+    body.sidebar-collapsed .sidebar {
+        width: 64px;
+        padding-inline: 8px;
+    }
+
+    .sidebar-brand {
+        margin: 2px 4px 12px;
+    }
+
+    .sidebar-logo {
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
+    }
+
+    .sidebar-logo svg {
+        width: 20px;
+        height: 20px;
+    }
+
+    .sidebar-brand-text strong {
+        font-size: 16px;
+        font-weight: 600;
+    }
+
+    .sidebar-brand-text small {
+        font-size: 12px;
+    }
+
+    .quick-actions {
+        margin-bottom: 10px;
+    }
+
+    .quick-btn {
+        min-height: 38px;
+        font-size: 14px;
+        border-radius: 8px;
+    }
+
+    body .sidebar .nav-link {
+        min-height: 38px;
+        margin-bottom: 2px;
+        gap: 12px;
+        padding: 0 12px;
+        border-radius: 8px;
+        font-size: 15px;
+        font-weight: 500;
+    }
+
+    body .sidebar .nav-link.active,
+    body.dark .sidebar .nav-link.active {
+        font-weight: 600;
+    }
+
+    body .sidebar .nav-icon {
+        width: 20px;
+        height: 20px;
+    }
+
+    .sidebar-divider {
+        height: 1px;
+        margin: 8px 6px;
+        background: var(--border);
+    }
+
+    .sidebar-collapse-btn {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-shrink: 0;
+        min-height: 34px;
+        margin: 6px 0 4px;
+        padding: 0 12px;
+        border: 0;
+        border-radius: 8px;
+        background: transparent;
+        color: var(--muted);
+        font: inherit;
+        font-size: 14px;
+        cursor: pointer;
+    }
+
+    .sidebar-collapse-btn:hover {
+        background: var(--surface-2);
+        color: var(--text);
+    }
+
+    .sidebar-collapse-btn svg {
+        width: 18px;
+        height: 18px;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        transform: scaleX(-1);
+    }
+
+    body.sidebar-collapsed .sidebar-collapse-btn {
+        justify-content: center;
+        padding: 0;
+    }
+
+    body.sidebar-collapsed .sidebar-collapse-btn svg {
+        transform: none;
+    }
+
+    body.sidebar-collapsed .sidebar-divider {
+        margin: 6px 0;
+    }
+
+    body.sidebar-collapsed .sidebar-foot {
+        padding-inline: 0;
+    }
+}
+
+@media (max-width: 800px) {
+    .sidebar-collapse-btn {
+        display: none;
+    }
+}

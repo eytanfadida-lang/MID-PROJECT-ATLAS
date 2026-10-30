@@ -1,0 +1,240 @@
+{% extends "base.html" %}
+{% block page_title %}אינטגרציות - מנהל תורים{% endblock %}
+{% block page_heading %}אינטגרציות{% endblock %}
+
+{% block content %}
+{# חשבונות וואטסאפ: רשמיים (Meta Cloud API, להצגה) ולא רשמיים (מכשיר מקושר באמצעות QR, כמו WhatsApp Web) #}
+{% set wa_icon %}<svg class="int-wa" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347zM12.05 21.785h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884a9.82 9.82 0 0 1 6.988 2.9 9.82 9.82 0 0 1 2.89 6.994c-.003 5.45-4.437 9.884-9.882 9.884z"/></svg>{% endset %}
+
+<div class="int-head">
+    <div>
+        <h2 class="int-title">WhatsApp</h2>
+        <p class="int-sub">חשבונות שדרכם נשלחות ומתקבלות הודעות</p>
+    </div>
+    <button type="button" class="btn" id="int-add">חבר חשבון</button>
+</div>
+
+{% if not gateway_online %}
+<div class="int-warn" role="status">
+    <strong>שירות החיבור לא פועל כרגע.</strong>
+    חשבון לא רשמי יתחבר רק כשהשירות הרץ ברקע פעיל (ראו gateway/README.md). חשבונות רשמיים לא מושפעים.
+</div>
+{% endif %}
+
+<div class="int-list">
+    {% for n in official_numbers %}
+    <div class="int-card">
+        <span class="int-avatar">{{ wa_icon }}</span>
+        <div class="int-main">
+            <strong class="int-name"><bdi dir="ltr">{{ n.label }}</bdi></strong>
+            <span class="int-meta">WhatsApp Business API · מספר רשמי</span>
+        </div>
+        <span class="int-chip int-chip-official">רשמי</span>
+    </div>
+    {% endfor %}
+
+    {% for a in accounts %}
+    <div class="int-card" data-account="{{ a.id }}" data-status="{{ a.status }}">
+        <span class="int-avatar">{{ wa_icon }}</span>
+        <div class="int-main">
+            <strong class="int-name">{{ a.label }}{% if a.phone %} <bdi dir="ltr" class="int-phone">+{{ a.phone }}</bdi>{% endif %}</strong>
+            <span class="int-meta">
+                <span class="int-dot int-dot-{{ a.status }}"></span>
+                <span class="int-status">{{ status_labels.get(a.status, a.status) }}</span>
+                {% if a.error %} · {{ a.error }}{% endif %}
+            </span>
+        </div>
+        <span class="int-chip">לא רשמי</span>
+        <div class="int-actions">
+            {% if a.status != 'connected' and a.desired != 'delete' %}
+            <button type="button" class="btn btn-sm int-connect" data-id="{{ a.id }}" data-label="{{ a.label }}">{{ 'חיבור מחדש' if a.status in ('disconnected', 'logged_out', 'error') else 'הצג QR' }}</button>
+            {% endif %}
+            {% if a.status == 'connected' or a.desired == 'connect' %}
+            <form method="post" action="{{ url_for('integrations.disconnect', account_id=a.id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <button type="submit" class="btn btn-ghost btn-sm">ניתוק</button>
+            </form>
+            {% endif %}
+            <form method="post" action="{{ url_for('integrations.delete', account_id=a.id) }}"
+                  onsubmit="return confirm('למחוק את החשבון? הוא ינותק מהוואטסאפ, ויהיה צריך לסרוק QR כדי לחבר אותו שוב.');">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <button type="submit" class="btn btn-ghost btn-sm btn-ghost-danger">מחיקה</button>
+            </form>
+        </div>
+    </div>
+    {% endfor %}
+
+    {% if not accounts %}
+    <div class="studio-empty">
+        <strong>עדיין לא חוברו חשבונות לא רשמיים</strong>
+        <span>אפשר לחבר מספר וואטסאפ רגיל כמו WhatsApp Web, בסריקת QR.</span>
+    </div>
+    {% endif %}
+</div>
+
+<dialog class="int-modal" id="int-modal" aria-labelledby="int-modal-title">
+    <div class="int-modal-head">
+        <span class="int-avatar int-avatar-ok">{{ wa_icon }}</span>
+        <h3 id="int-modal-title">חיבור WhatsApp</h3>
+        <button type="button" class="int-close" id="int-close" aria-label="סגירה">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+        </button>
+    </div>
+
+    <form class="int-step" id="int-step-name" autocomplete="off">
+        <label for="int-label">שם לחשבון</label>
+        <input type="text" id="int-label" maxlength="40" placeholder="למשל: מספר משני" required>
+        <p class="int-risk">חיבור לא רשמי נוגד את תנאי השימוש של WhatsApp, ומספר שמחובר כך עלול להיחסם. מומלץ לחבר מספר משני ולא את הראשי.</p>
+        <p class="int-error" id="int-name-error" hidden></p>
+        <div class="int-buttons">
+            <button type="submit" class="btn">המשך</button>
+            <button type="button" class="btn btn-ghost int-cancel">ביטול</button>
+        </div>
+    </form>
+
+    <div class="int-step" id="int-step-qr" hidden>
+        <div class="int-qr-wrap">
+            <div class="int-qr" id="int-qr-box">
+                <img id="int-qr-img" alt="ברקוד לחיבור WhatsApp" width="260" height="260" hidden>
+                <span class="int-qr-wait" id="int-qr-wait">מכין ברקוד...</span>
+            </div>
+            <span class="int-countdown" id="int-countdown" hidden></span>
+        </div>
+        <ol class="int-steps">
+            <li>פתחו את WhatsApp בטלפון</li>
+            <li>עברו להגדרות ← מכשירים מקושרים (Linked devices)</li>
+            <li>הקישו על "קישור מכשיר"</li>
+            <li>כוונו את המצלמה אל הברקוד</li>
+        </ol>
+        <p class="int-error" id="int-qr-error" hidden></p>
+        <div class="int-buttons">
+            <button type="button" class="btn btn-ghost int-cancel">חזרה</button>
+        </div>
+    </div>
+
+    <div class="int-step int-done" id="int-step-done" hidden>
+        <svg class="int-check" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>
+        <strong>החשבון חובר</strong>
+        <span id="int-done-phone" dir="ltr"></span>
+        <div class="int-buttons">
+            <button type="button" class="btn" id="int-done-btn">סיום</button>
+        </div>
+    </div>
+</dialog>
+
+<script>
+(function () {
+    var csrf = {{ csrf_token | tojson }};
+    var stateUrl = function (id) { return {{ url_for('integrations.account_state', account_id=0) | tojson }}.replace('/0/', '/' + id + '/'); };
+    var connectUrl = function (id) { return {{ url_for('integrations.connect', account_id=0) | tojson }}.replace('/0/', '/' + id + '/'); };
+    var newUrl = {{ url_for('integrations.create_account') | tojson }};
+    var modal = document.getElementById('int-modal');
+    var stepName = document.getElementById('int-step-name');
+    var stepQr = document.getElementById('int-step-qr');
+    var stepDone = document.getElementById('int-step-done');
+    var qrImg = document.getElementById('int-qr-img');
+    var qrWait = document.getElementById('int-qr-wait');
+    var countdown = document.getElementById('int-countdown');
+    var qrError = document.getElementById('int-qr-error');
+    var pollTimer = null, tickTimer = null, currentId = null, qrDeadline = null, connectedHere = false;
+
+    function show(step) {
+        [stepName, stepQr, stepDone].forEach(function (s) { s.hidden = s !== step; });
+    }
+    function stopPolling() { clearInterval(pollTimer); clearInterval(tickTimer); pollTimer = tickTimer = null; }
+    function closeModal() {
+        stopPolling();
+        if (modal.open) modal.close();
+        if (connectedHere || currentId) window.location.reload();
+    }
+
+    function render(state) {
+        qrError.hidden = true;
+        if (state.status === 'connected') {
+            connectedHere = true;
+            stopPolling();
+            document.getElementById('int-done-phone').textContent = state.phone ? '+' + state.phone : '';
+            show(stepDone);
+            return;
+        }
+        if (state.status === 'waiting_qr' && state.qr_image) {
+            if (qrImg.src !== state.qr_image) qrImg.src = state.qr_image;
+            qrImg.hidden = false; qrWait.hidden = true;
+            qrDeadline = Date.now() + (state.qr_remaining || 0) * 1000;
+            tick();
+        } else {
+            qrImg.hidden = true; qrWait.hidden = false; countdown.hidden = true; qrDeadline = null;
+            qrWait.textContent = state.status === 'logged_out' || state.status === 'error' ? '' : 'מכין ברקוד...';
+        }
+        var message = null;
+        if (!state.gateway_online) message = 'שירות החיבור לא פועל כרגע, ולכן הברקוד לא יופיע. ראו gateway/README.md.';
+        else if (state.status === 'logged_out') message = 'החשבון הוסר מהטלפון. לחצו על "חזרה" ואז "חיבור מחדש".';
+        else if (state.status === 'error') message = state.error || 'שגיאה בחיבור, מנסה שוב.';
+        if (message) { qrError.textContent = message; qrError.hidden = false; }
+    }
+    function tick() {
+        if (qrDeadline === null) { countdown.hidden = true; return; }
+        var left = Math.max(0, Math.round((qrDeadline - Date.now()) / 1000));
+        countdown.hidden = false;
+        countdown.textContent = left > 0 ? 'מתחדש בעוד ' + left + ' שניות' : 'מרענן ברקוד...';
+    }
+    function poll() {
+        fetch(stateUrl(currentId), { headers: { 'X-Requested-With': 'fetch' } })
+            .then(function (r) { return r.json(); }).then(function (s) { if (s.ok) render(s); }).catch(function () {});
+    }
+    function startQr(id) {
+        currentId = id; connectedHere = false;
+        qrImg.hidden = true; qrWait.hidden = false; qrWait.textContent = 'מכין ברקוד...'; countdown.hidden = true; qrError.hidden = true;
+        show(stepQr);
+        if (!modal.open) modal.showModal();
+        poll();
+        stopPolling();
+        pollTimer = setInterval(poll, 2000);
+        tickTimer = setInterval(tick, 1000);
+    }
+
+    document.getElementById('int-add').addEventListener('click', function () {
+        currentId = null; connectedHere = false;
+        document.getElementById('int-label').value = '';
+        document.getElementById('int-name-error').hidden = true;
+        show(stepName);
+        modal.showModal();
+        document.getElementById('int-label').focus();
+    });
+    stepName.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var body = new URLSearchParams({ csrf_token: csrf, label: document.getElementById('int-label').value });
+        fetch(newUrl, { method: 'POST', body: body, headers: { 'X-Requested-With': 'fetch' } })
+            .then(function (r) { return r.json(); })
+            .then(function (res) {
+                if (res.ok) { startQr(res.id); return; }
+                var el = document.getElementById('int-name-error'); el.textContent = res.error || 'שגיאה'; el.hidden = false;
+            });
+    });
+    document.querySelectorAll('.int-connect').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            var id = btn.dataset.id;
+            fetch(connectUrl(id), { method: 'POST', body: new URLSearchParams({ csrf_token: csrf }), headers: { 'X-Requested-With': 'fetch' } })
+                .then(function () { startQr(id); });
+        });
+    });
+    document.querySelectorAll('.int-cancel').forEach(function (b) { b.addEventListener('click', closeModal); });
+    document.getElementById('int-close').addEventListener('click', closeModal);
+    document.getElementById('int-done-btn').addEventListener('click', closeModal);
+    modal.addEventListener('cancel', function (e) { e.preventDefault(); closeModal(); });
+
+    // רענון הכרטיסים כשהסטטוס משתנה מאחורי הקלעים (כשהמודל סגור)
+    var cards = document.querySelectorAll('.int-card[data-account]');
+    if (cards.length) {
+        setInterval(function () {
+            if (modal.open) return;
+            cards.forEach(function (card) {
+                fetch(stateUrl(card.dataset.account)).then(function (r) { return r.json(); }).then(function (s) {
+                    if (s.ok && s.status !== card.dataset.status) window.location.reload();
+                }).catch(function () {});
+            });
+        }, 6000);
+    }
+})();
+</script>
+{% endblock %}

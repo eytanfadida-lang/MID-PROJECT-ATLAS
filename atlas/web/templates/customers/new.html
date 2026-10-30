@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block page_title %}לקוח חדש{% endblock %}
+{% block page_heading %}הוספת לקוח חדש{% endblock %}
+
+{% block content %}
+<div class="automations-header">
+    <div class="automations-actions">
+        <a href="{{ url_for('customers.list_customers') }}" class="btn btn-ghost">חזרה ללקוחות</a>
+    </div>
+</div>
+
+<form method="post" class="form-card lead-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <div class="form-group">
+        <label>שם</label>
+        <input type="text" name="name" required autofocus>
+    </div>
+    <div class="form-group">
+        <label>טלפון</label>
+        <input type="text" name="phone" required dir="ltr" inputmode="tel" style="text-align:right;">
+    </div>
+    <div class="form-group">
+        <label>אימייל</label>
+        <input type="email" name="email" dir="ltr" style="text-align:right;">
+    </div>
+    <div class="form-group">
+        <label>כתובת</label>
+        <input type="text" name="address">
+    </div>
+    <button type="submit" class="btn">צור לקוח</button>
+</form>
+{% endblock %}

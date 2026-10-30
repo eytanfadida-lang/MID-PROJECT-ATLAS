@@ -1,0 +1,142 @@
+import datetime
+
+from flask import Blueprint, render_template, request, redirect, url_for, flash
+
+from atlas.data.context import get_repos
+from atlas.core.auth import login_required, admin_required, permission_required, PERMISSION_MANAGE_APPOINTMENTS
+from atlas.settings import BRANCHES
+from atlas.core.view_utils import to_records
+
+bp = Blueprint("appointments", __name__, url_prefix="/appointments")
+
+
+@bp.route("/")
+@login_required
+def list_appointments():
+    phone = request.args.get("phone", "").strip()
+    # טווח התצוגה: היום / מחר / השבוע (7 ימים מהיום, ברירת המחדל) / הכל. ?today=1 הישן נשמר (= היום)
+    view_range = request.args.get("range", "")
+    if request.args.get("today") == "1":
+        view_range = "today"
+    if view_range not in ("today", "tomorrow", "week", "all"):
+        view_range = "week"
+
+    repos = get_repos()
+    everything = repos.appointments.get_all()
+    today = datetime.date.today()
+    keys = {
+        "today": [today.isoformat()],
+        "tomorrow": [(today + datetime.timedelta(days=1)).isoformat()],
+        "week": [(today + datetime.timedelta(days=i)).isoformat() for i in range(7)],
+    }
+    range_counts = {name: int(everything["appointment_date"].isin(days).sum()) for name, days in keys.items()}
+    range_counts["all"] = len(everything)
+
+    if phone:
+        df = repos.appointments.get_by_phone(phone)
+        view_range = "all"
+    elif view_range == "all":
+        df = everything
+    else:
+        df = everything[everything["appointment_date"].isin(keys[view_range])]
+
+    # מיון: ימים עולים (בתצוגת "הכל" - החדש קודם), ובתוך יום לפי שעה
+    if not df.empty:
+        df = df.sort_values(["appointment_date", "appointment_time"], ascending=[view_range != "all", True])
+    groups = []
+    for record in to_records(df):
+        if not groups or groups[-1]["date"] != record["appointment_date"]:
+            groups.append({"date": record["appointment_date"], "items": []})
+        groups[-1]["items"].append(record)
+
+    return render_template(
+        "appointments/list.html",
+        groups=groups,
+        total=len(df),
+        phone=phone,
+        view_range=view_range,
+        range_counts=range_counts,
+        today_iso=today.isoformat(),
+    )
+
+
+@bp.route("/new")
+@login_required
+def new_choose_day():
+    repos = get_repos()
+    days = repos.availability.get_available_days()
+    return render_template("appointments/new_day.html", days=days)
+
+
+@bp.route("/new/hour")
+@login_required
+def new_choose_hour():
+    date = request.args.get("date", "")
+    repos = get_repos()
+    hours = repos.availability.get_available_hours(date)
+    return render_template("appointments/new_hour.html", date=date, hours=hours)
+
+
+@bp.route("/new/details", methods=["GET", "POST"])
+@login_required
+def new_details():
+    date = request.args.get("date", "")
+    time = request.args.get("time", "")
+
+    if request.method == "POST":
+        repos = get_repos()
+        appointment = {
+            "id_client": str(repos.id_sequence.next_id()),
+            "created_datetime_stamp": datetime.datetime.now(),
+            "name_of_client": request.form.get("name_of_client", ""),
+            "phone_client": request.form.get("phone_client", ""),
+            "name_of_store": request.form.get("name_of_store", ""),
+            "appointment_date": datetime.datetime.strptime(date, "%Y-%m-%d"),
+            "appointment_time": datetime.datetime.strptime(time, "%H:%M"),
+        }
+        repos.appointments.create(appointment)
+        flash(f"התור נוצר בהצלחה (מזהה: {appointment['id_client']}).", "success")
+        return redirect(url_for("appointments.list_appointments"))
+
+    return render_template("appointments/new_details.html", date=date, time=time, branches=BRANCHES)
+
+
+@bp.route("/<id_client>/edit", methods=["GET", "POST"])
+@login_required
+def edit(id_client):
+    repos = get_repos()
+    current = repos.appointments.get_by_id(id_client)
+    if current is None:
+        flash("התור לא נמצא.", "error")
+        return redirect(url_for("appointments.list_appointments"))
+
+    if request.method == "POST":
+        appointment_date_raw = request.form.get("appointment_date", "")
+        appointment_time_raw = request.form.get("appointment_time", "")
+        fields = {
+            "name_of_client": request.form.get("name_of_client", ""),
+            "phone_client": request.form.get("phone_client", ""),
+            "name_of_store": request.form.get("name_of_store", ""),
+            "appointment_date": (
+                datetime.datetime.strptime(appointment_date_raw, "%Y-%m-%d") if appointment_date_raw else None
+            ),
+            "appointment_time": (
+                datetime.datetime.strptime(appointment_time_raw, "%H:%M") if appointment_time_raw else None
+            ),
+        }
+        repos.appointments.update(id_client, fields)
+        flash("התור עודכן בהצלחה.", "success")
+        return redirect(url_for("appointments.list_appointments"))
+
+    return render_template("appointments/edit.html", appointment=current, branches=BRANCHES)
+
+
+@bp.route("/<id_client>/delete", methods=["POST"])
+@permission_required(PERMISSION_MANAGE_APPOINTMENTS)
+def delete(id_client):
+    repos = get_repos()
+    if repos.appointments.delete(id_client):
+        flash("התור נמחק בהצלחה.", "success")
+    else:
+        flash("התור לא נמצא.", "error")
+    return redirect(url_for("appointments.list_appointments"))

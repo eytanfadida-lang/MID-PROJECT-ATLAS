@@ -1,0 +1,488 @@
+{% extends "base.html" %}
+{% block page_title %}אוטומציות - מנהל תורים{% endblock %}
+{% block page_heading %}אוטומציות{% endblock %}
+
+{% block content %}
+{# סיכום כללי לכל העמוד + ספירת פעילות לכל קטגוריה (חישוב בתבנית בלבד, בלי שינוי בבלופרינט) #}
+{% set ns = namespace(total=0, active=0, ok=0, fail=0) %}
+{% set cat_active = {} %}
+{% for category_key, category in (grouped_automations or {}).items() %}
+    {% set cns = namespace(active=0) %}
+    {% for row in category.rows %}
+        {% if row.kind != 'group_header' %}
+            {% set ns.total = ns.total + 1 %}
+            {% set ns.ok = ns.ok + (row.automation.success_count or 0) %}
+            {% set ns.fail = ns.fail + (row.automation.failed_count or 0) %}
+            {% if row.automation.enabled %}
+                {% set ns.active = ns.active + 1 %}
+                {% set cns.active = cns.active + 1 %}
+            {% endif %}
+        {% endif %}
+    {% endfor %}
+    {% set _ = cat_active.update({category_key: cns.active}) %}
+{% endfor %}
+
+{# לוח אוטומציות: לשוניות קטגוריה, חיפוש וסינון, וכרטיס לכל אוטומציה (ימים, שעה, מתג, ופתיחה לעריכה) #}
+<div class="auto-head">
+    <div>
+        <p class="auto-head-sub">
+            {{ ns.total }} אוטומציות · {{ ns.active }} פעילות · {{ ns.ok }} הודעות נשלחו{% if ns.fail %} · <span class="auto-head-fail">{{ ns.fail }} כשלונות</span>{% endif %}
+        </p>
+    </div>
+    <div class="auto-head-actions">
+        <a href="{{ url_for('automations.new_automation') }}" class="btn">אוטומציה חדשה</a>
+        <a href="{{ url_for('automations.blacklist') }}" class="btn btn-ghost">בלאקליסט גלובלי</a>
+        <a href="{{ url_for('whatsapp_templates.list_templates') }}" class="btn btn-ghost">תבניות וואטסאפ</a>
+    </div>
+</div>
+
+{% if grouped_automations %}
+<div class="auto-cats" role="tablist" aria-label="קטגוריות">
+    <button type="button" class="auto-cat on" role="tab" aria-selected="true" data-cat="">הכל <small>{{ ns.total }}</small></button>
+    {% for category_key, category in grouped_automations.items() %}
+    <button type="button" class="auto-cat" role="tab" aria-selected="false" data-cat="{{ category_key }}">{{ category_labels.get(category_key, category_key) }} <small>{{ category.count }}</small></button>
+    {% endfor %}
+</div>
+
+<div class="auto-tools">
+    <label class="auto-search">
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <input type="text" id="auto-search" placeholder="חיפוש אוטומציה" aria-label="חיפוש אוטומציה" autocomplete="off">
+    </label>
+    <select id="auto-status" aria-label="סינון לפי סטטוס">
+        <option value="">כל הסטטוסים</option>
+        <option value="1">פעילות</option>
+        <option value="0">כבויות</option>
+    </select>
+</div>
+
+<div class="auto-list" id="auto-list">
+{% for category_key, category in grouped_automations.items() %}
+<section class="auto-section" data-cat="{{ category_key }}">
+    <h2 class="auto-section-title">{{ category_labels.get(category_key, category_key) }}
+        <span>{{ cat_active[category_key] }} פעילות מתוך {{ category.count }}</span></h2>
+    {% for row in category.rows %}
+    {% if row.kind == 'group_header' %}
+    <button type="button" class="auto-group-head" data-group-toggle="{{ row.group_id }}" aria-expanded="false" onclick="automationsToggleGroup(this)">
+        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+        <span>{{ row.name }}</span> <small>{{ row.count }} הודעות</small>
+    </button>
+    {% else %}
+    {% set a = row.automation %}
+    {% set tc = a.trigger_config %}
+    {% set summary %}
+                {% if a.trigger_type == 'scheduled' %}
+                    {% set tc = a.trigger_config %}
+                    {% if tc.audience_source == 'arbox_birthday' %}
+                        יום הולדת (Arbox) -
+                        {{ {'all': 'הכל', 'active': 'פעילות', 'inactive': 'לא פעילות'}[tc.get('audience_status', 'all')] }},
+                        {{ tc.time_of_day }}
+                    {% elif tc.audience_source == 'arbox_membership_expiring' %}
+                        סיום מנוי בעוד {{ tc.days_before }} ימים (Arbox), {{ tc.time_of_day }}
+                    {% elif tc.audience_source == 'arbox_expiring_sessions' %}
+                        נותרו {{ tc.sessions_left }} ניקובים (Arbox), {{ tc.time_of_day }}
+                    {% elif tc.audience_source == 'arbox_trial_reminder' %}
+                        תזכורת שיעור ניסיון (Arbox) -
+                        {{ 'יום לפני' if tc.reminder_timing != 'same_day' else 'באותו יום' }},
+                        {{ 'עד' if tc.time_filter != 'after' else 'החל מ' }}-{{ tc.before_hour }}:00
+                        {% if tc.locations %}, סניפים: {{ tc.locations|join(', ') }}{% endif %},
+                        {{ tc.time_of_day }}
+                    {% elif tc.audience_source == 'arbox_churned' %}
+                        מנוי פג לפני {{ tc.days_since }} ימים (Arbox), {{ tc.time_of_day }}
+                    {% elif tc.audience_source == 'arbox_lost_leads' %}
+                        ליד אבוד לפני {{ tc.days_since }} ימים (Arbox), {{ tc.time_of_day }}
+                    {% elif tc.audience_source == 'arbox_converted_leads' %}
+                        ליד הומר לפני {{ tc.days_since }} ימים (Arbox), {{ tc.time_of_day }}
+                    {% elif tc.audience_source == 'arbox_trial_no_show' %}
+                        לא הגיעה לניסיון, חלון {{ tc.window_days }} ימים (Arbox), {{ tc.time_of_day }}
+                    {% elif tc.audience_source == 'arbox_attendance_milestone' %}
+                        מילסטון כל {{ tc.milestone_interval }} כניסות (Arbox), {{ tc.time_of_day }}
+                    {% else %}
+                        {% if tc.audience_source == 'arbox_active_members' %}
+                            לקוחות פעילים (Arbox{% if tc.membership_types %}, {{ tc.membership_types|length }} סוגי מנוי נבחרים{% endif %}{% if tc.locations %}, סניפים: {{ tc.locations|join(', ') }}{% endif %}) -
+                        {% endif %}
+                        {% if tc.schedule_type == 'once' %}
+                            חד-פעמי ב-{{ tc.run_at }}
+                        {% elif tc.schedule_type == 'daily' %}
+                            יומי, {{ tc.time_of_day }}
+                        {% elif tc.schedule_type == 'weekly' %}
+                            {% set wdays = tc.weekdays if tc.weekdays is defined and tc.weekdays else [tc.get('weekday', 0)] %}
+                            {% for w in wdays %}{{ weekday_labels[w] }}{% if not loop.last %}, {% endif %}{% endfor %}
+                            , {{ tc.time_of_day }}
+                        {% elif tc.schedule_type == 'monthly' %}
+                            {{ tc.day_of_month }} לחודש, {{ tc.time_of_day }}
+                        {% endif %}
+                    {% endif %}
+                {% else %}
+                    {{ 'הרשמה לשיעור ניסיון' if a.trigger_type == 'trial_booked' else a.trigger_type }}
+                {% endif %}
+    {% endset %}
+    <article id="automation-{{ a.id }}" class="auto-card{{ '' if a.enabled else ' is-off' }}{{ ' auto-card-member' if row.group_id else '' }}"
+             data-enabled="{{ 1 if a.enabled else 0 }}" data-search="{{ a.name }} {{ summary|striptags|trim }}"
+             {% if row.group_id %}data-group="{{ row.group_id }}" hidden{% endif %}>
+        <div class="auto-card-head">
+            <div class="auto-card-main">
+                <h3 class="auto-card-title">{{ a.name }}</h3>
+                <p class="auto-card-meta">
+                    <span class="auto-dot {{ 'on' if a.enabled else '' }}"></span>{{ 'פעילה' if a.enabled else 'כבויה' }}
+                    <span class="auto-sep">|</span>{{ summary|trim|replace('\n', ' ') }}
+                </p>
+                <p class="auto-card-stats">
+                    {% if a.expected_recipient_count is not none %}<span>{{ a.expected_recipient_count }} נמענים צפויים</span>{% endif %}
+                    <span class="{{ 'num-ok' if a.success_count else '' }}">{{ a.success_count }} הצלחות</span>
+                    <span class="{{ 'num-fail' if a.failed_count else '' }}">{{ a.failed_count }} כשלונות</span>
+                </p>
+            </div>
+            {% if a.trigger_type == 'scheduled' %}
+            {% set sched = tc.get('schedule_type') %}
+            {% if sched == 'weekly' %}
+                {% set wd = tc.weekdays if tc.weekdays is defined and tc.weekdays else [tc.get('weekday', 0)] %}
+            {% elif sched == 'daily' or not sched %}
+                {% set wd = [0, 1, 2, 3, 4, 5, 6] %}
+            {% else %}
+                {% set wd = [] %}
+            {% endif %}
+            {% if sched in ('weekly', 'daily') or not sched %}
+            <div class="auto-days" aria-label="ימי שליחה">
+                {% for i, letter in [(6, 'א'), (0, 'ב'), (1, 'ג'), (2, 'ד'), (3, 'ה'), (4, 'ו'), (5, 'ש')] %}
+                <button type="button" class="auto-day{{ ' on' if i in wd else '' }}" title="{{ weekday_labels[i] }}"
+                        aria-label="{{ weekday_labels[i] }}" aria-pressed="{{ 'true' if i in wd else 'false' }}"
+                        data-url="{{ url_for('automations.toggle_weekday', automation_id=a.id, day=i) }}" data-day="{{ i }}"
+                        onclick="automationsToggleWeekday(this)">{{ letter }}</button>
+                {% endfor %}
+            </div>
+            {% endif %}
+            {% if tc.time_of_day %}
+            <div class="auto-time"><small>שליחה</small>
+                <input type="time" class="auto-time-input" value="{{ tc.time_of_day }}"
+                       aria-label="שעת שליחה" data-url="{{ url_for('automations.set_time', automation_id=a.id) }}"
+                       onchange="automationsSetTime(this)" onclick="event.stopPropagation()">
+            </div>
+            {% endif %}
+            {% endif %}
+            <form method="post" action="{{ url_for('automations.toggle_automation', automation_id=a.id) }}" class="automations-toggle-form auto-toggle">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <button type="submit" class="switch {{ 'on' if a.enabled else '' }}" role="switch"
+                        aria-checked="{{ 'true' if a.enabled else 'false' }}" aria-label="{{ a.name }}"
+                        title="{{ 'לחיצה לכיבוי האוטומציה' if a.enabled else 'לחיצה להפעלת האוטומציה' }}">
+                    <span class="switch-knob"></span>
+                </button>
+            </form>
+            <button type="button" class="auto-chevron" aria-expanded="false" aria-label="עריכה ופרטים: {{ a.name }}"
+                    onclick="automationsToggleDetails({{ a.id }}, this)"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
+        </div>
+        <div id="details-{{ a.id }}" class="auto-card-body" hidden>
+                <div class="automations-details automations-tabs">
+                    <div class="automations-tab-bar">
+                        <button type="button" class="automations-tab-btn active" data-tab="message" onclick="automationsSwitchTab(this)">הודעה</button>
+                        {% if a.trigger_type == 'scheduled' %}
+                        <button type="button" class="automations-tab-btn" data-tab="schedule" onclick="automationsSwitchTab(this)">תזמון</button>
+                        <button type="button" class="automations-tab-btn" data-tab="recipients" onclick="automationsSwitchTab(this)">נמענים</button>
+                        {% endif %}
+                        <button type="button" class="automations-tab-btn" data-tab="executions" onclick="automationsSwitchTab(this)">הרצות אחרונות</button>
+                    </div>
+
+                    <div class="automations-tab-panel" data-tab="message">
+                    {% if a.steps %}
+                    <form method="post" action="{{ url_for('automations.edit_step', automation_id=a.id, step_id=a.steps[0].id) }}" class="form-card">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                        {% set form = a.steps[0].action_config %}
+                        {% set param_templates_list = a.steps[0].action_config.param_templates or [] %}
+                        {% include "automations/_message_fields.html" %}
+
+                        <div class="form-group">
+                            <label>השהייה לפני שליחה (בדקות, 0 = מיידי)</label>
+                            <input type="number" name="delay_minutes" min="0" value="{{ a.steps[0].delay_minutes }}">
+                        </div>
+                        <button type="submit" class="btn">שמירת הודעה</button>
+                    </form>
+                    {% if a.message_history %}
+                    <details class="automations-message-history">
+                        <summary>היסטוריית הודעות שנשמרו ({{ a.message_history|length }})</summary>
+                        <ul>
+                            {% for h in a.message_history %}
+                            <li>
+                                <p class="hint">{{ h.saved_at | format_lead_datetime }}</p>
+                                <p>{{ h.text_template[:150] }}{{ '...' if h.text_template|length > 150 else '' }}</p>
+                                <form method="post" action="{{ url_for('automations.edit_step', automation_id=a.id, step_id=a.steps[0].id) }}" style="display:inline;">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                    <input type="hidden" name="text_template" value="{{ h.text_template }}">
+                                    <input type="hidden" name="delay_minutes" value="{{ a.steps[0].delay_minutes }}">
+                                    <button type="submit" class="btn" onclick="return confirm('לשחזר הודעה זו כנוסח הנוכחי?');">שחזור הודעה זו</button>
+                                </form>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    </details>
+                    {% endif %}
+                    {% endif %}
+                    </div>
+
+                    {% if a.trigger_type == 'scheduled' %}
+                    <div class="automations-tab-panel" data-tab="schedule" hidden>
+                    <form method="post" action="{{ url_for('automations.edit_schedule', automation_id=a.id) }}" class="form-card">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                        {% set form = a.trigger_config %}
+                        {% set selected_weekdays = a.trigger_config.weekdays if a.trigger_config.weekdays is defined and a.trigger_config.weekdays else ([a.trigger_config.get('weekday', 0)] if a.trigger_config.get('schedule_type') == 'weekly' else []) %}
+                        {% set selected_membership_types = a.trigger_config.get('membership_types', []) %}
+                        {% set selected_locations = a.trigger_config.get('locations', []) %}
+                        {% include "automations/_schedule_fields.html" %}
+                        <button type="submit" class="btn">שמירת תזמון</button>
+                    </form>
+                    {% if a.last_run_at %}
+                    <p class="hint">הופעלה לאחרונה: {{ a.last_run_at | format_lead_datetime }}</p>
+                    {% endif %}
+                    </div>
+
+                    <div class="automations-tab-panel" data-tab="recipients" hidden>
+                    {% if a.recipients is not none %}
+                    <form method="post" action="{{ url_for('automations.add_recipient', automation_id=a.id) }}" class="form-card">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                        <div class="form-group">
+                            <label>טלפון</label>
+                            <input type="text" name="phone" placeholder="0501234567" required>
+                        </div>
+                        <div class="form-group">
+                            <label>שם (אופציונלי)</label>
+                            <input type="text" name="full_name">
+                        </div>
+                        <button type="submit" class="btn">הוספת נמען</button>
+                    </form>
+                    <form method="post" action="{{ url_for('automations.import_recipients', automation_id=a.id) }}" class="form-card" enctype="multipart/form-data">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                        <div class="form-group">
+                            <label>או ייבוא מקובץ (CSV/Excel, עמודות "שם מלא" ו"טלפון")</label>
+                            <input type="file" name="file" accept=".csv,.xlsx,.xls" required>
+                        </div>
+                        <button type="submit" class="btn">ייבוא מקובץ</button>
+                    </form>
+                    {% if a.recipients %}
+                    <table class="mobile-cards">
+                        <thead><tr><th>טלפון</th><th>שם</th><th></th></tr></thead>
+                        <tbody>
+                            {% for r in a.recipients %}
+                            <tr>
+                                <td class="m-title" dir="ltr">{{ r.phone }}</td>
+                                <td data-label="שם">{{ r.full_name or '' }}</td>
+                                <td>
+                                    <form method="post" action="{{ url_for('automations.remove_recipient', automation_id=a.id, recipient_id=r.id) }}" style="display:inline;">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                        <button type="submit" class="btn" onclick="return confirm('להסיר נמען זה?');">הסרה</button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    {% else %}
+                    <p class="empty-state">אין עדיין נמענים.</p>
+                    {% endif %}
+                    {% else %}
+                    <p class="hint">הקהל נשלף אוטומטית מ-Arbox בכל הרצה (לפי ההגדרות בתזמון למעלה) - אין רשימת נמענים ידנית לנהל.</p>
+                    {% endif %}
+                    </div>
+                    {% endif %}
+
+                    <div class="automations-tab-panel" data-tab="executions" hidden>
+                    {% if a.executions %}
+                    <table class="mobile-cards">
+                        <thead><tr><th>תאריך</th><th>טלפון</th><th>סטטוס</th><th>פרטים</th></tr></thead>
+                        <tbody>
+                            {% for e in a.executions %}
+                            <tr>
+                                <td class="m-title">{{ e.created_at | format_lead_datetime }}</td>
+                                <td data-label="טלפון">{{ e.target_phone }}</td>
+                                <td data-label="סטטוס"><span class="badge {{ 'badge-green' if e.status == 'success' else 'badge-red' }}">{{ 'הצלחה' if e.status == 'success' else 'כישלון' }}</span></td>
+                                <td data-label="פרטים">{{ e.detail }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    {% else %}
+                    <p class="empty-state">עדיין אין הרצות.</p>
+                    {% endif %}
+                    </div>
+                </div>
+        </div>
+    </article>
+    {% endif %}
+    {% endfor %}
+</section>
+{% endfor %}
+<p class="auto-none" id="auto-none" hidden>לא נמצאו אוטומציות שמתאימות לסינון.</p>
+</div>
+{% else %}
+<div class="empty-state automations-empty">
+    <strong>אין עדיין אוטומציות</strong>
+    <p class="hint">צרו אוטומציה מתוזמנת ראשונה כדי להתחיל לשלוח הודעות אוטומטית.</p>
+</div>
+{% endif %}
+
+<script>
+// פותחת/סוגרת את אזור העריכה של אוטומציה ומסנכרנת את מצב הכפתור (aria-expanded + חץ מסובב)
+function automationsToggleDetails(id, btn) {
+    var body = document.getElementById('details-' + id);
+    body.hidden = !body.hidden;
+    btn.setAttribute('aria-expanded', body.hidden ? 'false' : 'true');
+    btn.closest('.auto-card').classList.toggle('is-open', !body.hidden);
+}
+
+// מכווצת/פותחת קבוצת שם משותף (למשל "לקוחות שעזבו - 14/35 ימים", ראו _subgroup_by_name בבלופרינט).
+// מוגבלת לקטגוריה (section) אחת, כי group_id חוזר בין קטגוריות. כשמכווצים - סוגרת גם עריכות פתוחות
+function automationsToggleGroup(head) {
+    var groupId = head.dataset.groupToggle;
+    var members = head.closest('.auto-section').querySelectorAll('[data-group="' + groupId + '"]');
+    var open = head.getAttribute('aria-expanded') === 'true';
+    members.forEach(function (card) {
+        card.hidden = open;
+        if (open) {
+            var body = card.querySelector('.auto-card-body');
+            var btn = card.querySelector('.auto-chevron');
+            if (body) body.hidden = true;
+            if (btn) btn.setAttribute('aria-expanded', 'false');
+            card.classList.remove('is-open');
+        }
+    });
+    head.setAttribute('aria-expanded', open ? 'false' : 'true');
+    head.classList.toggle('expanded', !open);
+}
+
+// מפעילה/מכבה יום בודד ישירות מהעיגולים בתצוגת-הסיכום (בלי לפתוח את כרטיס העריכה המלא) -
+// fetch לראוט toggle_weekday, ומעדכנת רק את העיגולים האלה לפי הרשימה המעודכנת שחוזרת
+// (לא מניחה מה קרה - השרת הוא מקור האמת, כולל המקרה שהשרת דחה כי זה היה היום האחרון)
+function automationsToggleWeekday(btn) {
+    var container = btn.closest('.auto-days');
+    var csrfInput = document.querySelector('input[name="csrf_token"]');
+    var csrf = csrfInput ? csrfInput.value : '';
+    btn.disabled = true;
+    fetch(btn.dataset.url, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'X-Requested-With': 'fetch', 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'csrf_token=' + encodeURIComponent(csrf),
+    }).then(function (r) { return r.json(); }).then(function (res) {
+        btn.disabled = false;
+        if (!res.ok) {
+            alert(res.error || 'שגיאה בעדכון היום.');
+            return;
+        }
+        container.querySelectorAll('.auto-day').forEach(function (dayBtn) {
+            var isOn = res.weekdays.indexOf(parseInt(dayBtn.dataset.day, 10)) !== -1;
+            dayBtn.classList.toggle('on', isOn);
+            dayBtn.setAttribute('aria-pressed', isOn ? 'true' : 'false');
+        });
+    }).catch(function () {
+        btn.disabled = false;
+        alert('שגיאת תקשורת - נסי שוב.');
+    });
+}
+
+// עדכון שעת השליחה ישירות מתיבת "שליחה HH:MM" בתצוגת-הסיכום - fetch ל-set_time, בלי לפתוח
+// את כרטיס העריכה המלא. input type="time" כבר אוכף פורמט חוקי בצד הדפדפן, אבל השרת הוא
+// מקור האמת (כולל בדיקת stage_time) - אם נדחה, מחזירים את הערך הקודם לתיבה
+function automationsSetTime(input) {
+    var previous = input.defaultValue;
+    var csrfInput = document.querySelector('input[name="csrf_token"]');
+    var csrf = csrfInput ? csrfInput.value : '';
+    input.disabled = true;
+    fetch(input.dataset.url, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'X-Requested-With': 'fetch', 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'csrf_token=' + encodeURIComponent(csrf) + '&time_of_day=' + encodeURIComponent(input.value),
+    }).then(function (r) { return r.json(); }).then(function (res) {
+        input.disabled = false;
+        if (!res.ok) {
+            alert(res.error || 'שגיאה בעדכון השעה.');
+            input.value = previous;
+            return;
+        }
+        input.defaultValue = res.time_of_day;
+    }).catch(function () {
+        input.disabled = false;
+        input.value = previous;
+        alert('שגיאת תקשורת - נסי שוב.');
+    });
+}
+
+// עובר בין לשוניות (הודעה/תזמון/נמענים/הרצות אחרונות) בתוך אזור העריכה של אוטומציה אחת -
+// מוגבל ל-.automations-tabs הקרוב (closest), כי יש מופע נפרד של הפאנל לכל אוטומציה בעמוד
+function automationsSwitchTab(btn) {
+    var container = btn.closest('.automations-tabs');
+    var tab = btn.dataset.tab;
+    container.querySelectorAll('.automations-tab-btn').forEach(function (b) {
+        b.classList.toggle('active', b === btn);
+    });
+    container.querySelectorAll('.automations-tab-panel').forEach(function (p) {
+        p.hidden = p.dataset.tab !== tab;
+    });
+}
+
+// סינון בצד הלקוח: לשונית קטגוריה + חיפוש בשם/בתזמון + סטטוס. בזמן חיפוש/סינון חברות בקבוצה מכווצת מוצגות
+(function () {
+    var list = document.getElementById('auto-list');
+    if (!list) return;
+    var cat = '';
+    var search = document.getElementById('auto-search');
+    var status = document.getElementById('auto-status');
+    var none = document.getElementById('auto-none');
+
+    function apply() {
+        var q = (search.value || '').trim().toLowerCase();
+        var st = status.value;
+        var filtering = !!(q || st);
+        list.classList.toggle('is-filtering', filtering);
+        var anyVisible = false;
+        list.querySelectorAll('.auto-section').forEach(function (section) {
+            var sectionVisible = false;
+            var groupSeen = {};
+            section.querySelectorAll('.auto-card').forEach(function (card) {
+                var ok = (!cat || section.dataset.cat === cat)
+                    && (!st || card.dataset.enabled === st)
+                    && (!q || (card.dataset.search || '').toLowerCase().indexOf(q) !== -1);
+                card.classList.toggle('is-filtered', !ok);
+                if (ok) { sectionVisible = true; if (card.dataset.group) groupSeen[card.dataset.group] = true; }
+            });
+            section.querySelectorAll('.auto-group-head').forEach(function (head) {
+                head.classList.toggle('is-filtered', !groupSeen[head.dataset.groupToggle]);
+            });
+            section.classList.toggle('is-filtered', !sectionVisible);
+            if (sectionVisible) anyVisible = true;
+        });
+        none.hidden = anyVisible;
+    }
+
+    document.querySelectorAll('.auto-cat').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            cat = btn.dataset.cat;
+            document.querySelectorAll('.auto-cat').forEach(function (b) {
+                var on = b === btn;
+                b.classList.toggle('on', on);
+                b.setAttribute('aria-selected', on ? 'true' : 'false');
+            });
+            apply();
+        });
+    });
+    search.addEventListener('input', apply);
+    status.addEventListener('change', apply);
+})();
+
+// פותחת אוטומטית את האוטומציה שחזרנו אליה אחרי שמירה (ראו _back_to_list בבלופרינט),
+// כולל פתיחת הקבוצה שלה אם היא חברה בקבוצת שם משותף
+if (window.location.hash && window.location.hash.startsWith('#automation-')) {
+    var automationId = window.location.hash.replace('#automation-', '');
+    var card = document.getElementById('automation-' + automationId);
+    var body = document.getElementById('details-' + automationId);
+    if (card && body) {
+        if (card.dataset.group) {
+            var head = card.closest('.auto-section').querySelector('[data-group-toggle="' + card.dataset.group + '"]');
+            if (head && head.getAttribute('aria-expanded') !== 'true') automationsToggleGroup(head);
+        }
+        body.hidden = false;
+        card.classList.add('is-open');
+        var chev = card.querySelector('.auto-chevron');
+        if (chev) chev.setAttribute('aria-expanded', 'true');
+    }
+}
+</script>
+{% endblock %}
