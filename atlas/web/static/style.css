@@ -8453,3 +8453,145 @@ body.dark .dash-charts .dash-card {
 body.dark .dash-charts .dash-card:nth-child(2) {
     border-top-color: #199e70;
 }
+
+/* =====================================================================================================
+   תפריט צד קומפקטי: בלי כותרות קבוצה (קו מפריד בלבד), שורות נמוכות יותר, כפתור "צמצום תפריט" גלוי בתחתית,
+   ופס אייקונים צר. הסרגל העליון נמוך יותר (52px), אז גם גובה התפריט מתעדכן.
+   ===================================================================================================== */
+.sidebar-collapse-btn {
+    display: none;
+}
+
+@media (min-width: 801px) {
+    body .sidebar {
+        top: 52px;
+        width: 224px;
+        height: calc(100vh - 52px);
+        padding: 14px 12px 10px;
+    }
+
+    body.page-leads-list .sidebar {
+        height: auto;
+    }
+
+    body.sidebar-collapsed .sidebar {
+        width: 64px;
+        padding-inline: 8px;
+    }
+
+    .sidebar-brand {
+        margin: 2px 4px 12px;
+    }
+
+    .sidebar-logo {
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
+    }
+
+    .sidebar-logo svg {
+        width: 20px;
+        height: 20px;
+    }
+
+    .sidebar-brand-text strong {
+        font-size: 16px;
+        font-weight: 600;
+    }
+
+    .sidebar-brand-text small {
+        font-size: 12px;
+    }
+
+    .quick-actions {
+        margin-bottom: 10px;
+    }
+
+    .quick-btn {
+        min-height: 38px;
+        font-size: 14px;
+        border-radius: 8px;
+    }
+
+    body .sidebar .nav-link {
+        min-height: 38px;
+        margin-bottom: 2px;
+        gap: 12px;
+        padding: 0 12px;
+        border-radius: 8px;
+        font-size: 15px;
+        font-weight: 500;
+    }
+
+    body .sidebar .nav-link.active,
+    body.dark .sidebar .nav-link.active {
+        font-weight: 600;
+    }
+
+    body .sidebar .nav-icon {
+        width: 20px;
+        height: 20px;
+    }
+
+    .sidebar-divider {
+        height: 1px;
+        margin: 8px 6px;
+        background: var(--border);
+    }
+
+    .sidebar-collapse-btn {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-shrink: 0;
+        min-height: 34px;
+        margin: 6px 0 4px;
+        padding: 0 12px;
+        border: 0;
+        border-radius: 8px;
+        background: transparent;
+        color: var(--muted);
+        font: inherit;
+        font-size: 14px;
+        cursor: pointer;
+    }
+
+    .sidebar-collapse-btn:hover {
+        background: var(--surface-2);
+        color: var(--text);
+    }
+
+    .sidebar-collapse-btn svg {
+        width: 18px;
+        height: 18px;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        transform: scaleX(-1);
+    }
+
+    body.sidebar-collapsed .sidebar-collapse-btn {
+        justify-content: center;
+        padding: 0;
+    }
+
+    body.sidebar-collapsed .sidebar-collapse-btn svg {
+        transform: none;
+    }
+
+    body.sidebar-collapsed .sidebar-divider {
+        margin: 6px 0;
+    }
+
+    body.sidebar-collapsed .sidebar-foot {
+        padding-inline: 0;
+    }
+}
+
+@media (max-width: 800px) {
+    .sidebar-collapse-btn {
+        display: none;
+    }
+}
