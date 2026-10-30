@@ -311,6 +311,7 @@ class AutomationDB:
         self._seed_vip_inactive_winback_manual_campaign(conn)
         self._seed_tira_koach_room_manual_campaign(conn)
         self._seed_studio_closure_manual_campaign(conn)
+        self._seed_expired_membership_winback_manual_campaign(conn)
         self._seed_attendance_milestone_automation(conn)
         self._migrate_upgrade360_automations_to_templates(conn)
         return conn
@@ -1198,6 +1199,99 @@ class AutomationDB:
         }
         now = datetime.datetime.now().isoformat(timespec="seconds")
         trigger_config = {"schedule_type": "once", "run_at": "2026-10-27T00:00"}
+        cursor = conn.execute(
+            "INSERT INTO automations (tenant_id, name, trigger_type, trigger_config, enabled, "
+            "created_at, updated_at) VALUES (1, ?, 'scheduled', ?, 0, ?, ?)",
+            (name, json.dumps(trigger_config, ensure_ascii=False), now, now),
+        )
+        automation_id = cursor.lastrowid
+        conn.execute(
+            "INSERT INTO automation_steps (automation_id, step_order, delay_minutes, action_type, "
+            "action_config) VALUES (?, 1, 0, 'send_whatsapp_message', ?)",
+            (automation_id, json.dumps(action_config, ensure_ascii=False)),
+        )
+        for phone, full_name in recipients:
+            conn.execute(
+                "INSERT INTO automation_recipients (automation_id, phone, full_name, created_at) "
+                "VALUES (?, ?, ?, ?)",
+                (automation_id, phone, full_name, now),
+            )
+        conn.commit()
+
+    # זורעת פעם אחת קמפיין חד-פעמי מתוזמן (לבקשת המשתמשת, 2026-10-30) - חזרה למנויות
+    # שהמנוי שלהן פג תוקף (לא בוטל!) ב-2 החודשים האחרונים. 50 נמענות (מתוך 53 - 2 ללא טלפון
+    # רשום, ו"אסתר אטיאס" שהוסרה לבקשת המשתמשת). מתוזמן ליום ראשון הקרוב 1.11.26 ב-08:00.
+    # תבנית "expired_membership_winback" (MARKETING) הוגשה 30/10, ממתינה לאישור
+    @staticmethod
+    def _seed_expired_membership_winback_manual_campaign(conn):
+        import datetime
+
+        name = "חזרה למנויות שפג תוקפן - שליחה ידנית 1.11.26"
+        exists = conn.execute("SELECT 1 FROM automations WHERE name = ?", (name,)).fetchone()
+        if exists:
+            return
+
+        recipients = [
+            ("0524393948", "תהל גולדנברג"),
+            ("0503873334", "אלמוג בן דוד2"),
+            ("0545552762", "מרגלית אהרון"),
+            ("0547939327", "גלית חבושה"),
+            ("0507905020", "טוהר אוריאל"),
+            ("0506721328", "אנה ישראל"),
+            ("0549522075", "תמי קרן"),
+            ("0549987742", "זוהר אזולאי"),
+            ("0503596454", "עדי מלכה2"),
+            ("0549259099", "שרין בר"),
+            ("0526892692", "מאיה ארז"),
+            ("0526775653", "מאיה מלכא"),
+            ("0549953032", "לינוי טטרו"),
+            ("0547492222", "שירז קראוס"),
+            ("0528884877", "חנה ברוך"),
+            ("0524290427", "דליה ברנט"),
+            ("0508980410", "טל פוקס"),
+            ("0549990091", "סיון חמו"),
+            ("0524764547", "נועם גולדשטייין"),
+            ("0523087846", "רותם אלימלך"),
+            ("0547925300", "מריאנה חורי"),
+            ("0506917717", "שחר סיני"),
+            ("0542815657", "לאה רבינוביץ"),
+            ("0545657205", "מנאלו בלדה"),
+            ("0524772825", "חני טוריקאן"),
+            ("0504725818", "מישל גלמן"),
+            ("0545998522", "לירון עמר"),
+            ("0547555906", "קרינה תורג'מן"),
+            ("0547320434", "סיגלית דדון"),
+            ("0528349480", "ירדן קורמן ברקון"),
+            ("0547082096", "ליאן קסירר לוי"),
+            ("0546241700", "אורלי פרץ"),
+            ("0539329106", "ליאת דהן"),
+            ("0542272198", "גפן קופר"),
+            ("0549957589", "יסמין ישראלוב"),
+            ("0535567352", "אדל בן שלוש"),
+            ("0505414885", "מאי מלול"),
+            ("0502999841", "יאנה ניימן"),
+            ("0522155504", "חגית מלכה"),
+            ("0508243818", "הילית בן סעדון"),
+            ("0526991323", "נטלי נחמני"),
+            ("0546412312", "עמית חיים"),
+            ("0524671866", "ויקטוריה משה"),
+            ("0544433036", "מור לוי"),
+            ("0548035003", "עדי דיין"),
+            ("0525694338", "זהבה זאודו"),
+            ("0547079094", "ירדנה מנשירוב"),
+            ("0544236665", "ליז מייזל"),
+            ("0545831909", "אלינה יופה"),
+            ("0524541424", "אורלי אדרי"),
+        ]
+
+        action_config = {
+            "mode": "template",
+            "template_name": "expired_membership_winback",
+            "template_language": "he",
+            "param_templates": ["{first_name}"],
+        }
+        now = datetime.datetime.now().isoformat(timespec="seconds")
+        trigger_config = {"schedule_type": "once", "run_at": "2026-11-01T08:00"}
         cursor = conn.execute(
             "INSERT INTO automations (tenant_id, name, trigger_type, trigger_config, enabled, "
             "created_at, updated_at) VALUES (1, ?, 'scheduled', ?, 0, ?, ?)",

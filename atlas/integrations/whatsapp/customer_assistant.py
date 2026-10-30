@@ -355,29 +355,23 @@ def _build_tool_executors(repos, caller_phone, last_user_text):
     # קיים שם (בלי קשר לקאש המקומי, שמכיל רק לקוחות פעילים/לא-פעילים, לא לידים
     # חדשים), ואם לא - יוצרת עבורו ליד חדש. משמש רק לשיעורי ניסיון (§3.8)
     def _resolve_or_create_trial_user_id(api_key, full_name, location_id):
-        # עד 28/10/2026 (לבקשת המשתמשת 22/10, אותו תאריך כמו הפתרון למנויות פעילות למעלה):
-        # בודקים את user_role של המשתמשת שנמצאה, לא רק user_id - מאומת בפועל (22/10, מריאנה
-        # חורי, לקוחה שעזבה בטירת הכרמל) ש-endpoint שיעור-הניסיון דוחה גם user_role="client"
-        # לא-פעיל (לקוחה לשעבר) בדיוק כמו client פעיל - "user_id is not valid", לא רק מנויות
-        # פעילות כמו שחשבנו קודם. ונוסה גם book_arbox_session עם membership_user_id ישן שלה -
-        # 500 "unexpected server error" עקבי (לא זמני), אז זה גם לא פתרון עבורה. רק
-        # user_role="lead" תקין לשימוש חוזר ב-trial - אחרת (client, פעיל או לא) יוצרים ליד
-        # חדש, בדיוק כמו למתעניינת חדשה שלא נמצאה בכלל
-        if datetime.date.today() <= datetime.date(2026, 10, 28):
-            existing_record = arbox_client.search_arbox_user_record_by_phone(api_key, caller_phone)
-            if existing_record and existing_record.get("user_role") == "lead":
-                return existing_record["user_id"]
-            if existing_record:
-                print(
-                    f"[customer_assistant] trial booking: ignoring existing user_role="
-                    f"{existing_record.get('user_role')!r} (active={existing_record.get('active')}) "
-                    f"for {caller_phone}, creating new lead instead",
-                    flush=True,
-                )
-        else:
-            existing_user_id = arbox_client.search_arbox_user_by_phone(api_key, caller_phone)
-            if existing_user_id:
-                return existing_user_id
+        # קבוע (הוחלט סופית 30/10/2026, אחרי שתי תקריות אמיתיות - נופר אזולאי 21/10, מריאנה
+        # חורי 22/10 - עם אותה שגיאה בדיוק): בודקים את user_role של המשתמשת שנמצאה, לא רק
+        # user_id. endpoint שיעור-הניסיון של Arbox דוחה כל user_id שאינו ליד אמיתי - גם client
+        # פעיל וגם client לא-פעיל (לקוחה לשעבר) - עם "user_id is not valid". גם book_arbox_
+        # session עם membership_user_id ישן/לא-פעיל לא עובד (500 "unexpected server error"
+        # עקבי, לא זמני). רק user_role="lead" תקין לשימוש חוזר ב-trial - אחרת (client, פעיל
+        # או לא) יוצרים ליד חדש, בדיוק כמו למתעניינת חדשה שלא נמצאה בכלל
+        existing_record = arbox_client.search_arbox_user_record_by_phone(api_key, caller_phone)
+        if existing_record and existing_record.get("user_role") == "lead":
+            return existing_record["user_id"]
+        if existing_record:
+            print(
+                f"[customer_assistant] trial booking: ignoring existing user_role="
+                f"{existing_record.get('user_role')!r} (active={existing_record.get('active')}) "
+                f"for {caller_phone}, creating new lead instead",
+                flush=True,
+            )
 
         name_parts = (full_name or "לקוחה חדשה").split(maxsplit=1)
         first_name = name_parts[0]
@@ -395,38 +389,37 @@ def _build_tool_executors(repos, caller_phone, last_user_text):
 
         location_id = schedule.get("location_id") or 856
 
-        # פתרון זמני, הוארך עד 28/10/2026 (לבקשת המשתמשת 21/10 - עוד שבוע מהיום; פג תוקף
-        # בפעם הראשונה ב-20/10 וגרם לאותה שגיאה שוב בדיוק, ראו תקרית 21/10 עם נופר אזולאי):
-        # מנויה קיימת שמבקשת שיעור ניסיון (למשל רולר מטריקס) - endpoint ה"שיעור ניסיון" של
-        # Arbox דוחה את ה-user_id שלה עם "user_id is not valid" (מאומת בפועל 18/10 ו-21/10 -
-        # ה-endpoint הזה מיועד רק ללידים חדשים). עד שתתקבל החלטה עסקית קבועה מול אפרת, מנויה
-        # קיימת נרשמת בחינם דרך הזמנת שיעור רגילה, שכן מקבלת user_id של מנוי. אחרי התאריך הזה
-        # חוזרים להתנהגות הרגילה (ותידרש החלטה לטווח ארוך - שוב).
-        if datetime.date.today() <= datetime.date(2026, 10, 28):
-            member = repos.arbox_member_cache.get_by_phone(caller_phone)
-            if member and member.get("user_id") and member.get("membership_user_id"):
-                response = arbox_client.book_arbox_session(
-                    api_key, member["user_id"], schedule_id, member["membership_user_id"]
-                )
-                if response.status_code == 200:
-                    try:
-                        automation_engine.fire_trigger(
-                            repos, "trial_booked",
-                            context={
-                                "full_name": full_name,
-                                "session_name": schedule.get("session_name"),
-                                "date": schedule.get("date"),
-                                "start_time": schedule.get("start_time"),
-                                "location_name": schedule.get("location_name"),
-                            },
-                            phone=caller_phone,
-                        )
-                    except Exception as exc:
-                        print(f"[customer_assistant] trial_booked automation failed: {exc}", flush=True)
-                    return {"success": True}
-                error_detail = arbox_client.extract_arbox_error_message(response)
-                print(f"[customer_assistant] book_trial_class (existing member fallback) failed ({response.status_code}): {error_detail}", flush=True)
-                return {"success": False, "reason": f"Arbox החזירה שגיאה: {error_detail}"}
+        # קבוע (הוחלט סופית 30/10/2026): מנויה **פעילה** שמבקשת שיעור ניסיון (למשל רולר
+        # מטריקס) - endpoint ה"שיעור ניסיון" של Arbox דוחה את ה-user_id שלה עם "user_id is
+        # not valid" (מאומת בפועל 18/10, 21/10 - מיועד רק ללידים). נרשמת בחינם דרך הזמנת
+        # שיעור רגילה עם הזהות/המנוי האמיתיים שלה, כדי לא ליצור רשומת "ליד" כפולה ומבלבלת
+        # לצד המנוי הפעיל האמיתי שלה ב-Arbox (בניגוד ללקוחה לא-פעילה/חדשה - ראו
+        # _resolve_or_create_trial_user_id, ששם כן יוצרים ליד חדש כי אין מנוי פעיל קיים
+        # "להתנגש" איתו)
+        member = repos.arbox_member_cache.get_by_phone(caller_phone)
+        if member and member.get("user_id") and member.get("membership_user_id"):
+            response = arbox_client.book_arbox_session(
+                api_key, member["user_id"], schedule_id, member["membership_user_id"]
+            )
+            if response.status_code == 200:
+                try:
+                    automation_engine.fire_trigger(
+                        repos, "trial_booked",
+                        context={
+                            "full_name": full_name,
+                            "session_name": schedule.get("session_name"),
+                            "date": schedule.get("date"),
+                            "start_time": schedule.get("start_time"),
+                            "location_name": schedule.get("location_name"),
+                        },
+                        phone=caller_phone,
+                    )
+                except Exception as exc:
+                    print(f"[customer_assistant] trial_booked automation failed: {exc}", flush=True)
+                return {"success": True}
+            error_detail = arbox_client.extract_arbox_error_message(response)
+            print(f"[customer_assistant] book_trial_class (existing member fallback) failed ({response.status_code}): {error_detail}", flush=True)
+            return {"success": False, "reason": f"Arbox החזירה שגיאה: {error_detail}"}
 
         user_id = _resolve_or_create_trial_user_id(api_key, full_name, location_id)
         response = arbox_client.book_arbox_trial(api_key, user_id, schedule_id)
