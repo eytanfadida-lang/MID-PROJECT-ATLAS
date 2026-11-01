@@ -771,6 +771,22 @@ def whatsapp_customer_webhook():
         caller_phone, "out", reply_text, reply_phone_number_id,
         wamid=whatsapp_bot.extract_wamid(reply_response),
     )
+
+    # התראה לבעלים על כל שאלה ותשובה בצ'אט (לבקשתה - כדי לעקוב אחרי הבוט ולטייב את
+    # התשובות שלו) - הודעת תבנית, לא טקסט חופשי, כי לא תמיד כתבה לבוט הפנימי ב-24
+    # השעות האחרונות (ראו שגיאת re-engagement 131047). שורה אחת בלי \n, כמו שאר
+    # השימושים ב-OWNER_ALERT_TEMPLATE_NAME, כי טמפלטים לא תומכים במעבר שורה בפרמטר
+    owner_qa_text = (
+        f"{sender_name or caller_phone} ({caller_phone}) | שאלה: {text} | תשובת הבוט: {reply_text}"
+    ).replace("\n", " ")[:900]
+    try:
+        whatsapp_bot.send_template_message(
+            whatsapp_bot.ADMIN_BOT, OWNER_WHATSAPP_NUMBER, OWNER_ALERT_TEMPLATE_NAME, "he",
+            body_params=[owner_qa_text],
+        )
+    except Exception as exc:
+        print(f"[WhatsApp customer webhook] owner QA notification failed: {exc}", flush=True)
+
     return jsonify({"status": "ok"})
 
 
