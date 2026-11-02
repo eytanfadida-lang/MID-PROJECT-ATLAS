@@ -409,6 +409,7 @@ th {
     position: sticky;
     top: 0;
     z-index: 5;
+    color: var(--text);
 }
 
 .leads-table .col-select { width: 32px; text-align: center; }
