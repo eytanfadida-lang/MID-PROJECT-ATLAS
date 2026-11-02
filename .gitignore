@@ -284,3 +284,6 @@ gateway/auth/
 
 # gateway config (ATLAS_URL) - local
 gateway/.env
+
+# רשימת נמענים של קמפיין (טלפונים) - לא נכנסת לגיט
+.winback_*.json
