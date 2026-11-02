@@ -253,6 +253,19 @@ def edit(lead_id):
     )
 
 
+# תצוגה לקריאה-בלבד (לא טופס) של פרטי ליד - נטענת כקטע HTML בפאנל הצדדי ברשימת
+# הלידים (ראו list.html) בלחיצה על שורה; כפתור "עריכה" בתוך הפאנל עצמו עובר לטופס
+# העריכה הקיים (ראו edit, מעלה), באותו פאנל
+@bp.route("/<int:lead_id>/panel")
+@login_required
+def panel(lead_id):
+    repos = get_repos()
+    current = repos.leads.get_by_id(lead_id)
+    if current is None:
+        return "הליד לא נמצא.", 404
+    return render_template("leads/view_fragment.html", lead=current)
+
+
 @bp.route("/<int:lead_id>/status", methods=["POST"])
 @login_required
 def update_status(lead_id):

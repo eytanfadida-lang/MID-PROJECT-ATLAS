@@ -86,6 +86,7 @@
         <tbody>
             {% for lead in leads %}
             <tr class="lead-row {{ 'is-new' if statuses and lead.status == statuses[0] else '' }}"
+                data-panel-url="{{ url_for('leads.panel', lead_id=lead.id) }}"
                 data-edit-url="{{ url_for('leads.edit', lead_id=lead.id) }}"
                 data-lead-name="{{ lead.full_name }}" data-lead-phone="{{ lead.phone or '' }}">
                 <td class="col-select"><input type="checkbox" class="lead-select-checkbox" value="{{ lead.id }}" aria-label="בחירת {{ lead.full_name }}"></td>
@@ -220,15 +221,9 @@
         leadPanelBackdrop.hidden = true;
     }
 
-    function openLeadPanel(row) {
-        const title = row.dataset.leadName || '';
-        const phone = row.dataset.leadPhone || '';
-        leadPanelTitle.textContent = phone ? `${title} (${phone})` : title;
+    function loadPanelContent(url) {
         leadPanelBody.innerHTML = 'טוען...';
-        leadPanel.hidden = false;
-        leadPanelBackdrop.hidden = false;
-
-        fetch(row.dataset.editUrl + '?partial=1', { credentials: 'same-origin' })
+        fetch(url, { credentials: 'same-origin' })
             .then((response) => {
                 if (!response.ok) throw new Error('load failed');
                 return response.text();
@@ -237,11 +232,30 @@
             .catch(() => { leadPanelBody.innerHTML = 'שגיאה בטעינת פרטי הליד.'; });
     }
 
+    function openLeadPanel(row) {
+        const title = row.dataset.leadName || '';
+        const phone = row.dataset.leadPhone || '';
+        leadPanelTitle.textContent = phone ? `${title} (${phone})` : title;
+        leadPanel.hidden = false;
+        leadPanelBackdrop.hidden = false;
+        loadPanelContent(row.dataset.panelUrl); // תצוגה (לא טופס) כברירת מחדל, ראו leads/view_fragment.html
+    }
+
     document.querySelectorAll('.leads-table tbody tr.lead-row').forEach((row) => {
         row.addEventListener('click', function (event) {
             if (event.target.closest('a, button, input, select, textarea, label')) return;
             openLeadPanel(row);
         });
+    });
+
+    // כפתור "עריכה" בתוך תצוגת הפרטים (ראו view_fragment.html) - עובר לטופס העריכה
+    // (leads/edit_fragment.html) באותו פאנל, בלי לסגור/לפתוח אותו מחדש. האזנה
+    // ב-delegation כי הכפתור מגיע מתוכן שמוזרק דינמית (innerHTML), לא קיים מראש ב-DOM
+    leadPanelBody.addEventListener('click', function (event) {
+        const editBtn = event.target.closest('.lead-view-edit-btn');
+        if (editBtn) {
+            loadPanelContent(editBtn.dataset.editUrl + '?partial=1');
+        }
     });
 
     if (leadPanelClose) {
