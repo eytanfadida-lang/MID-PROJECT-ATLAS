@@ -342,6 +342,17 @@ class AutomationRepository:
             for row in rows
         ]
 
+    # תופסת את ההרצה המתוזמנת בצורה אטומית (compare-and-swap על last_run_at): רק הקורא הראשון שרואה
+    # את הערך הישן מצליח לעדכן אותו, וכל הרצה חופפת של ה-poller מקבלת False ולא יוצרת נמענים שוב.
+    # בלי זה, שליחה ל-288 נמענות (דקות) חפפה להרצת cron נוספת, וכל אחת תזמנה את כל הרשימה מחדש
+    def claim_scheduled_run(self, automation_id, previous_last_run_at, when):
+        cursor = self.conn.execute(
+            "UPDATE automations SET last_run_at = ? WHERE id = ? AND COALESCE(last_run_at, '') = ?",
+            (when, automation_id, previous_last_run_at or ""),
+        )
+        self.conn.commit()
+        return cursor.rowcount == 1
+
     def update_last_run(self, automation_id, when):
         self.conn.execute("UPDATE automations SET last_run_at = ? WHERE id = ?", (when, automation_id))
         self.conn.commit()

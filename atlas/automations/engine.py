@@ -74,7 +74,9 @@ def process_due_action(repos, due_action):
     if due_action["status"] != "pending":
         return  # כבר טופל (או נתפס ע"י הרצה אחרת) - לא לבצע פעמיים
 
-    repos.automations.claim_due_action(due_action["id"])
+    # claim_due_action הוא UPDATE מותנה - אם הרצה חופפת כבר תפסה את הפעולה, לא שולחים שוב
+    if not repos.automations.claim_due_action(due_action["id"]):
+        return
 
     step = repos.automations.get_step(due_action["step_id"])
     action_type = step["action_type"] if step else None
@@ -778,6 +780,10 @@ def process_scheduled_automations(repos, tenant_id=1):
                 continue  # לא מעדכנים last_run_at - ננסה שוב בהרצה הבאה של ה-poller
         else:
             recipients = repos.automations.get_recipients(automation["id"])
+
+        # תופסים את ההרצה לפני שמתזמנים/שולחים - הרצה חופפת של ה-poller תראה last_run_at מעודכן ותדלג
+        if not repos.automations.claim_scheduled_run(automation["id"], last_run_at, now.isoformat(timespec="seconds")):
+            continue
 
         send_after = send_instant.isoformat(timespec="seconds")
         for recipient in recipients:
