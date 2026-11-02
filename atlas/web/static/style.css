@@ -583,8 +583,8 @@ th {
    ב-Upgrade360 שהעסק הכיר קודם: כותרת קטע + כפתור עריכה, ואז שורות צמודות עם קו
    הפרדה עדין, תווית כהה ומודגשת מול ערך רגיל */
 .lead-view {
-    font-size: 13px;
-    line-height: 1.3;
+    font-size: 15px;
+    line-height: 1.5;
 }
 
 .lead-view-section-header {
@@ -592,20 +592,20 @@ th {
     align-items: center;
     justify-content: space-between;
     font-weight: 600;
-    font-size: 14px;
-    line-height: 1.3;
+    font-size: 16px;
+    line-height: 1.4;
     color: var(--text);
-    padding-bottom: 8px;
-    margin-bottom: 2px;
+    padding-bottom: 10px;
+    margin-bottom: 4px;
     border-bottom: 1px solid var(--border);
 }
 
 .lead-view-section-header-plain {
-    margin-top: 12px;
+    margin-top: 16px;
     color: var(--muted);
     text-transform: uppercase;
     font-weight: 400;
-    font-size: 11px;
+    font-size: 12px;
     letter-spacing: 0.04em;
 }
 
@@ -618,27 +618,27 @@ th {
 
 .lead-view-row {
     display: grid;
-    grid-template-columns: 90px 1fr;
+    grid-template-columns: 110px 1fr;
     align-items: center;
     gap: 2px 8px;
-    padding: 4px 0;
+    padding: 10px 0;
     margin: 0;
     border-bottom: 1px solid rgba(15, 23, 42, 0.05);
-    font-size: 13px;
-    line-height: 1.3;
+    font-size: 15px;
+    line-height: 1.5;
     min-height: 0;
 }
 
 .lead-view-label {
     font-weight: 700;
     color: var(--text);
-    line-height: 1.3;
+    line-height: 1.5;
 }
 
 .lead-view-value {
     color: var(--muted);
     word-break: break-word;
-    line-height: 1.3;
+    line-height: 1.5;
 }
 
 .lead-view-value .phone-cell {
