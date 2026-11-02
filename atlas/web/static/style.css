@@ -8707,3 +8707,20 @@ body.dark .dash-charts .dash-card:nth-child(2) {
         display: none;
     }
 }
+
+.int-head-spaced {
+    margin-top: 28px;
+}
+
+.int-meta-card {
+    flex-wrap: wrap;
+}
+
+.int-meta-error {
+    display: block;
+    color: var(--danger);
+}
+
+.int-dot-error {
+    background: var(--danger);
+}

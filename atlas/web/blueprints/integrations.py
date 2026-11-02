@@ -4,7 +4,9 @@ from flask import Blueprint, flash, jsonify, redirect, render_template, request,
 
 from atlas.core.auth import admin_required
 from atlas.data.context import get_repos
+from atlas.integrations.meta import lead_ads as meta_leads
 from atlas.integrations.whatsapp import bot as whatsapp_bot
+from atlas.settings import CHANNELS
 
 # עמוד "אינטגרציות" (למנהלת בלבד): חשבונות וואטסאפ רשמיים (Meta Cloud API, להצגה בלבד) וחשבונות "לא רשמיים"
 # שמחוברים כמכשיר מקושר באמצעות QR (כמו WhatsApp Web). החיבור עצמו רץ בתהליך נפרד (gateway/) -
@@ -58,7 +60,29 @@ def index():
         official_numbers=official,
         status_labels=STATUS_LABELS,
         gateway_online=repos.linked_whatsapp.is_gateway_online(),
+        meta_result=meta_leads.load_last_result(),
     )
+
+
+# משיכה ידנית של לידים מפייסבוק (N הימים האחרונים): משלימה לידים שהוחמצו, ומראה מיד מה קרה (טוקן, טפסים,
+# לידים בלי טלפון). לידים שהטלפון שלהם כבר קיים במערכת לא נוצרים שוב
+@bp.route("/meta-leads/sync", methods=["POST"])
+@admin_required
+def meta_leads_sync():
+    try:
+        days = min(max(int(request.form.get("days", "7")), 1), 30)
+    except ValueError:
+        days = 7
+    result = meta_leads.poll_new_leads(get_repos(), CHANNELS, backfill_days=days)
+    if not result["ok"]:
+        flash("המשיכה נכשלה: " + "; ".join(result["errors"][:2]), "error")
+    else:
+        flash(
+            f"נמשכו לידים מ-{days} הימים האחרונים: {result['created']} חדשים, "
+            f"{result['existing_phone']} כבר קיימים, {result['no_phone']} בלי טלפון.",
+            "success",
+        )
+    return redirect(url_for("integrations.index"))
 
 
 # יצירת חשבון חדש והתחלת חיבור (המודל קורא לזה בשליחת השם). מחזיר JSON כדי שהמודל יעבור ישר למסך ה-QR

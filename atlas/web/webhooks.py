@@ -412,7 +412,8 @@ def meta_leads_poll():
         abort(403)
 
     result = meta_leads.poll_new_leads(db_context.get_repos(), CHANNELS)
-    return jsonify(result)
+    # כשל אמיתי (טוקן חסר/פג, שגיאת Graph) מחזיר 502, כדי שהריצה ב-GitHub Actions תיראה אדומה ולא "הצליחה"
+    return jsonify(result), (200 if result["ok"] else 502)
 
 
 # מקבלת הודעות וואטסאפ נכנסות מהבוט הפנימי (CRM WhaApp Bot). כמו ה-webhook של מטא לידים:

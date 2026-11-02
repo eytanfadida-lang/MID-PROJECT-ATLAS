@@ -72,6 +72,43 @@
     {% endif %}
 </div>
 
+<div class="int-head int-head-spaced">
+    <div>
+        <h2 class="int-title">לידים מפייסבוק</h2>
+        <p class="int-sub">המערכת בודקת טפסי לידים של הדף ומוסיפה אותם ללידים</p>
+    </div>
+</div>
+<div class="int-card int-meta-card">
+    <div class="int-main">
+        {% if not meta_result %}
+        <strong class="int-name">עדיין לא נרשמה בדיקה</strong>
+        <span class="int-meta">הבדיקה הבאה תופיע כאן. אפשר למשוך עכשיו ידנית.</span>
+        {% else %}
+        <strong class="int-name">
+            <span class="int-dot {{ 'int-dot-connected' if meta_result.ok else 'int-dot-error' }}"></span>
+            בדיקה אחרונה: {{ meta_result.at | format_lead_datetime }} {{ '' if meta_result.ok else '· נכשלה' }}
+        </strong>
+        <span class="int-meta">
+            {{ meta_result.forms_checked }} טפסים · {{ meta_result.leads_seen }} לידים נבדקו · {{ meta_result.created }} נוספו
+            {% if meta_result.no_phone %} · <strong>{{ meta_result.no_phone }} בלי טלפון</strong>{% endif %}
+        </span>
+        {% for err in meta_result.errors %}<span class="int-meta int-meta-error">{{ err }}</span>{% endfor %}
+        {% if meta_result.no_phone_fields %}
+        <span class="int-meta int-meta-error">ליד בלי טלפון - שדות הטופס: {{ meta_result.no_phone_fields | join(' | ') }}</span>
+        {% endif %}
+        {% endif %}
+    </div>
+    <form method="post" action="{{ url_for('integrations.meta_leads_sync') }}" class="int-actions">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <select name="days" aria-label="כמה ימים אחורה">
+            <option value="7">7 ימים אחרונים</option>
+            <option value="14">14 ימים</option>
+            <option value="30">30 ימים</option>
+        </select>
+        <button type="submit" class="btn btn-sm">משוך עכשיו</button>
+    </form>
+</div>
+
 <dialog class="int-modal" id="int-modal" aria-labelledby="int-modal-title">
     <div class="int-modal-head">
         <span class="int-avatar int-avatar-ok">{{ wa_icon }}</span>
