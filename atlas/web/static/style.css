@@ -574,17 +574,18 @@ th {
     line-height: 1.5;
 }
 
-/* פאנל עריכת ליד - גרסה רחבה יותר של notes-panel (מכיל טופס, לא רק טקסט) */
+/* פאנל עריכת ליד - כשליש מרוחב העמוד, כמו במסך פרטי הליד ב-Upgrade360 */
 .lead-panel {
-    width: 420px;
+    width: 33vw;
+    min-width: 360px;
 }
 
 /* תצוגת פרטי ליד (קריאה-בלבד) בתוך הפאנל - שורות תווית+ערך, בהשראת מסך פרטי הליד
    ב-Upgrade360 שהעסק הכיר קודם: כותרת קטע + כפתור עריכה, ואז שורות צמודות עם קו
    הפרדה עדין, תווית כהה ומודגשת מול ערך רגיל */
 .lead-view {
-    font-size: 15px;
-    line-height: 1.5;
+    font-size: 13px;
+    line-height: 1.3;
 }
 
 .lead-view-section-header {
@@ -592,53 +593,67 @@ th {
     align-items: center;
     justify-content: space-between;
     font-weight: 600;
-    font-size: 16px;
-    line-height: 1.4;
+    font-size: 14px;
+    line-height: 1.3;
     color: var(--text);
-    padding-bottom: 10px;
-    margin-bottom: 4px;
+    padding-bottom: 8px;
+    margin-bottom: 2px;
     border-bottom: 1px solid var(--border);
 }
 
 .lead-view-section-header-plain {
-    margin-top: 16px;
+    margin-top: 12px;
     color: var(--muted);
     text-transform: uppercase;
     font-weight: 400;
-    font-size: 12px;
+    font-size: 11px;
     letter-spacing: 0.04em;
 }
 
-/* פה משתמשים ב-btn/btn-ghost/btn-sm הקיימים (ראו למטה) - רק יישור אייקון+טקסט באמצע */
+/* רק אייקון עיפרון, בלי מסגרת/רקע - צבוע כמו טקסט מושתק ונצבע בצבע הראשי בהובר,
+   כמו שאר כפתורי האייקון השקטים בפרויקט */
 .lead-view-edit-btn {
     display: inline-flex;
     align-items: center;
-    gap: 4px;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.lead-view-edit-btn:hover {
+    color: var(--primary);
+    background: rgba(37, 99, 235, 0.08);
 }
 
 .lead-view-row {
     display: grid;
-    grid-template-columns: 110px 1fr;
+    grid-template-columns: 90px 1fr;
     align-items: center;
     gap: 2px 8px;
-    padding: 10px 0;
+    padding: 4px 0;
     margin: 0;
     border-bottom: 1px solid rgba(15, 23, 42, 0.05);
-    font-size: 15px;
-    line-height: 1.5;
+    font-size: 13px;
+    line-height: 1.3;
     min-height: 0;
 }
 
 .lead-view-label {
     font-weight: 700;
     color: var(--text);
-    line-height: 1.5;
+    line-height: 1.3;
 }
 
 .lead-view-value {
     color: var(--muted);
     word-break: break-word;
-    line-height: 1.5;
+    line-height: 1.3;
 }
 
 .lead-view-value .phone-cell {
