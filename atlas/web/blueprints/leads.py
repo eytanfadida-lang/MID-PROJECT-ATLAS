@@ -245,8 +245,11 @@ def edit(lead_id):
 
     users = to_records(repos.users.get_all()) if hasattr(repos, "users") else []
     statuses = repos.lead_statuses.get_names()
+    # טעינה בתוך הפאנל הצדדי ברשימת הלידים (ראו list.html) - אותו טופס בדיוק, בלי
+    # שלד העמוד המלא (base.html), כדי שאפשר יהיה להזריק אותו ל-innerHTML בלחיצה על שורה
+    template_name = "leads/edit_fragment.html" if request.args.get("partial") else "leads/edit.html"
     return render_template(
-        "leads/edit.html", lead=current, statuses=statuses, channels=CHANNELS, branches=BRANCHES, users=users
+        template_name, lead=current, statuses=statuses, channels=CHANNELS, branches=BRANCHES, users=users
     )
 
 

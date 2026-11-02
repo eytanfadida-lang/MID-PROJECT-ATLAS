@@ -546,6 +546,33 @@ th {
     font-size: 14px;
     line-height: 1.5;
 }
+
+/* פאנל עריכת ליד - גרסה רחבה יותר של notes-panel (מכיל טופס, לא רק טקסט) */
+.lead-panel {
+    width: 420px;
+}
+
+.lead-panel-body .form-card.lead-form {
+    grid-template-columns: 1fr;
+    max-width: none;
+    padding: 0;
+    margin: 0;
+    border: none;
+    background: transparent;
+}
+
+/* שורה שלמה בטבלת הלידים אחראית כעת לפתיחת הפאנל - סמן יד לרמוז על כך, מלבד תאים
+   עם מרכיבים אינטראקטיביים משלהם (שממשיכים להתנהג כרגיל בלחיצה) */
+.leads-table tbody tr.lead-row {
+    cursor: pointer;
+}
+.leads-table tbody tr.lead-row .col-select,
+.leads-table tbody tr.lead-row .col-status,
+.leads-table tbody tr.lead-row .col-assigned,
+.leads-table tbody tr.lead-row .col-phone,
+.leads-table tbody tr.lead-row .col-actions {
+    cursor: default;
+}
 .leads-table .col-actions { width: 190px; }
 
 .leads-table select.assigned-select {
@@ -4864,6 +4891,11 @@ body.dark .chat-failed-btn {
     }
 
     .notes-panel {
+        width: 100%;
+        max-width: 100%;
+    }
+
+    .lead-panel {
         width: 100%;
         max-width: 100%;
     }

@@ -85,7 +85,9 @@
         </thead>
         <tbody>
             {% for lead in leads %}
-            <tr class="{{ 'is-new' if statuses and lead.status == statuses[0] else '' }}">
+            <tr class="lead-row {{ 'is-new' if statuses and lead.status == statuses[0] else '' }}"
+                data-edit-url="{{ url_for('leads.edit', lead_id=lead.id) }}"
+                data-lead-name="{{ lead.full_name }}" data-lead-phone="{{ lead.phone or '' }}">
                 <td class="col-select"><input type="checkbox" class="lead-select-checkbox" value="{{ lead.id }}" aria-label="בחירת {{ lead.full_name }}"></td>
                 <td class="col-created" data-label="תאריך">{{ lead.created_datetime_stamp | format_lead_datetime }}</td>
                 <td class="col-status">
@@ -163,6 +165,15 @@
     <div id="notes-panel-body" class="notes-panel-body"></div>
 </div>
 
+<div id="lead-panel-backdrop" class="notes-panel-backdrop lead-panel-backdrop" hidden></div>
+<div id="lead-panel" class="notes-panel lead-panel" hidden>
+    <div class="notes-panel-header">
+        <strong id="lead-panel-title"></strong>
+        <button type="button" id="lead-panel-close" class="link-button">סגירה</button>
+    </div>
+    <div id="lead-panel-body" class="notes-panel-body lead-panel-body">טוען...</div>
+</div>
+
 <script>
 (function () {
     const notesPanel = document.getElementById('notes-panel');
@@ -177,7 +188,8 @@
     }
 
     document.querySelectorAll('.col-notes.has-notes').forEach((cell) => {
-        cell.addEventListener('click', function () {
+        cell.addEventListener('click', function (event) {
+            event.stopPropagation(); // לא לפתוח גם את פאנל הליד (ראו למטה) בלחיצה על ההערה
             notesPanelTitle.textContent = cell.dataset.leadName || '';
             notesPanelBody.textContent = cell.dataset.fullNotes || '';
             notesPanel.hidden = false;
@@ -189,6 +201,53 @@
         notesPanelClose.addEventListener('click', closeNotesPanel);
     }
     notesPanelBackdrop.addEventListener('click', closeNotesPanel);
+})();
+
+// פאנל צדדי לעריכת ליד - נפתח בלחיצה על כל אורך השורה (חוץ מאלמנטים אינטראקטיביים
+// כמו צ'קבוקס/סלקט/קישורים/כפתורים, שממשיכים להתנהג כרגיל) - טוען את טופס העריכה
+// הקיים (leads.edit) כקטע HTML בלבד (?partial=1) ומזריק אותו לפאנל; השליחה עצמה
+// היא POST רגיל של הדפדפן (לא fetch) - בדיוק כמו עריכה בעמוד נפרד, רק בלי לנווט
+// לשם קודם
+(function () {
+    const leadPanel = document.getElementById('lead-panel');
+    const leadPanelBackdrop = document.getElementById('lead-panel-backdrop');
+    const leadPanelTitle = document.getElementById('lead-panel-title');
+    const leadPanelBody = document.getElementById('lead-panel-body');
+    const leadPanelClose = document.getElementById('lead-panel-close');
+
+    function closeLeadPanel() {
+        leadPanel.hidden = true;
+        leadPanelBackdrop.hidden = true;
+    }
+
+    function openLeadPanel(row) {
+        const title = row.dataset.leadName || '';
+        const phone = row.dataset.leadPhone || '';
+        leadPanelTitle.textContent = phone ? `${title} (${phone})` : title;
+        leadPanelBody.innerHTML = 'טוען...';
+        leadPanel.hidden = false;
+        leadPanelBackdrop.hidden = false;
+
+        fetch(row.dataset.editUrl + '?partial=1', { credentials: 'same-origin' })
+            .then((response) => {
+                if (!response.ok) throw new Error('load failed');
+                return response.text();
+            })
+            .then((html) => { leadPanelBody.innerHTML = html; })
+            .catch(() => { leadPanelBody.innerHTML = 'שגיאה בטעינת פרטי הליד.'; });
+    }
+
+    document.querySelectorAll('.leads-table tbody tr.lead-row').forEach((row) => {
+        row.addEventListener('click', function (event) {
+            if (event.target.closest('a, button, input, select, textarea, label')) return;
+            openLeadPanel(row);
+        });
+    });
+
+    if (leadPanelClose) {
+        leadPanelClose.addEventListener('click', closeLeadPanel);
+    }
+    leadPanelBackdrop.addEventListener('click', closeLeadPanel);
 })();
 
 (function () {
