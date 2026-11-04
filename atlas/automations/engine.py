@@ -127,9 +127,15 @@ def _render_template_body_for_log(template_name, params, fallback):
     return rendered
 
 
+# שורת הסרה - נדרשת לפי בקשת העסק בכל הודעת אוטומציה/תפוצה (טקסט חופשי בלבד - הודעות
+# תבנית מאושרות מראש ב-Meta לא ניתנות לשינוי דינמי כאן, הטקסט המאושר הוא מה שנשלח).
+# "הסר" מזוהה אוטומטית בתגובה (ראו _OPT_OUT_PHRASES ב-webhooks.py) ומוסיף לבלאקליסט הגלובלי
+_OPT_OUT_FOOTER = "\n\nלהסרה מרשימת התפוצה, שלחי הסר"
+
+
 def _send_text_action(repos, due_action, action_config):
     try:
-        body = action_config.get("text_template", "").format(**due_action["context"])
+        body = action_config.get("text_template", "").format(**due_action["context"]) + _OPT_OUT_FOOTER
     except Exception as exc:
         repos.automations.mark_failed(due_action["id"])
         repos.automations.log_execution(
