@@ -64,6 +64,21 @@ def collapse_blank_lines(text):
     return re.sub(r"\n{3,}", "\n\n", text)
 
 
+# מצמצמת הערות ליד בפורמט "שאלה: תשובה" (שדות טופס מפייסבוק, אחד בכל שורה) לתשובות בלבד, לתצוגת העמודה
+# בטבלת הלידים - שמות השאלות ארוכים ("לאיזה_סניף?_קרית_מוצקין_או_טירת_כרמל") ודוחקים את התשובה האמיתית
+# החוצה. ההערה המלאה נשארת בפאנל ובמסד. שורה בלי ": " (טקסט חופשי) נשארת כמו שהיא
+def lead_notes_answers(text):
+    if not text:
+        return text
+    answers = []
+    for line in str(text).splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        answers.append(line.split(": ", 1)[-1].replace("_", " ").strip())
+    return " · ".join(answers)
+
+
 # מציגה חותמת זמן ISO (למשל "2026-07-31T15:03") כ-"HH:MM DD/MM/YYYY", לתצוגה בטבלאות.
 # הערך הנשמר הוא תמיד naive UTC (datetime.datetime.now() של השרת - ראו atlas/services/
 # time_utils.py) - ממירים לשעון ישראל לפני העיצוב, אחרת השעה (וליד חצות גם התאריך) מוצגים

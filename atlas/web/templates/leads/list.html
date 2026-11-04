@@ -132,7 +132,7 @@
                     </span>
                 </td>
                 <td class="col-notes {{ 'has-notes' if lead.notes else '' }}"
-                    {% if lead.notes %}data-full-notes="{{ lead.notes }}" data-lead-name="{{ lead.full_name }}" title="לחץ להצגת ההערה המלאה"{% endif %}>{{ lead.notes }}</td>
+                    {% if lead.notes %}data-full-notes="{{ lead.notes }}" data-lead-name="{{ lead.full_name }}" title="לחץ להצגת ההערה המלאה"{% endif %}>{{ lead.notes|lead_notes_answers }}</td>
                 <td class="col-routings">{{ lead.routings_count or 0 }}</td>
                 <td class="col-branch" data-label="סניף">{{ lead.branch or '-' }}</td>
                 <td class="col-id">{{ lead.id }}</td>

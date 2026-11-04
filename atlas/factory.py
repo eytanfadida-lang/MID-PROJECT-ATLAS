@@ -280,6 +280,7 @@ def create_app():
     app.jinja_env.filters["whatsapp_link"] = whatsapp_link
     app.jinja_env.filters["collapse_blank_lines"] = collapse_blank_lines
     app.jinja_env.filters["day_label"] = day_label
+    app.jinja_env.filters["lead_notes_answers"] = lead_notes_answers
 
     # התראות דחיפה על הודעה נכנסת חדשה מלקוחה (ראו atlas/services/web_push.py). רושמים פעם אחת
     # לכל תהליך - לא מכפילים אם create_app נקראת שוב (למשל בבדיקות)
