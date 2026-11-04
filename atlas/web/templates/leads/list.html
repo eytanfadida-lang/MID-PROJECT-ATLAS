@@ -25,7 +25,7 @@
     <a href="{{ url_for('leads.list_leads', mine=1 if show_my_only else 0) }}" class="{{ 'on' if not status and not phone else '' }}">הכל <small>{{ visible_total }}</small></a>
     {% for s in statuses %}
     {% if status_counts.get(s) or s == status %}
-    <a href="{{ url_for('leads.list_leads', status=s, mine=1 if show_my_only else 0) }}" class="{{ 'on' if s == status and not phone else '' }}">{{ s }} <small>{{ status_counts.get(s, 0) }}</small></a>
+    <a href="{{ url_for('leads.list_leads', status=s, mine=1 if show_my_only else 0) }}" class="{{ 'on' if s == status and not phone else '' }}" style="--tab-color: {{ status_colors.get(s, default_status_color) }};">{{ s }} <small>{{ status_counts.get(s, 0) }}</small></a>
     {% endif %}
     {% endfor %}
 </nav>
