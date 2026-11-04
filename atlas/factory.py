@@ -19,6 +19,7 @@ from atlas.core.view_utils import (
     whatsapp_link,
     to_records,
     collapse_blank_lines,
+    lead_notes_answers,
     day_label,
 )
 
