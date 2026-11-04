@@ -1,0 +1,63 @@
+{# פרטיאל משותף לעריכת תוכן הודעה (טקסט חופשי / תבנית מאושרת) - כלול פעם אחת בטופס היצירה
+   (new.html), ופעם אחת לכל שורת אוטומציה בטבלה המאוחדת (list.html, בתוך {% for %}) - בדיוק
+   כמו _schedule_fields.html, כל הטוגלים מוגבלים ל-closest('form') כדי שלא יתנגשו בין מופעים.
+   מצפה למשתנים: form (dict/request.form עם ערכים קיימים, או {} ליצירה חדשה),
+   param_templates_list (רשימת מחרוזות - ראו _extract_param_templates בבלופרינט),
+   approved_templates (רשימת dict-ים מ-_get_approved_templates, name/language/body_text/
+   placeholder_count) #}
+<div class="form-group">
+    <label>סוג הודעה</label>
+    <select name="mode" class="automations-message-mode-select" onchange="automationsToggleMessageMode(this)">
+        <option value="text" {{ 'selected' if form.get('mode', 'text') == 'text' else '' }}>טקסט חופשי (רק אם הלקוחה כתבה לבוט ב-24 השעות האחרונות)</option>
+        <option value="template" {{ 'selected' if form.get('mode') == 'template' else '' }}>תבנית מאושרת מראש (מגיעה גם מחוץ לחלון 24 השעות)</option>
+    </select>
+</div>
+
+<div class="automations-message-mode-field" data-for="text">
+    <div class="form-group">
+        <textarea name="text_template" rows="5">{{ form.get('text_template', '') }}</textarea>
+        <p class="hint">
+            אפשר להשתמש ב-{{ '{full_name}' }} (ולאוטומציית שיעור ניסיון גם {{ '{session_name} {date} {start_time} {location_name}' }}).
+        </p>
+    </div>
+</div>
+
+<div class="automations-message-mode-field" data-for="template">
+    <div class="form-group">
+        <label>תבנית מאושרת</label>
+        <select name="template_name">
+            <option value="">- בחר/י תבנית -</option>
+            {% for t in approved_templates %}
+            <option value="{{ t.name }}" {{ 'selected' if form.get('template_name') == t.name else '' }}>
+                {{ t.name }} ({{ t.placeholder_count }} משתנים) - {{ t.body_text[:60] }}
+            </option>
+            {% endfor %}
+        </select>
+        <input type="hidden" name="template_language" value="{{ form.get('template_language', 'he') }}">
+        {% if not approved_templates %}
+        <p class="hint">אין עדיין תבניות מאושרות. אפשר ליצור ב"תבניות וואטסאפ" ולחכות לאישור Meta.</p>
+        {% endif %}
+    </div>
+    <div class="form-group">
+        <label>ערכי הפרמטרים (לפי הסדר - {{ '{{1}}' }} ראשון וכו', אפשר להשתמש בשדות כמו {{ '{full_name}' }})</label>
+        {% for i in range(5) %}
+        <input type="text" name="param_templates" value="{{ param_templates_list[i] if i < param_templates_list|length else '' }}" placeholder="פרמטר {{ i + 1 }}">
+        {% endfor %}
+    </div>
+</div>
+
+<script>
+function automationsToggleMessageMode(select) {
+    var form = select.closest('form');
+    var selected = select.value;
+    form.querySelectorAll('.automations-message-mode-field').forEach(function (el) {
+        el.hidden = el.dataset.for !== selected;
+    });
+}
+(function () {
+    var scripts = document.getElementsByTagName('script');
+    var thisForm = scripts[scripts.length - 1].closest('form');
+    if (!thisForm) return;
+    automationsToggleMessageMode(thisForm.querySelector('.automations-message-mode-select'));
+})();
+</script>
