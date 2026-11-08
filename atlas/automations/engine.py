@@ -191,6 +191,9 @@ def _send_template_action(repos, due_action, action_config):
     header_media_type = action_config.get("header_media_type")
     header_media_id = action_config.get("header_media_id")
     header_media = {"type": header_media_type, "id": header_media_id} if header_media_type and header_media_id else None
+    # דריסת מספר השליחה - ברירת מחדל config.phone_number_id, אבל קמפיין חד-פעמי יכול לבחור
+    # לשלוח ממספר רשמי אחר באותו WABA (ראו CUSTOMER_BOT_NUMBER_LABELS ב-bot.py)
+    phone_number_id = action_config.get("phone_number_id")
 
     try:
         params = [fragment.format(**due_action["context"]) for fragment in param_templates]
@@ -207,7 +210,7 @@ def _send_template_action(repos, due_action, action_config):
     try:
         response = whatsapp_bot.send_template_message(
             whatsapp_bot.CUSTOMER_BOT, whatsapp_to, template_name, template_language, body_params=params,
-            header_media=header_media,
+            header_media=header_media, phone_number_id=phone_number_id,
         )
     except Exception as exc:
         repos.automations.mark_failed(due_action["id"])

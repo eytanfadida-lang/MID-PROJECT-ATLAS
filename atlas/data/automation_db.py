@@ -314,6 +314,7 @@ class AutomationDB:
         self._seed_studio_closure_manual_campaign(conn)
         self._seed_expired_membership_winback_manual_campaign(conn)
         self._seed_inactive_master_winback_manual_campaign(conn)
+        self._seed_strength_room_master_upgrade_manual_campaign(conn)
         self._seed_attendance_milestone_automation(conn)
         self._migrate_upgrade360_automations_to_templates(conn)
         return conn
@@ -1342,6 +1343,54 @@ class AutomationDB:
         cursor = conn.execute(
             "INSERT INTO automations (tenant_id, name, trigger_type, trigger_config, enabled, "
             "created_at, updated_at) VALUES (1, ?, 'scheduled', ?, 0, ?, ?)",
+            (name, json.dumps(trigger_config, ensure_ascii=False), now, now),
+        )
+        automation_id = cursor.lastrowid
+        conn.execute(
+            "INSERT INTO automation_steps (automation_id, step_order, delay_minutes, action_type, "
+            "action_config) VALUES (?, 1, 0, 'send_whatsapp_message', ?)",
+            (automation_id, json.dumps(action_config, ensure_ascii=False)),
+        )
+        for phone, full_name in recipients:
+            conn.execute(
+                "INSERT INTO automation_recipients (automation_id, phone, full_name, created_at) "
+                "VALUES (?, ?, ?, ?)",
+                (automation_id, phone, full_name, now),
+            )
+        conn.commit()
+
+    # קמפיין חד-פעמי (8.11.26, מיידי) למנויות שמגיעות לאימון 8:30 בטירת כרמל (לפי דוח bookingsReport
+    # אמיתי, check_in="Yes", 3 שבועות אחרונים, ללא FreeFit) - עדכון על פתיחת אימוני כוח בוקר
+    # ומחיר MASTER מול FITNESS. תבנית "master_upgrade_strength_room" (MARKETING) אושרה ב-Meta
+    # לפני הזריעה. בניגוד לקמפיינים הקודמים - נשלח ממספר רשמי שני (ראו CUSTOMER_BOT_NUMBER_LABELS
+    # ב-bot.py, "413443605196685" = +972 50-306-6767) לפי בקשה מפורשת, לא מברירת המחדל. רשימת
+    # הנמענים (טלפונים ושמות) נטענת מקובץ מקומי שלא נכנס לגיט, כמו בקמפיינים הקודמים; אם הקובץ
+    # חסר - לא עושים כלום. נוצר דלוק (enabled=1) כי התבנית כבר אושרה ברגע הזריעה
+    @staticmethod
+    def _seed_strength_room_master_upgrade_manual_campaign(conn):
+        import datetime
+
+        name = "עדכון תעריף Master - חדר כוח - שליחה ידנית 8.11.26"
+        if conn.execute("SELECT 1 FROM automations WHERE name = ?", (name,)).fetchone():
+            return
+        recipients_file = secret(".campaign_strength_room_master_upgrade.json")
+        try:
+            recipients = json.loads(recipients_file.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            return
+
+        action_config = {
+            "mode": "template",
+            "template_name": "master_upgrade_strength_room",
+            "template_language": "he",
+            "param_templates": ["{first_name}"],
+            "phone_number_id": "413443605196685",
+        }
+        now = datetime.datetime.now().isoformat(timespec="seconds")
+        trigger_config = {"schedule_type": "once", "run_at": "2026-11-08T15:15"}
+        cursor = conn.execute(
+            "INSERT INTO automations (tenant_id, name, trigger_type, trigger_config, enabled, "
+            "created_at, updated_at) VALUES (1, ?, 'scheduled', ?, 1, ?, ?)",
             (name, json.dumps(trigger_config, ensure_ascii=False), now, now),
         )
         automation_id = cursor.lastrowid
