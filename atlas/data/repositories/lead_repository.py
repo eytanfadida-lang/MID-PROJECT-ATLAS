@@ -2,6 +2,8 @@ import datetime
 
 import pandas as pd
 
+from atlas.services.phone_utils import normalize_phone
+
 TABLE_NAME = "leads"
 DUPLICATE_STATUS = "ליד כפול"
 
@@ -11,8 +13,13 @@ class LeadRepository:
     def __init__(self, conn):
         self.conn = conn
 
+    # היה פעם רק .strip() - בלי הסרת קידומת 972/+972, מה שגרם למספרים שמגיעים
+    # בפורמט בינלאומי (ליד מטא/גוגל/בוט וואטסאפ, כולם מספקים E.164) להישמר ככה
+    # לצמיתות. עכשיו משתמש בנרמול המשותף (ראו atlas/services/phone_utils.py)
+    # - עם נפילה חזרה ל-.strip() הישן אם זה לא מספר ישראלי תקין בן 10 ספרות,
+    # כדי לא למחוק בטעות קלט חריג (למשל מספר חלקי) שמישהי הקלידה ידנית
     def _normalize_phone(self, phone):
-        return (phone or "").strip()
+        return normalize_phone(phone) or (phone or "").strip()
 
     def _has_duplicate_phone(self, phone, exclude_id=None):
         normalized_phone = self._normalize_phone(phone)
@@ -70,11 +77,13 @@ class LeadRepository:
     # מעדכנת שדה בודד בליד קיים, ומרעננת את חותמת העדכון האחרון.
     # field_name חייב להגיע מרשימת שדות קבועה (whitelist) בצד הקורא ולא מטקסט חופשי מהמשתמש
     def update_field(self, lead_id, field_name, value):
+        if field_name == "phone":
+            value = self._normalize_phone(value)
         if field_name == "phone" and self._has_duplicate_phone(value, exclude_id=lead_id):
             self.conn.execute(
                 f"UPDATE {TABLE_NAME} SET {field_name} = ?, status = ?, last_updated_datetime_stamp = ? WHERE id = ?",
                 (
-                    self._normalize_phone(value),
+                    value,
                     DUPLICATE_STATUS,
                     datetime.datetime.now().isoformat(timespec="minutes"),
                     lead_id,

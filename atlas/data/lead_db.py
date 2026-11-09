@@ -2,6 +2,7 @@ import os
 import sqlite3
 
 from atlas.paths import data
+from atlas.services.phone_utils import normalize_phone
 
 DB_FILE = os.environ.get("DB_FILE", str(data("appointments.db")))
 
@@ -59,7 +60,27 @@ class LeadDB:
                 "INSERT INTO lead_statuses (name, color) VALUES (?, ?)", DEFAULT_STATUSES
             )
             conn.commit()
+        self._normalize_existing_phone_numbers(conn)
         return conn
+
+    # ניקוי חד-פעמי (רץ בכל התחברות, אבל זול וריק אחרי הפעם הראשונה - רק שורות שהנרמול
+    # שלהן שונה מהערך השמור) לבאגים ישנים: לידים שנוצרו מ-API חיצוני (מטא/גוגל/בוט וואטסאפ,
+    # כולם מספקים E.164) נשמרו עם קידומת 972/+972 במקום 05 מקומי, כי LeadRepository._normalize_phone
+    # הישן לא הסיר קידומת מדינה (רק .strip()) - ראו תיקון ב-lead_repository.py. לא מטפל במיזוג
+    # כפילויות שעלולות להיחשף עכשיו (שני פורמטים שונים לאותו מספר) - זה מחוץ לתיקון הזה
+    @staticmethod
+    def _normalize_existing_phone_numbers(conn):
+        rows = conn.execute(
+            "SELECT id, phone FROM leads WHERE phone IS NOT NULL AND phone != ''"
+        ).fetchall()
+        changed = False
+        for lead_id, phone in rows:
+            normalized = normalize_phone(phone)
+            if normalized and normalized != phone:
+                conn.execute("UPDATE leads SET phone = ? WHERE id = ?", (normalized, lead_id))
+                changed = True
+        if changed:
+            conn.commit()
 
     def close(self):
         self.conn.close()
