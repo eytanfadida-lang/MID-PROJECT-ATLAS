@@ -288,3 +288,4 @@ gateway/.env
 # רשימת נמענים של קמפיין (טלפונים) - לא נכנסת לגיט
 .winback_*.json
 .campaign_*.json
+.roller_free_trials.json

@@ -7,8 +7,12 @@ from atlas.paths import PROJECT_ROOT, secret
 from atlas.integrations.whatsapp import bot as whatsapp_bot
 from atlas.integrations.arbox import client as arbox_client
 from atlas.automations import engine as automation_engine
+from atlas.services.phone_utils import normalize_phone
 
 CONVERSATIONS_FILE = secret(".whatsapp_customer_conversations.json")
+# מי כבר קיבלה טיפול ניסיון רולר מטריקס ללא עלות (פעם אחת לכל מספר טלפון) - phone -> {schedule_id, at}
+ROLLER_FREE_TRIALS_FILE = secret(".roller_free_trials.json")
+ROLLER_SESSION_NAME = "רולר מטריקס"
 BUSINESS_INFO_FILE = PROJECT_ROOT / "bot_content" / "business_info.md"
 
 MAX_HISTORY_TURNS = 6
@@ -34,6 +38,23 @@ def _load_all_conversations():
 
 def _save_all_conversations(conversations):
     CONVERSATIONS_FILE.write_text(json.dumps(conversations, ensure_ascii=False), encoding="utf-8")
+
+
+def _load_roller_free_trials():
+    try:
+        return json.loads(ROLLER_FREE_TRIALS_FILE.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+
+
+def _roller_trial_used(phone):
+    return normalize_phone(phone) in _load_roller_free_trials()
+
+
+def _record_roller_trial(phone, schedule_id):
+    trials = _load_roller_free_trials()
+    trials[normalize_phone(phone)] = {"schedule_id": schedule_id, "at": datetime.datetime.now().isoformat(timespec="seconds")}
+    ROLLER_FREE_TRIALS_FILE.write_text(json.dumps(trials, ensure_ascii=False), encoding="utf-8")
 
 
 def _load_history(phone):
@@ -110,6 +131,16 @@ SYSTEM_PROMPT_TEMPLATE = """את/ה העוזר/ת הדיגיטלי/ת של הע�
   - **יש לו מנוי פעיל** (get_my_membership החזיר found=true, active=true) → book_class.
   - **אין לו מנוי** (לקוחה חדשה/שיעור ניסיון) → book_trial_class, עם full_name של הלקוח.
     אם היא עדיין לא קיימת ב-Arbox, ייווצר עבורה ליד חדש אוטומטית - זה תקין ומצופה.
+- **רישום חברה/מישהי אחרת לשיעור ניסיון** ("החברה שלי רוצה לבוא"): מותר ורצוי. ודאי שם מלא של החברה
+  **ומספר הטלפון שלה** (שאלי אם חסרים), ושיעור ספציפי כרגיל, ואז book_trial_class עם full_name של החברה ו-
+  friend_phone=המספר שמסרה. אם success=false - אל תסבירי למה ואל תגלי שום דבר על המספר (כלל 2), רק
+  request_human_callback (עם שם החברה, הטלפון, הסניף והשעה) ואמרי שהעברת לצוות לאישור.
+- **טיפול/שיעור "רולר מטריקס"**: כל מי שמבקשת - לקוחה קיימת, לקוחה לשעבר או חדשה - נרשמת **פעם אחת ללא
+  עלות** באמצעות book_trial_class (גם אם יש לה מנוי; אל תשתמשי בשביל זה ב-book_class), ואל תציגי מחיר
+  לניסיון. אם החזר success=false כי הניסיון ללא עלות כבר נוצל - אמרי בנועם שהניסיון ללא עלות מגיע פעם
+  אחת, ואז request_human_callback להמשך (בלי להבטיח שום הנחה או מחיר).
+- **לעולם אל תכתבי "רשמתי"/"נרשמה"/"הרישום בוצע" אם book_class/book_trial_class לא החזיר success=true.**
+  בכשל - אמרי רק שהבקשה הועברה לצוות והם יחזרו לאישור.
 - אם success=false (במנוי או בניסיון) - שדה reason מכיל את הסיבה האמיתית שחזרה מהמערכת (לא
   תמיד "מלא" - יכולה להיות כל סיבה). אל תניחי שהשיעור מלא אם זה לא מה שכתוב ב-reason בפועל.
   הפני מיד ל-request_human_callback, אל תנסי שוב עם schedule_id אחר בלי לשאול את הלקוח.
@@ -257,8 +288,13 @@ TOOL_DECLARATIONS = [
         "parameters": {
             "type": "object",
             "properties": {
-                "full_name": {"type": "string", "description": "השם המלא של הלקוח"},
+                "full_name": {"type": "string", "description": "השם המלא של מי שמגיעה לשיעור הניסיון"},
                 "schedule_id": {"type": "integer", "description": "schedule_id שחזר מ-get_class_schedule"},
+                "friend_phone": {
+                    "type": "string",
+                    "description": "רק כשהלקוחה רושמת **מישהי אחרת** (חברה) לשיעור ניסיון: מספר הטלפון של אותה "
+                    "אחת, כפי שהלקוחה מסרה. כשהיא רושמת את עצמה - לא למלא.",
+                },
             },
             "required": ["full_name", "schedule_id"],
         },
@@ -367,7 +403,7 @@ def _build_tool_executors(repos, caller_phone, last_user_text):
     # מוצאת/יוצרת את ה-user_id של הלקוח שכותב כרגע ב-Arbox - קודם מחפשת אם הוא כבר
     # קיים שם (בלי קשר לקאש המקומי, שמכיל רק לקוחות פעילים/לא-פעילים, לא לידים
     # חדשים), ואם לא - יוצרת עבורו ליד חדש. משמש רק לשיעורי ניסיון (§3.8)
-    def _resolve_or_create_trial_user_id(api_key, full_name, location_id):
+    def _resolve_or_create_trial_user_id(api_key, full_name, location_id, phone):
         # קבוע (הוחלט סופית 30/10/2026, אחרי שתי תקריות אמיתיות - נופר אזולאי 21/10, מריאנה
         # חורי 22/10 - עם אותה שגיאה בדיוק): בודקים את user_role של המשתמשת שנמצאה, לא רק
         # user_id. endpoint שיעור-הניסיון של Arbox דוחה כל user_id שאינו ליד אמיתי - גם client
@@ -375,23 +411,30 @@ def _build_tool_executors(repos, caller_phone, last_user_text):
         # session עם membership_user_id ישן/לא-פעיל לא עובד (500 "unexpected server error"
         # עקבי, לא זמני). רק user_role="lead" תקין לשימוש חוזר ב-trial - אחרת (client, פעיל
         # או לא) יוצרים ליד חדש, בדיוק כמו למתעניינת חדשה שלא נמצאה בכלל
-        existing_record = arbox_client.search_arbox_user_record_by_phone(api_key, caller_phone)
+        existing_record = arbox_client.search_arbox_user_record_by_phone(api_key, phone)
         if existing_record and existing_record.get("user_role") == "lead":
             return existing_record["user_id"]
         if existing_record:
             print(
                 f"[customer_assistant] trial booking: ignoring existing user_role="
                 f"{existing_record.get('user_role')!r} (active={existing_record.get('active')}) "
-                f"for {caller_phone}, creating new lead instead",
+                f"for {phone}, creating new lead instead",
                 flush=True,
             )
 
         name_parts = (full_name or "לקוחה חדשה").split(maxsplit=1)
         first_name = name_parts[0]
         last_name = name_parts[1] if len(name_parts) > 1 else ""
-        return arbox_client.create_arbox_lead(api_key, first_name, last_name, caller_phone, location_id)
+        return arbox_client.create_arbox_lead(api_key, first_name, last_name, phone, location_id)
 
-    def book_trial_class(full_name, schedule_id):
+    def book_trial_class(full_name, schedule_id, friend_phone=None):
+        # רישום מישהי אחרת (חברה) - לפי הטלפון שהלקוחה מסרה. מותר רק ללידים/מספרים חדשים: אם המספר שייך
+        # ללקוחה קיימת (פעילה או לשעבר) לא רושמים ולא מגלים שום דבר עליה (כלל 2), רק כשל כללי שמועבר לצוות
+        target_phone = caller_phone
+        if friend_phone:
+            target_phone = normalize_phone(friend_phone)
+            if not target_phone or target_phone == normalize_phone(caller_phone):
+                return {"success": False, "reason": "מספר הטלפון של החברה לא תקין - יש לבקש ממנה מספר נייד תקין"}
         schedule = repos.arbox_class_cache.get_by_schedule_id(schedule_id)
         if schedule is None:
             return {"success": False, "reason": "השיעור לא נמצא, יש לבדוק שוב עם get_class_schedule"}
@@ -402,6 +445,12 @@ def _build_tool_executors(repos, caller_phone, last_user_text):
 
         location_id = schedule.get("location_id") or 856
 
+        # טיפול ניסיון רולר מטריקס: ללא עלות, פעם אחת לכל מספר (לקוחה קיימת/לשעבר/חדשה) - הרישום נשמר רק
+        # בהצלחה, ובקשה חוזרת נדחית כאן כדי שהצוות יחליט (הבוט לא מציע עוד חינם)
+        is_roller = schedule.get("session_name") == ROLLER_SESSION_NAME
+        if is_roller and _roller_trial_used(target_phone):
+            return {"success": False, "reason": "טיפול הניסיון ללא עלות כבר נוצל (מגיע פעם אחת בלבד לכל לקוחה)"}
+
         # קבוע (הוחלט סופית 30/10/2026): מנויה **פעילה** שמבקשת שיעור ניסיון (למשל רולר
         # מטריקס) - endpoint ה"שיעור ניסיון" של Arbox דוחה את ה-user_id שלה עם "user_id is
         # not valid" (מאומת בפועל 18/10, 21/10 - מיועד רק ללידים). נרשמת בחינם דרך הזמנת
@@ -409,7 +458,7 @@ def _build_tool_executors(repos, caller_phone, last_user_text):
         # לצד המנוי הפעיל האמיתי שלה ב-Arbox (בניגוד ללקוחה לא-פעילה/חדשה - ראו
         # _resolve_or_create_trial_user_id, ששם כן יוצרים ליד חדש כי אין מנוי פעיל קיים
         # "להתנגש" איתו)
-        member = repos.arbox_member_cache.get_by_phone(caller_phone)
+        member = repos.arbox_member_cache.get_by_phone(caller_phone) if not friend_phone else None
         if member and member.get("user_id") and member.get("membership_user_id"):
             response = arbox_client.book_arbox_session(
                 api_key, member["user_id"], schedule_id, member["membership_user_id"]
@@ -429,12 +478,18 @@ def _build_tool_executors(repos, caller_phone, last_user_text):
                     )
                 except Exception as exc:
                     print(f"[customer_assistant] trial_booked automation failed: {exc}", flush=True)
+                if is_roller:
+                    _record_roller_trial(target_phone, schedule_id)
                 return {"success": True}
             error_detail = arbox_client.extract_arbox_error_message(response)
             print(f"[customer_assistant] book_trial_class (existing member fallback) failed ({response.status_code}): {error_detail}", flush=True)
             return {"success": False, "reason": f"Arbox החזירה שגיאה: {error_detail}"}
 
-        user_id = _resolve_or_create_trial_user_id(api_key, full_name, location_id)
+        if friend_phone:
+            existing = arbox_client.search_arbox_user_record_by_phone(api_key, target_phone)
+            if existing and existing.get("user_role") != "lead":
+                return {"success": False, "reason": "לא ניתן לרשום מספר זה לשיעור ניסיון באופן אוטומטי"}
+        user_id = _resolve_or_create_trial_user_id(api_key, full_name, location_id, target_phone)
         response = arbox_client.book_arbox_trial(api_key, user_id, schedule_id)
         if response.status_code == 200:
             try:
@@ -447,10 +502,12 @@ def _build_tool_executors(repos, caller_phone, last_user_text):
                         "start_time": schedule.get("start_time"),
                         "location_name": schedule.get("location_name"),
                     },
-                    phone=caller_phone,
+                    phone=target_phone,
                 )
             except Exception as exc:
                 print(f"[customer_assistant] trial_booked automation failed: {exc}", flush=True)
+            if is_roller:
+                _record_roller_trial(target_phone, schedule_id)
             return {"success": True}
         error_detail = arbox_client.extract_arbox_error_message(response)
         print(f"[customer_assistant] book_trial_class failed ({response.status_code}): {error_detail}", flush=True)
