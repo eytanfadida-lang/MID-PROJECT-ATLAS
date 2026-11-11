@@ -11,7 +11,9 @@ from atlas.services import linked_whatsapp
 from atlas.services.phone_utils import normalize_phone, to_whatsapp_format
 from atlas.integrations.arbox import client as arbox_client
 from atlas.integrations.whatsapp import bot as whatsapp_bot
-from atlas.paths import PROJECT_ROOT
+import json
+
+from atlas.paths import PROJECT_ROOT, secret
 
 # עמוד לצפייה בהיסטוריית השיחות של בוט הלקוחות בוואטסאפ - למנהלת העסק בלבד
 # (שיחות עם לקוחות אמיתיות, מידע רגיש). נתונים מ-customer_bot_messages (ראו
@@ -229,6 +231,45 @@ def _thread_context(repos, phone, messages, active_conversation):
         active_conversation=active_conversation, linked_unavailable=linked_unavailable,
         customer=_customer_info(repos, phone),
     )
+
+
+# קישורי "כרטיס לקוחה" במערכת הניהול של Arbox, לפי טלפון. המזהה בקישור שונה מ-user_id ולא מגיע ברשימת
+# הלקוחות - רק בחיפוש לפי טלפון (profile_link), ולכן נשלף בלחיצה ונשמר כאן כדי לא לחפש שוב
+ARBOX_PROFILE_LINKS_FILE = secret(".arbox_profile_links.json")
+ARBOX_PROFILE_PREFIX = "https://manage.arboxapp.com/"
+
+
+def _load_profile_links():
+    try:
+        return json.loads(ARBOX_PROFILE_LINKS_FILE.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+
+
+@bp.route("/<phone>/arbox-profile")
+@admin_required
+def arbox_profile(phone):
+    key = normalize_phone(phone) or phone
+    links = _load_profile_links()
+    link = links.get(key)
+    if not link:
+        api_key = arbox_client.load_arbox_api_key()
+        try:
+            record = arbox_client.search_arbox_user_record_by_phone(api_key, key) if api_key else None
+        except Exception as exc:  # noqa: BLE001
+            print(f"[bot_conversations] arbox profile lookup failed for {key}: {exc}", flush=True)
+            record = None
+        link = (record or {}).get("profile_link") or ""
+        if link.startswith(ARBOX_PROFILE_PREFIX):
+            links[key] = link
+            try:
+                ARBOX_PROFILE_LINKS_FILE.write_text(json.dumps(links, ensure_ascii=False), encoding="utf-8")
+            except OSError:
+                pass
+    if not link.startswith(ARBOX_PROFILE_PREFIX):
+        flash("לא נמצא כרטיס ב-Arbox למספר הזה.", "error")
+        return redirect(url_for("bot_conversations.view_conversation", phone=phone))
+    return redirect(link)
 
 
 @bp.route("/<phone>")

@@ -289,3 +289,4 @@ gateway/.env
 .winback_*.json
 .campaign_*.json
 .roller_free_trials.json
+.arbox_profile_links.json
