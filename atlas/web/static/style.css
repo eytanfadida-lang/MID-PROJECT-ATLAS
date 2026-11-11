@@ -8976,3 +8976,258 @@ body.page-leads-list .status-tabs.leads-tabs a {
     stroke-linecap: round;
     stroke-linejoin: round;
 }
+
+
+/* --- תגובות מהירות בעמוד השיחות: כפתור בשורת הכתיבה + חלונית צפה (במחשב - מעל שורת הכתיבה, בטלפון -
+       גיליון תחתון לכל הרוחב) --- */
+.chat-qr-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 40px;
+    height: 40px;
+    border: none;
+    border-radius: 50%;
+    background: none;
+    color: var(--muted);
+    cursor: pointer;
+}
+
+.chat-qr-btn:hover {
+    background: var(--surface-2);
+    color: var(--text);
+}
+
+.chat-qr-btn svg {
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.qr-panel {
+    position: fixed;
+    bottom: 96px;
+    left: 50%;
+    z-index: 70;
+    display: flex;
+    flex-direction: column;
+    width: min(460px, calc(100vw - 24px));
+    max-height: min(620px, calc(100vh - 140px));
+    padding: 14px;
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    background: var(--surface);
+    box-shadow: 0 18px 48px rgba(15, 23, 42, 0.22);
+    transform: translateX(-50%);
+}
+
+.qr-panel[hidden],
+.qr-view[hidden],
+.qr-panel button[hidden] {
+    display: none;
+}
+
+.qr-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.qr-head strong {
+    flex: 1;
+    font-size: 17px;
+}
+
+.qr-close {
+    border: none;
+    background: none;
+    color: var(--muted);
+    font-size: 18px;
+    cursor: pointer;
+}
+
+.qr-view {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+#qr-list-view {
+    flex: 1;
+}
+
+.qr-search {
+    width: 100%;
+    margin-bottom: 10px;
+    border-radius: 10px;
+}
+
+.qr-tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 10px;
+    padding: 4px;
+    overflow-x: auto;
+    border-radius: 10px;
+    background: var(--surface-2);
+    scrollbar-width: none;
+}
+
+.qr-tab {
+    flex-shrink: 0;
+    padding: 6px 12px;
+    border: none;
+    border-radius: 8px;
+    background: none;
+    color: var(--text);
+    font: inherit;
+    font-size: 14px;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.qr-tab.on {
+    background: var(--surface);
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.1);
+    font-weight: 700;
+}
+
+.qr-tab-add {
+    color: var(--muted);
+}
+
+.qr-items {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    overflow-y: auto;
+    min-height: 0;
+}
+
+.qr-card {
+    padding: 12px 14px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    cursor: pointer;
+}
+
+.qr-card:hover,
+.qr-card:focus-visible {
+    border-color: var(--border-strong);
+    background: var(--surface-2);
+}
+
+.qr-card-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.qr-star {
+    border: none;
+    background: none;
+    color: var(--border-strong);
+    font-size: 18px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.qr-star.on {
+    color: #e8b021;
+}
+
+.qr-card-body {
+    display: -webkit-box;
+    margin-top: 4px;
+    overflow: hidden;
+    color: var(--muted);
+    font-size: 14px;
+    white-space: pre-line;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+}
+
+.qr-card-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 8px;
+    font-size: 12.5px;
+}
+
+.qr-card-cat {
+    flex: 1;
+    color: var(--muted);
+}
+
+.qr-link {
+    border: none;
+    background: none;
+    color: var(--muted);
+    font: inherit;
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+.qr-link-danger:hover {
+    color: var(--danger);
+}
+
+.qr-empty {
+    margin: 18px 0;
+    color: var(--muted);
+    text-align: center;
+}
+
+.qr-form {
+    gap: 10px;
+    overflow-y: auto;
+}
+
+.qr-form label {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.qr-form .qr-check {
+    flex-direction: row;
+    align-items: center;
+    gap: 6px;
+}
+
+.qr-form textarea {
+    resize: vertical;
+}
+
+.qr-error {
+    margin: 0;
+    color: var(--danger);
+    font-size: 13px;
+}
+
+.qr-form-actions {
+    display: flex;
+    gap: 8px;
+}
+
+@media (max-width: 800px) {
+    .qr-panel {
+        top: auto;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        max-height: 80vh;
+        max-height: 80dvh;
+        padding-bottom: calc(14px + var(--safe-b, 0px));
+        border-radius: 16px 16px 0 0;
+        transform: none;
+    }
+}

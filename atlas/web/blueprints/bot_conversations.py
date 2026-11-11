@@ -91,6 +91,69 @@ def poll_state():
     return jsonify(signature=get_repos().customer_bot_messages.get_state_signature())
 
 
+# --- תגובות מהירות: הודעות שמורות שנכנסות בלחיצה לתיבת הכתיבה (לא נשלחות אוטומטית - אפשר לערוך
+# לפני השליחה). החלונית בעמוד טוענת את כולן כ-JSON ומעדכנת דרך הנתיבים כאן (fetch, עם csrf_token) ---
+QUICK_REPLY_TITLE_MAX = 80
+QUICK_REPLY_BODY_MAX = 4000
+
+
+def _quick_replies_payload(repos):
+    return jsonify(replies=repos.quick_replies.get_all(), categories=repos.quick_replies.get_categories())
+
+
+@bp.route("/quick-replies")
+@admin_required
+def quick_replies():
+    return _quick_replies_payload(get_repos())
+
+
+@bp.route("/quick-replies/save", methods=["POST"])
+@admin_required
+def save_quick_reply():
+    repos = get_repos()
+    title = (request.form.get("title") or "").strip()[:QUICK_REPLY_TITLE_MAX]
+    body = (request.form.get("body") or "").strip()[:QUICK_REPLY_BODY_MAX]
+    category = (request.form.get("category") or "").strip()[:QUICK_REPLY_TITLE_MAX]
+    favorite = request.form.get("favorite") == "1"
+    if not body:
+        return jsonify(ok=False, error="צריך לכתוב את טקסט ההודעה"), 400
+    title = title or body.splitlines()[0][:40]
+    reply_id = request.form.get("id", type=int)
+    if reply_id:
+        if not repos.quick_replies.update(reply_id, title, body, category, favorite):
+            return jsonify(ok=False, error="התגובה לא נמצאה"), 404
+    else:
+        repos.quick_replies.create(title, body, category, favorite)
+    return _quick_replies_payload(repos)
+
+
+@bp.route("/quick-replies/<int:reply_id>/favorite", methods=["POST"])
+@admin_required
+def favorite_quick_reply(reply_id):
+    repos = get_repos()
+    repos.quick_replies.set_favorite(reply_id, request.form.get("favorite") == "1")
+    return _quick_replies_payload(repos)
+
+
+@bp.route("/quick-replies/<int:reply_id>/delete", methods=["POST"])
+@admin_required
+def delete_quick_reply(reply_id):
+    repos = get_repos()
+    repos.quick_replies.delete(reply_id)
+    return _quick_replies_payload(repos)
+
+
+@bp.route("/quick-replies/categories", methods=["POST"])
+@admin_required
+def add_quick_reply_category():
+    repos = get_repos()
+    name = (request.form.get("name") or "").strip()[:QUICK_REPLY_TITLE_MAX]
+    if not name:
+        return jsonify(ok=False, error="צריך שם לקטגוריה"), 400
+    repos.quick_replies.add_category(name)
+    return _quick_replies_payload(repos)
+
+
 # הופכת שיחה ל"לא נקראה" (למשל כדי לחזור אליה אחר כך). נקראת גם מהרשימה (fetch, מחזירה JSON)
 # וגם מכפתור בראש השיחה (טופס רגיל, חוזרת לרשימה - לא לשיחה עצמה, אחרת פתיחתה הייתה מסמנת
 # אותה מיד כנקראת שוב)

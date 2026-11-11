@@ -78,12 +78,16 @@
         <div class="chat-linked-warn" role="status">{{ linked_unavailable }} <a href="{{ url_for('integrations.index') }}">לעמוד האינטגרציות</a></div>
         {% else %}
         <form method="post" action="{{ url_for('bot_conversations.reply', phone=active_phone) }}"
-              class="chat-reply-form" enctype="multipart/form-data">
+              class="chat-reply-form" enctype="multipart/form-data"
+              data-first-name="{{ (active_conversation.full_name or '').split(' ')[0] if active_conversation else '' }}">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <label class="chat-attach-btn" title="צירוף קובץ/תמונה">
                 <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M21 11.5 12.6 20a5 5 0 0 1-7-7L14 4.6a3.3 3.3 0 0 1 4.7 4.7l-8.4 8.4a1.7 1.7 0 0 1-2.4-2.4l7.7-7.7"/></svg>
                 <input type="file" name="attachment" id="chat-attachment" hidden>
             </label>
+            <button type="button" class="chat-qr-btn" title="תגובות מהירות" aria-label="תגובות מהירות" aria-haspopup="dialog">
+                <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H8l-5 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M13 6.5 10 11h4l-3 4.5"/></svg>
+            </button>
             <span class="chat-attach-name" id="chat-attach-name" hidden></span>
             <textarea name="body" id="chat-body" rows="1" placeholder="כתוב הודעה..." title="Ctrl+Enter לשליחה"></textarea>
             <button type="submit" class="chat-send-btn" id="chat-send" aria-label="שליחה" title="שליחה (Ctrl+Enter)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M22 2 11 13"/><path d="M22 2l-7 20-4-9-9-4z"/></svg></button>

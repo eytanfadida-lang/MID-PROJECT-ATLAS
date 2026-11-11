@@ -33,6 +33,8 @@ from atlas.data.linked_whatsapp_db import LinkedWhatsAppDB
 from atlas.data.repositories.linked_whatsapp_repository import LinkedWhatsAppRepository
 from atlas.data.repositories.push_subscription_repository import PushSubscriptionRepository
 from atlas.data.repositories.arbox_entrance_count_repository import ArboxEntranceCountRepository
+from atlas.data.quick_reply_db import QuickReplyDB
+from atlas.data.repositories.quick_reply_repository import QuickReplyRepository
 
 
 # מריצה חד-פעמית באתחול (import-time של app.py): יוצרת/ממגרת את כל הטבלאות,
@@ -42,7 +44,7 @@ def bootstrap_databases():
     for db_class in (
         AppointmentDB, CustomerDB, LeadDB, UserDB, WhatsAppStateDB, BotContentGapDB,
         ArboxMemberCacheDB, ArboxClassCacheDB, CustomerBotMessageDB, AutomationDB,
-        ArboxEntranceCountDB, PushSubscriptionDB, LinkedWhatsAppDB,
+        ArboxEntranceCountDB, PushSubscriptionDB, LinkedWhatsAppDB, QuickReplyDB,
     ):
         instance = db_class()
         instance.close()
@@ -83,6 +85,7 @@ def get_repos():
             arbox_entrance_counts=ArboxEntranceCountRepository(conn),
             push_subscriptions=PushSubscriptionRepository(conn),
             linked_whatsapp=LinkedWhatsAppRepository(conn),
+            quick_replies=QuickReplyRepository(conn),
         )
     return g.repos
 

@@ -62,6 +62,38 @@
     </div>
 </div>
 
+{# חלונית "תגובות מהירות" - מחוץ לפאנל השיחה כי הוא מוחלף בכל מעבר שיחה. נפתחת מהכפתור בשורת הכתיבה #}
+<div class="qr-panel" id="qr-panel" role="dialog" aria-label="תגובות מהירות" hidden
+     data-list-url="{{ url_for('bot_conversations.quick_replies') }}"
+     data-save-url="{{ url_for('bot_conversations.save_quick_reply') }}"
+     data-category-url="{{ url_for('bot_conversations.add_quick_reply_category') }}"
+     data-base-url="{{ url_for('bot_conversations.list_conversations') }}quick-replies/">
+    <div class="qr-head">
+        <strong>תגובות מהירות</strong>
+        <button type="button" class="btn btn-ghost btn-sm" id="qr-new">+ הוספת תגובה חדשה</button>
+        <button type="button" class="qr-close" id="qr-close" aria-label="סגירה">✕</button>
+    </div>
+    <div class="qr-view" id="qr-list-view">
+        <input type="search" id="qr-search" class="qr-search" placeholder="חיפוש תגובות..." aria-label="חיפוש תגובות">
+        <div class="qr-tabs" id="qr-tabs" role="tablist"></div>
+        <div class="qr-items" id="qr-items"></div>
+    </div>
+    <form class="qr-view qr-form" id="qr-form" hidden>
+        <input type="hidden" name="id">
+        <label>כותרת<input type="text" name="title" maxlength="80" placeholder="למשל: מחירון VIP"></label>
+        <label>קטגוריה
+            <select name="category"></select>
+        </label>
+        <label>טקסט ההודעה<textarea name="body" rows="7" maxlength="4000" required placeholder="אפשר לכתוב {שם} - יוחלף בשם הפרטי של הלקוחה"></textarea></label>
+        <label class="qr-check"><input type="checkbox" name="favorite" value="1"> מועדף</label>
+        <p class="qr-error" id="qr-error" hidden></p>
+        <div class="qr-form-actions">
+            <button type="submit" class="btn btn-primary btn-sm">שמירה</button>
+            <button type="button" class="btn btn-ghost btn-sm" id="qr-cancel">ביטול</button>
+        </div>
+    </form>
+</div>
+
 <script>
 (function () {
     var app = document.getElementById('chat-app');
@@ -487,6 +519,158 @@
     window.addEventListener('popstate', function () {
         var m = window.location.pathname.match(/^\/bot-conversations\/([^\/]+)$/);
         if (m && m[1] !== '_state') openConversation(window.location.href, false); else showList(false);
+    });
+
+    // --- תגובות מהירות: כפתור בשורת הכתיבה פותח חלונית עם ההודעות השמורות (חיפוש, קטגוריות, מועדפים).
+    // לחיצה על תגובה מכניסה אותה לתיבת הכתיבה (לא שולחת) ומחליפה {שם} בשם הפרטי של הלקוחה. הכל נבנה
+    // עם textContent - טקסט התגובות לעולם לא מוכנס כ-HTML ---
+    var qr = document.getElementById('qr-panel');
+    var qrData = { replies: [], categories: [] };
+    var qrTab = 'all';
+    var qrLoaded = false;
+    function qrPost(url, fields) {
+        var body = new URLSearchParams(fields || {});
+        body.set('csrf_token', app.dataset.csrf);
+        return fetch(url, { method: 'POST', credentials: 'same-origin', headers: { 'X-Requested-With': 'fetch' }, body: body })
+            .then(function (r) { return r.json().then(function (d) { if (!r.ok) throw new Error(d.error || 'שגיאה'); return d; }); });
+    }
+    function qrLoad() {
+        return fetch(qr.dataset.listUrl, { credentials: 'same-origin' }).then(function (r) { return r.json(); })
+            .then(function (d) { qrData = d; qrLoaded = true; qrRender(); });
+    }
+    function qrEl(tag, cls, text) {
+        var el = document.createElement(tag);
+        if (cls) el.className = cls;
+        if (text !== undefined) el.textContent = text;
+        return el;
+    }
+    function qrRender() {
+        var tabs = document.getElementById('qr-tabs');
+        tabs.textContent = '';
+        [['all', 'הכל'], ['fav', 'מועדפים']].concat(qrData.categories.map(function (c) { return ['cat:' + c, c]; }))
+            .forEach(function (t) {
+                var b = qrEl('button', 'qr-tab' + (qrTab === t[0] ? ' on' : ''), t[1]);
+                b.type = 'button';
+                b.setAttribute('role', 'tab');
+                b.setAttribute('aria-selected', qrTab === t[0] ? 'true' : 'false');
+                b.addEventListener('click', function () { qrTab = t[0]; qrRender(); });
+                tabs.appendChild(b);
+            });
+        var add = qrEl('button', 'qr-tab qr-tab-add', '+ קטגוריה');
+        add.type = 'button';
+        add.addEventListener('click', function () {
+            var name = (prompt('שם הקטגוריה החדשה:') || '').trim();
+            if (!name) return;
+            qrPost(qr.dataset.categoryUrl, { name: name }).then(function (d) { qrData = d; qrTab = 'cat:' + name; qrRender(); })
+                .catch(function (e) { alert(e.message); });
+        });
+        tabs.appendChild(add);
+
+        var q = document.getElementById('qr-search').value.trim().toLowerCase();
+        var items = document.getElementById('qr-items');
+        items.textContent = '';
+        var shown = qrData.replies.filter(function (r) {
+            if (qrTab === 'fav' && !r.favorite) return false;
+            if (qrTab.indexOf('cat:') === 0 && r.category !== qrTab.slice(4)) return false;
+            return !q || (r.title + ' ' + r.body).toLowerCase().indexOf(q) !== -1;
+        });
+        if (!shown.length) {
+            items.appendChild(qrEl('p', 'qr-empty', qrData.replies.length ? 'אין תגובות שמתאימות.' : 'עוד אין תגובות שמורות. לחצי "הוספת תגובה חדשה".'));
+            return;
+        }
+        shown.forEach(function (r) {
+            var card = qrEl('div', 'qr-card');
+            card.tabIndex = 0;
+            card.setAttribute('role', 'button');
+            var top = qrEl('div', 'qr-card-top');
+            top.appendChild(qrEl('strong', '', r.title));
+            var star = qrEl('button', 'qr-star' + (r.favorite ? ' on' : ''), '★');
+            star.type = 'button';
+            star.title = r.favorite ? 'הסרה מהמועדפים' : 'הוספה למועדפים';
+            star.addEventListener('click', function (e) {
+                e.stopPropagation();
+                qrPost(qr.dataset.baseUrl + r.id + '/favorite', { favorite: r.favorite ? '0' : '1' }).then(function (d) { qrData = d; qrRender(); });
+            });
+            top.appendChild(star);
+            card.appendChild(top);
+            card.appendChild(qrEl('div', 'qr-card-body', r.body));
+            var actions = qrEl('div', 'qr-card-actions');
+            if (r.category) actions.appendChild(qrEl('span', 'qr-card-cat', r.category));
+            var edit = qrEl('button', 'qr-link', 'עריכה');
+            edit.type = 'button';
+            edit.addEventListener('click', function (e) { e.stopPropagation(); qrOpenForm(r); });
+            var del = qrEl('button', 'qr-link qr-link-danger', 'מחיקה');
+            del.type = 'button';
+            del.addEventListener('click', function (e) {
+                e.stopPropagation();
+                if (!confirm('למחוק את התגובה "' + r.title + '"?')) return;
+                qrPost(qr.dataset.baseUrl + r.id + '/delete').then(function (d) { qrData = d; qrRender(); });
+            });
+            actions.appendChild(edit);
+            actions.appendChild(del);
+            card.appendChild(actions);
+            function use() { qrInsert(r.body); }
+            card.addEventListener('click', use);
+            card.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); use(); } });
+            items.appendChild(card);
+        });
+    }
+    function qrInsert(text) {
+        var formEl = document.querySelector('.chat-reply-form');
+        var box = document.getElementById('chat-body');
+        if (!formEl || !box) return;
+        var first = formEl.dataset.firstName || '';
+        // בלי שם ידוע - "היי {שם}!" הופך ל"היי!" ולא "היי !"
+        text = text.replace(/\{שם\}/g, first).replace(/[ \t]+([,!?.])/g, '$1');
+        var start = box.selectionStart || 0, end = box.selectionEnd || 0;
+        box.value = box.value ? box.value.slice(0, start) + text + box.value.slice(end) : text;
+        box.dispatchEvent(new Event('input', { bubbles: true }));
+        qrClose();
+        box.focus();
+    }
+    function qrShow(view) {
+        document.getElementById('qr-list-view').hidden = view !== 'list';
+        document.getElementById('qr-form').hidden = view !== 'form';
+        document.getElementById('qr-new').hidden = view !== 'list';
+    }
+    function qrOpenForm(r) {
+        var f = document.getElementById('qr-form');
+        var sel = f.elements.category;
+        sel.textContent = '';
+        sel.appendChild(new Option('בלי קטגוריה', ''));
+        qrData.categories.forEach(function (c) { sel.appendChild(new Option(c, c)); });
+        f.elements.id.value = r ? r.id : '';
+        f.elements.title.value = r ? r.title : '';
+        f.elements.body.value = r ? r.body : '';
+        sel.value = r ? r.category : (qrTab.indexOf('cat:') === 0 ? qrTab.slice(4) : '');
+        f.elements.favorite.checked = r ? r.favorite : qrTab === 'fav';
+        document.getElementById('qr-error').hidden = true;
+        qrShow('form');
+        f.elements.title.focus();
+    }
+    function qrOpen() {
+        qr.hidden = false;
+        qrShow('list');
+        (qrLoaded ? Promise.resolve(qrRender()) : qrLoad()).then(function () { document.getElementById('qr-search').focus(); });
+    }
+    function qrClose() { qr.hidden = true; }
+    threadWrap.addEventListener('click', function (e) {
+        if (!e.target.closest('.chat-qr-btn')) return;
+        if (qr.hidden) qrOpen(); else qrClose();
+    });
+    document.getElementById('qr-close').addEventListener('click', qrClose);
+    document.getElementById('qr-new').addEventListener('click', function () { qrOpenForm(null); });
+    document.getElementById('qr-cancel').addEventListener('click', function () { qrShow('list'); });
+    document.getElementById('qr-search').addEventListener('input', qrRender);
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !qr.hidden) qrClose(); });
+    document.getElementById('qr-form').addEventListener('submit', function (e) {
+        e.preventDefault();
+        var f = e.target;
+        qrPost(qr.dataset.saveUrl, {
+            id: f.elements.id.value, title: f.elements.title.value, body: f.elements.body.value,
+            category: f.elements.category.value, favorite: f.elements.favorite.checked ? '1' : '0',
+        }).then(function (d) { qrData = d; qrShow('list'); qrRender(); })
+          .catch(function (err) { var el = document.getElementById('qr-error'); el.textContent = err.message; el.hidden = false; });
     });
 
     // "סמן כלא נקרא" מהרשימה: שולח ברקע ומרענן מיד, בלי לעבור עמוד (האירוע מאזין על המכולה, כך
