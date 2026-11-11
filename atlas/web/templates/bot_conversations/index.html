@@ -434,7 +434,12 @@
             threadWrap.innerHTML = res.html;
             resetThreadState();
             setView('thread');
-            if (push) history.pushState({ chat: true }, '', target.pathname);
+            // היסטוריה: רק המעבר מהרשימה לשיחה נוסף כרשומה חדשה; מעבר משיחה לשיחה מחליף את הנוכחית. אחרת כל
+            // שיחה שנפתחה נערמה בהיסטוריה, ו"חזרה" בטלפון החזירה שוב ושוב לשיחות קודמות במקום לצאת מהעמוד
+            if (push) {
+                if (history.state && history.state.chatThread) history.replaceState({ chat: true, chatThread: true }, '', target.pathname);
+                else history.pushState({ chat: true, chatThread: true }, '', target.pathname);
+            }
             if (res.signature) lastSignature = res.signature;
             highlightActive(target.pathname);
             var activeItem = itemsEl.querySelector('.chat-list-item.active');
@@ -449,7 +454,7 @@
         resetThreadState();
         setView('list');
         highlightActive(null);
-        if (push) history.pushState({ chat: true }, '', app.dataset.listUrl);
+        if (push) history.replaceState({ chat: true }, '', app.dataset.listUrl);
     }
     itemsEl.addEventListener('click', function (e) {
         var link = e.target.closest('a.chat-list-item');
@@ -461,7 +466,13 @@
         var back = e.target.closest('.chat-back');
         if (!back || e.defaultPrevented || e.ctrlKey || e.metaKey || e.shiftKey) return;
         e.preventDefault();
-        showList(true);
+        // חזרה לרשימה: אם השיחה נפתחה מהרשימה בעמוד הזה - חוזרים רשומה אחת אחורה (popstate מציג את הרשימה),
+        // כדי שלא תיווצר רשומה נוספת; אם השיחה נפתחה ישירות (קישור/התראה) - מחליפים אותה ברשימה
+        if (history.state && history.state.chatThread) {
+            history.back();
+        } else {
+            showList(true);
+        }
     });
     window.addEventListener('popstate', function () {
         var m = window.location.pathname.match(/^\/bot-conversations\/([^\/]+)$/);
