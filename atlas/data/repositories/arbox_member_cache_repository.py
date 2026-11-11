@@ -50,14 +50,21 @@ class ArboxMemberCacheRepository:
                 membership.get("membership_type_name") or "",
                 membership.get("debt") or "",
                 1 if membership.get("cancelled") else 0,
+                user.get("location_id"),
+                user.get("email") or "",
+                user.get("birthday") or "",
+                (user.get("created_time") or "")[:10],
+                "" if membership.get("price") is None else str(membership.get("price")),
+                membership.get("type") or "",
             ))
 
         self.conn.execute(f"DELETE FROM {TABLE_NAME}")
         self.conn.executemany(
             f"INSERT OR REPLACE INTO {TABLE_NAME} "
             "(phone, first_name, last_name, active, membership_start_date, membership_end_date, synced_at, "
-            "user_id, membership_user_id, membership_type_name, debt, cancelled) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "user_id, membership_user_id, membership_type_name, debt, cancelled, "
+            "location_id, email, birthday, member_since, membership_price, membership_kind) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             rows,
         )
         self.conn.commit()
@@ -129,3 +136,20 @@ class ArboxMemberCacheRepository:
             "debt": row[10],
             "cancelled": bool(row[11]),
         }
+
+    # כל מה שיש בקאש על לקוחה אחת - לחלונית "פרטי לקוחה" בעמוד השיחות (כולל סניף, אימייל, יום הולדת,
+    # מחיר וסוג המנוי). get_by_phone נשארת צרה בכוונה - היא בשימוש הבוט, שלא צריך את השאר
+    def get_details_by_phone(self, phone):
+        row = self.conn.execute(
+            f"SELECT location_id, email, birthday, member_since, membership_price, membership_kind "
+            f"FROM {TABLE_NAME} WHERE phone = ?",
+            (normalize_phone(phone),),
+        ).fetchone()
+        member = self.get_by_phone(phone)
+        if member is None or row is None:
+            return member
+        member.update({
+            "location_id": row[0], "email": row[1], "birthday": row[2], "member_since": row[3],
+            "membership_price": row[4], "membership_kind": row[5],
+        })
+        return member

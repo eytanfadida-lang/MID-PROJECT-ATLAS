@@ -41,6 +41,13 @@ class ArboxMemberCacheDB:
             "membership_type_name": "TEXT",
             "debt": "TEXT",
             "cancelled": "INTEGER",
+            # לחלונית פרטי הלקוחה בעמוד השיחות: סניף, פרטי קשר ופרטי המנוי הנוכחי
+            "location_id": "INTEGER",
+            "email": "TEXT",
+            "birthday": "TEXT",
+            "member_since": "TEXT",
+            "membership_price": "TEXT",
+            "membership_kind": "TEXT",
         }
         for name, column_type in new_columns.items():
             if name not in columns:

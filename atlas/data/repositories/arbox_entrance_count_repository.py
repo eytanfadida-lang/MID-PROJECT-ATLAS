@@ -10,6 +10,13 @@ class ArboxEntranceCountRepository:
     # בנפרד (ראו _resolve_attendance_milestone_recipients). ההגנה מפני ריצה כפולה של
     # ה-poller באותו יום היא ברמת האוטומציה עצמה (last_run_at/stage_instant, כמו כל
     # קהל דינמי אחר), לא כאן
+    # מונה הביקורים ותאריך הביקור האחרון של לקוחה אחת (None אם עוד לא נספרה) - לחלונית פרטי הלקוחה
+    def get_by_phone(self, phone):
+        row = self.conn.execute(
+            f"SELECT visit_count, last_counted_date FROM {TABLE_NAME} WHERE phone = ?", (phone,)
+        ).fetchone()
+        return {"visit_count": row[0], "last_visit": row[1]} if row else None
+
     def record_visit(self, phone, full_name, visit_date):
         row = self.conn.execute(
             f"SELECT visit_count FROM {TABLE_NAME} WHERE phone = ?", (phone,)

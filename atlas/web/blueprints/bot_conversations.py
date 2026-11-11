@@ -8,7 +8,8 @@ from werkzeug.utils import secure_filename
 from atlas.data.context import get_repos
 from atlas.core.auth import admin_required
 from atlas.services import linked_whatsapp
-from atlas.services.phone_utils import to_whatsapp_format
+from atlas.services.phone_utils import normalize_phone, to_whatsapp_format
+from atlas.integrations.arbox import client as arbox_client
 from atlas.integrations.whatsapp import bot as whatsapp_bot
 from atlas.paths import PROJECT_ROOT
 
@@ -174,6 +175,42 @@ def toggle_bot_pause(phone):
     return redirect(url_for("bot_conversations.view_conversation", phone=phone))
 
 
+# שמות הסניפים לפי location_id של Arbox - הקובץ arbox_location_map.json גובר; זה גיבוי אם הוא חסר בשרת
+_DEFAULT_BRANCHES = {"856": "קרית מוצקין", "857": "טירת הכרמל", "858": "טירת הכרמל"}
+
+
+def _age(birthday):
+    try:
+        born = datetime.date.fromisoformat(str(birthday)[:10])
+    except ValueError:
+        return None
+    today = datetime.date.today()
+    return today.year - born.year - ((today.month, today.day) < (born.month, born.day))
+
+
+# כל מה שידוע על הלקוחה בשיחה הפתוחה, לחלונית "פרטי לקוחה" בצד: נתוני Arbox מהקאש המקומי (מתרענן כל
+# כמה דקות - אין גישה חיה ל-Arbox מהשרת), מונה הביקורים, והליד ב-CRM אם יש. None בשדה = לא ידוע
+def _customer_info(repos, phone):
+    member = repos.arbox_member_cache.get_details_by_phone(phone)
+    info = {"phone": normalize_phone(phone) or phone, "member": member, "lead": None, "visits": None}
+    if member:
+        branches = {**_DEFAULT_BRANCHES, **{str(k): v for k, v in arbox_client.load_location_branch_map().items()}}
+        end = member.get("membership_end_date") or ""
+        info.update(
+            full_name=f"{member['first_name']} {member['last_name']}".strip(),
+            branch=branches.get(str(member.get("location_id") or "")),
+            age=_age(member.get("birthday")) if member.get("birthday") else None,
+            # Arbox שומרת להוראת קבע תאריך סיום רחוק (למשל 2036) - מציגים "מתחדש" במקום תאריך מטעה
+            recurring=bool(end[:4].isdigit() and int(end[:4]) >= datetime.date.today().year + 3),
+            has_debt=str(member.get("debt") or "0").strip() not in ("", "0", "0.0", "0.00"),
+        )
+    info["visits"] = repos.arbox_entrance_counts.get_by_phone(info["phone"])
+    leads = repos.leads.get_by_phone(info["phone"])
+    if not leads.empty:
+        info["lead"] = leads.iloc[0].to_dict()
+    return info
+
+
 # הקשר התבנית של פאנל השיחה הפתוחה (כותרת, הודעות, שדה תשובה) - משותף לעמוד המלא ולקטע (fragment)
 def _thread_context(repos, phone, messages, active_conversation):
     latest_number_id = repos.customer_bot_messages.get_latest_bot_phone_number_id(phone)
@@ -190,6 +227,7 @@ def _thread_context(repos, phone, messages, active_conversation):
     return dict(
         active_phone=phone, messages=messages, active_bot_label=active_bot_label,
         active_conversation=active_conversation, linked_unavailable=linked_unavailable,
+        customer=_customer_info(repos, phone),
     )
 
 

@@ -9,6 +9,7 @@
                     <span class="chat-header-sub">{% if active_conversation.full_name %}<bdi dir="ltr">{{ active_phone }}</bdi> · {% endif %}דרך: {{ active_bot_label }}</span>
                 </div>
                 <div class="chat-header-actions">
+                    <button type="button" class="btn btn-ghost btn-sm chat-info-toggle" aria-controls="chat-info" aria-expanded="false" title="פרטי הלקוחה מ-Arbox">פרטי לקוחה</button>
                     {% if not active_conversation.is_linked %}
                     <form method="post" action="{{ url_for('bot_conversations.toggle_bot_pause', phone=active_phone) }}">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
@@ -88,6 +89,55 @@
             <button type="submit" class="chat-send-btn" id="chat-send" aria-label="שליחה" title="שליחה (Ctrl+Enter)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M22 2 11 13"/><path d="M22 2l-7 20-4-9-9-4z"/></svg></button>
         </form>
         {% endif %}
+        {% set c = customer %}
+        {% set mem = c.member if c else None %}
+        <aside class="chat-info" id="chat-info" aria-label="פרטי הלקוחה">
+            <div class="chat-info-head">
+                <strong>פרטי לקוחה</strong>
+                <button type="button" class="chat-info-close" aria-label="סגירת פרטי הלקוחה">✕</button>
+            </div>
+            {% if mem %}
+            <dl class="chat-info-list">
+                <dt>שם</dt><dd>{{ c.full_name or '—' }}</dd>
+                <dt>סטטוס</dt><dd>
+                    {% if mem.active %}<span class="chat-info-pill is-on">לקוחה פעילה</span>
+                    {% else %}<span class="chat-info-pill is-off">לא פעילה</span>{% endif %}
+                    {% if mem.cancelled %}<span class="chat-info-pill is-off">מנוי בוטל</span>{% endif %}
+                </dd>
+                <dt>סוג מנוי</dt><dd>{{ mem.membership_type_name or '—' }}{% if mem.membership_kind == 'session' %} <small>(כרטיסייה)</small>{% endif %}</dd>
+                <dt>תוקף</dt><dd>
+                    {% if mem.membership_start_date %}מ-{{ mem.membership_start_date }} {% endif %}
+                    {% if c.recurring %}· הוראת קבע (מתחדש){% elif mem.membership_end_date %}עד {{ mem.membership_end_date }}{% endif %}
+                    {% if not mem.membership_start_date and not mem.membership_end_date %}—{% endif %}
+                </dd>
+                {% if mem.membership_price %}<dt>מחיר</dt><dd>₪{{ mem.membership_price }}</dd>{% endif %}
+                <dt>חוב</dt><dd>{% if c.has_debt %}<span class="chat-info-pill is-debt">₪{{ mem.debt }}</span>{% else %}אין{% endif %}</dd>
+                <dt>סניף</dt><dd>{{ c.branch or '—' }}</dd>
+                <dt>טלפון</dt><dd><bdi dir="ltr">{{ c.phone }}</bdi></dd>
+                {% if mem.email %}<dt>אימייל</dt><dd class="chat-info-wrap"><bdi dir="ltr">{{ mem.email }}</bdi></dd>{% endif %}
+                {% if mem.birthday %}<dt>יום הולדת</dt><dd>{{ mem.birthday[:10] }}{% if c.age is not none %} (גיל {{ c.age }}){% endif %}</dd>{% endif %}
+                {% if mem.member_since %}<dt>לקוחה מאז</dt><dd>{{ mem.member_since }}</dd>{% endif %}
+                <dt>ביקורים</dt><dd>{% if c.visits %}{{ c.visits.visit_count }}{% if c.visits.last_visit %} · אחרון {{ c.visits.last_visit }}{% endif %}{% else %}—{% endif %}</dd>
+            </dl>
+            <p class="chat-info-note">נתוני Arbox עודכנו: {{ mem.synced_at | format_lead_datetime }}. ספירת הביקורים היא מאז שהתחלנו לספור, לא מכל השנים.</p>
+            {% else %}
+            <p class="chat-info-empty">המספר <bdi dir="ltr">{{ c.phone if c else active_phone }}</bdi> לא נמצא בין הלקוחות ב-Arbox.</p>
+            {% endif %}
+            <div class="chat-info-section">
+                <strong>ב-CRM</strong>
+                {% if c and c.lead %}
+                <dl class="chat-info-list">
+                    <dt>ליד</dt><dd>{{ c.lead.full_name or '—' }}</dd>
+                    <dt>סטטוס</dt><dd>{{ c.lead.status or '—' }}</dd>
+                    <dt>ערוץ</dt><dd>{{ c.lead.channel or '—' }}</dd>
+                    {% if c.lead.notes %}<dt>הערות</dt><dd class="chat-info-wrap">{{ c.lead.notes | lead_notes_answers }}</dd>{% endif %}
+                </dl>
+                <a class="btn btn-ghost btn-sm" href="{{ url_for('leads.list_leads', phone=c.phone) }}">לליד בעמוד הלידים</a>
+                {% else %}
+                <p class="chat-info-empty">אין ליד עם המספר הזה.</p>
+                {% endif %}
+            </div>
+        </aside>
         {% else %}
         <div class="chat-app-empty">בחר/י שיחה מהרשימה</div>
         {% endif %}

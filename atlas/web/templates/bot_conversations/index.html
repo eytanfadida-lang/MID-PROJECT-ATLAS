@@ -411,6 +411,7 @@
         recountUnread();
     }
     function resetThreadState() {
+        threadWrap.classList.remove('chat-info-open');
         pendingBubbles = [];
         thread = threadWrap.querySelector('.chat-thread');
         lastThreadHtml = thread ? thread.innerHTML : null;
@@ -456,6 +457,15 @@
         highlightActive(null);
         if (push) history.replaceState({ chat: true }, '', app.dataset.listUrl);
     }
+    // חלונית "פרטי לקוחה": במסך רחב היא תמיד מוצגת בצד; במסך צר נפתחת/נסגרת בכפתור בכותרת השיחה
+    threadWrap.addEventListener('click', function (e) {
+        var toggle = e.target.closest('.chat-info-toggle, .chat-info-close');
+        if (!toggle) return;
+        var open = toggle.classList.contains('chat-info-toggle') && !threadWrap.classList.contains('chat-info-open');
+        threadWrap.classList.toggle('chat-info-open', open);
+        var btn = threadWrap.querySelector('.chat-info-toggle');
+        if (btn) btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    });
     itemsEl.addEventListener('click', function (e) {
         var link = e.target.closest('a.chat-list-item');
         if (!link || e.defaultPrevented || e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
