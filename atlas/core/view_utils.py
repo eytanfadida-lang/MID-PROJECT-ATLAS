@@ -75,7 +75,11 @@ def lead_notes_answers(text):
         line = line.strip()
         if not line:
             continue
-        answers.append(line.split(": ", 1)[-1].replace("_", " ").strip())
+        answer = line.split(": ", 1)[-1].strip()
+        # קישורים (למשל "Inbox URL" של שיחת מסנג'ר שמטא מצרפת לליד) אינם תשובה של הלקוחה - לא מציגים
+        if re.match(r"(https?://|www\.)", answer, re.IGNORECASE):
+            continue
+        answers.append(answer.replace("_", " "))
     return " · ".join(answers)
 
 
