@@ -9231,3 +9231,24 @@ body.page-leads-list .status-tabs.leads-tabs a {
         transform: none;
     }
 }
+
+/* ערוץ הליד עם לוגו קטן (ראו templates/leads/_channel.html) */
+.lead-channel {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+}
+
+.lead-channel .ch-icon {
+    flex-shrink: 0;
+    width: 16px;
+    height: 16px;
+}
+
+/* נקודת הצבע של הסטטוס בבורר - גדולה וממולאת, כדי שהצבע ייראה במבט אחד */
+select.status-select,
+.leads-table select.status-select {
+    padding-inline-end: 34px;
+    background-image: radial-gradient(circle 8px at calc(100% - 17px) center, var(--status-color, #95a5a6) 97%, transparent 100%);
+}

@@ -1,0 +1,22 @@
+{# ערוץ הליד עם לוגו קטן לפניו (פייסבוק/וואטסאפ/גוגל וכו'). ערוץ לא מוכר מוצג כטקסט בלבד #}
+{% macro channel_label(channel) -%}
+{%- set c = (channel or '') | lower -%}
+<span class="lead-channel">
+{%- if 'פייסבוק' in c or 'facebook' in c or c == 'meta' -%}
+<svg class="ch-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="12" fill="#1877F2"/><path fill="#fff" d="M13.4 19.5v-6.1h2.1l.3-2.4h-2.4V9.4c0-.7.2-1.2 1.2-1.2h1.3V6.1c-.2 0-1-.1-1.9-.1-1.9 0-3.2 1.2-3.2 3.3V11H8.7v2.4h2.1v6.1z"/></svg>
+{%- elif 'וואטסאפ' in c or 'whatsapp' in c -%}
+<svg class="ch-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="12" fill="#25D366"/><path fill="#fff" d="M12 5.3a6.6 6.6 0 0 0-5.7 10l-.9 3.4 3.5-.9A6.6 6.6 0 1 0 12 5.3zm3.9 9.3c-.2.5-.9.9-1.4 1-.4 0-.8.2-2.7-.6a8.8 8.8 0 0 1-3.4-3c-.3-.4-.8-1.1-.8-2.1 0-1 .5-1.5.7-1.7.2-.2.4-.3.6-.3h.4c.1 0 .3 0 .5.4l.7 1.6c0 .1.1.3 0 .4l-.2.4-.3.4c-.1.1-.2.2-.1.5.2.3.6 1 1.3 1.6.9.8 1.6 1 1.9 1.1.2.1.4.1.5-.1l.7-.8c.2-.2.3-.2.5-.1l1.5.7c.2.1.4.2.4.3.1.1.1.6-.1 1.1z"/></svg>
+{%- elif 'google' in c or 'גוגל' in c -%}
+<svg class="ch-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="12" fill="#fff" stroke="#dadce0"/><path fill="#4285F4" d="M18.6 12.2c0-.5 0-.9-.1-1.3H12v2.5h3.7a3.2 3.2 0 0 1-1.4 2.1v1.7h2.3a6.8 6.8 0 0 0 2-5z"/><path fill="#34A853" d="M12 19c1.9 0 3.4-.6 4.6-1.7l-2.3-1.7c-.6.4-1.4.7-2.3.7-1.8 0-3.3-1.2-3.8-2.8H5.8v1.8A7 7 0 0 0 12 19z"/><path fill="#FBBC05" d="M8.2 13.5a4.2 4.2 0 0 1 0-2.9V8.8H5.8a7 7 0 0 0 0 6.5z"/><path fill="#EA4335" d="M12 7.8c1 0 1.9.4 2.6 1l2-2A7 7 0 0 0 5.8 8.8l2.4 1.8c.5-1.6 2-2.8 3.8-2.8z"/></svg>
+{%- elif 'arbox' in c or 'ארבוקס' in c -%}
+<svg class="ch-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="12" fill="#2b2d42"/><path fill="#fff" d="M12 6.5 7.5 17.5h2.2l.9-2.4h2.8l.9 2.4h2.2L12 6.5zm-.7 6.8.7-2 .7 2z"/></svg>
+{%- elif 'נחיתה' in c or 'landing' in c or 'אתר' in c -%}
+<svg class="ch-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="12" fill="#0ea5e9"/><g fill="none" stroke="#fff" stroke-width="1.4"><circle cx="12" cy="12" r="5.5"/><path d="M6.5 12h11M12 6.5c1.6 1.6 2.3 3.4 2.3 5.5s-.7 3.9-2.3 5.5c-1.6-1.6-2.3-3.4-2.3-5.5s.7-3.9 2.3-5.5z"/></g></svg>
+{%- elif 'vip' in c -%}
+<svg class="ch-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="12" fill="#f2c230"/><path fill="#35213f" d="M6.5 15.5 7.3 9l3 2.4L12 7.5l1.7 3.9 3-2.4.8 6.5zm0 1h11v1.2h-11z"/></svg>
+{%- elif 'ידני' in c -%}
+<svg class="ch-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="12" fill="#94a3b8"/><path fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M13.8 7.2l3 3L10 17H7v-3zM12.5 8.5l3 3"/></svg>
+{%- endif -%}
+<span>{{ channel or '-' }}</span>
+</span>
+{%- endmacro %}

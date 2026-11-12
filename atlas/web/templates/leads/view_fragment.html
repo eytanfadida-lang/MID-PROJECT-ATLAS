@@ -1,3 +1,4 @@
+{% from "leads/_channel.html" import channel_label %}
 <div class="lead-view">
     <div class="lead-view-section-header">
         <span>פרטי ליד</span>
@@ -33,7 +34,7 @@
     </div>
     <div class="lead-view-row">
         <span class="lead-view-label">ערוץ</span>
-        <span class="lead-view-value">{{ lead.channel or '-' }}</span>
+        <span class="lead-view-value">{{ channel_label(lead.channel) }}</span>
     </div>
     <div class="lead-view-row">
         <span class="lead-view-label">סניף</span>

@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "leads/_channel.html" import channel_label %}
 {% block page_title %}לידים - מנהל תורים{% endblock %}
 {% block page_heading %}{% endblock %}
 
@@ -113,7 +114,7 @@
                     </form>
                 </td>
                 <td class="col-updated">{{ lead.last_updated_datetime_stamp | format_lead_datetime }}</td>
-                <td class="col-channel" data-label="ערוץ">{{ lead.channel }}</td>
+                <td class="col-channel" data-label="ערוץ">{{ channel_label(lead.channel) }}</td>
                 <td class="col-name">{{ lead.full_name }}</td>
                 <td class="col-phone">
                     <span class="phone-cell">
