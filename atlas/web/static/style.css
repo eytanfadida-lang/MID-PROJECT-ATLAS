@@ -9246,9 +9246,16 @@ body.page-leads-list .status-tabs.leads-tabs a {
     height: 16px;
 }
 
-/* נקודת הצבע של הסטטוס בבורר - גדולה וממולאת, כדי שהצבע ייראה במבט אחד */
+/* צבע הסטטוס ממלא את קצה הבורר בצד ההתחלה (ימין) לכל הגובה - הפינה המעוגלת של הבורר הופכת אותו
+   לחצי עיגול צבעוני. ריפוד פיזי (ימין/שמאל) ולא inline, כי הבורר מוצג מימין לשמאל */
 select.status-select,
 .leads-table select.status-select {
-    padding-inline-end: 34px;
-    background-image: radial-gradient(circle 8px at calc(100% - 17px) center, var(--status-color, #95a5a6) 97%, transparent 100%);
+    padding-right: 26px;
+    padding-left: 8px;
+    background-image: linear-gradient(to left, var(--status-color, #95a5a6) 0 15px, transparent 15px);
+}
+
+/* וואטסאפ בטור הערוץ - אותו אייקון ירוק כמו ליד הטלפון */
+.lead-channel .ch-icon-wa {
+    color: #25d366;
 }
