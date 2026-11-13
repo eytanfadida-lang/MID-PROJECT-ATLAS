@@ -264,6 +264,15 @@ def receive_arbox_sync_data():
     if isinstance(schedule, list) and from_date and to_date:
         repos.arbox_class_cache.replace_range(from_date, to_date, schedule)
 
+    # ביקורים (bookingsReport, חלון נע אחורה) - לתוסף ה-Chrome (extension_api.py lookup),
+    # "ביקורים אחרונים" לפי טלפון. אותו עיקרון בדיוק כמו schedule למעלה - שדות אופציונליים,
+    # לא שוברים תאימות לאחור אם שולח ישן (לפני השדרוג הזה) לא מספק אותם
+    bookings = payload.get("bookings")
+    bookings_from_date = payload.get("bookings_from_date")
+    bookings_to_date = payload.get("bookings_to_date")
+    if isinstance(bookings, list) and bookings_from_date and bookings_to_date:
+        repos.arbox_visit_cache.replace_range(bookings_from_date, bookings_to_date, bookings)
+
     result = apply_arbox_users_to_leads(repos, arbox_users)
     return jsonify(result)
 

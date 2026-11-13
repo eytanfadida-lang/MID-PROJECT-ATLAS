@@ -36,6 +36,7 @@ from atlas.web.blueprints.bot_conversations import bp as bot_conversations_bp
 from atlas.web.blueprints.automations import bp as automations_bp
 from atlas.web.blueprints.whatsapp_templates import bp as whatsapp_templates_bp
 from atlas.web.webhooks import bp as webhooks_bp
+from atlas.web.blueprints.extension_api import bp as extension_api_bp
 
 # אין אישור על תמיכת Arbox ב-webhook, לכן זו קירוב בפולינג תדיר (לא טריגר אמיתי בזמן אמת)
 ARBOX_SYNC_INTERVAL_SECONDS = 300
@@ -243,6 +244,7 @@ def create_app():
     app.register_blueprint(automations_bp)
     app.register_blueprint(whatsapp_templates_bp)
     app.register_blueprint(webhooks_bp)
+    app.register_blueprint(extension_api_bp)
 
     app.before_request(validate_csrf)
 
