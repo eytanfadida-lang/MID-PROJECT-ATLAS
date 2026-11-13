@@ -1,0 +1,7 @@
+Fonts bundled with this site (self-hosted so the app works offline and makes no external requests):
+
+- Assistant  - Copyright 2016 The Assistant Project Authors (https://github.com/hafontia-zz/Assistant)
+- Secular One - Copyright 2016 The Secular One Project Authors (https://github.com/alefalefalef/Secular-One)
+
+Both are licensed under the SIL Open Font License, Version 1.1 (https://openfontlicense.org).
+The fonts are redistributed unmodified apart from the web-font subsetting (Hebrew + Latin) done by Google Fonts.
