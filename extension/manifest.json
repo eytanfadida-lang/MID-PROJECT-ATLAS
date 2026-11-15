@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "אפרת רוזנברג CRM - תוסף וואטסאפ",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "מציג מידע מה-CRM (ליד, סטטוס, מנוי, הערות) ותגובות מהירות ישירות בתוך WhatsApp Web",
   "icons": {
     "16": "icons/icon16.png",
@@ -26,7 +26,7 @@
     },
     {
       "matches": ["https://web.whatsapp.com/*"],
-      "js": ["content.js"],
+      "js": ["shared.js", "quick-replies.js", "content.js"],
       "run_at": "document_idle"
     }
   ]

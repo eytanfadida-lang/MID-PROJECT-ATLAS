@@ -18,6 +18,8 @@ if sys.stdout.encoding != "utf-8":
 SCHEDULE_DAYS_AHEAD = 10
 # "ביקורים אחרונים" לתוסף ה-Chrome (extension_api.py) - חלון נע אחורה, לא צריך היסטוריה עמוקה
 BOOKINGS_DAYS_BACK = 45
+# רק השדות שכרטיס איש הקשר צריך - כדי לא לנפח את הבקשה ב-6000 רשומות מלאות כל 15 דקות
+CONTACT_FIELDS = ("phone", "user_id", "first_name", "last_name", "user_role", "email", "birthday", "location_id", "created_time")
 
 
 def main():
@@ -26,9 +28,18 @@ def main():
     token = os.environ["ARBOX_SYNC_TOKEN"]
 
     # לא מסננים active="1" - כדי שגם מנויים שפגו יגיעו עם active=0, ותהיה לבוט הלקוחות
-    # תשובה אמיתית ("המנוי שלך הסתיים בתאריך X") במקום "לא נמצא במערכת", ראו §3.8 בתוכנית
-    arbox_users = fetch_arbox_users(api_key, only_clients="1")
-    print(f"Fetched {len(arbox_users)} clients from Arbox.")
+    # תשובה אמיתית ("המנוי שלך הסתיים בתאריך X") במקום "לא נמצא במערכת", ראו §3.8 בתוכנית.
+    # שולפים את כל המשתמשים בקריאה אחת ומפצלים: לקוחות (user_role="client" - זהה בדיוק ל-
+    # only_clients="1", מאומת: 8093 מול 8093) ממשיכים לקאש המנויים כמו קודם; כל השאר (לידים,
+    # עובדות, מנויי אגרגטור) לקאש נפרד, לכרטיס איש הקשר בתוסף ה-Chrome
+    all_users = fetch_arbox_users(api_key)
+    arbox_users = [u for u in all_users if u.get("user_role") == "client"]
+    contacts = [
+        {key: u.get(key) for key in CONTACT_FIELDS}
+        for u in all_users
+        if u.get("user_role") != "client"
+    ]
+    print(f"Fetched {len(arbox_users)} clients and {len(contacts)} other users from Arbox.")
 
     arbox_memberships = fetch_arbox_active_memberships(api_key)
     print(f"Fetched {len(arbox_memberships)} active memberships from Arbox.")
@@ -64,6 +75,7 @@ def main():
             "bookings": bookings,
             "bookings_from_date": bookings_from.isoformat(),
             "bookings_to_date": bookings_to.isoformat(),
+            "contacts": contacts,
         },
         timeout=60,
     )

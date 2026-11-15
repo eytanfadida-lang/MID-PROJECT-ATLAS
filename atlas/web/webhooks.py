@@ -273,6 +273,11 @@ def receive_arbox_sync_data():
     if isinstance(bookings, list) and bookings_from_date and bookings_to_date:
         repos.arbox_visit_cache.replace_range(bookings_from_date, bookings_to_date, bookings)
 
+    # משתמשי Arbox שאינם לקוחות (לידים/עובדות/אגרגטור) - לכרטיס איש הקשר בתוסף. אופציונלי כמו למעלה
+    contacts = payload.get("contacts")
+    if isinstance(contacts, list):
+        repos.arbox_contact_cache.replace_all(contacts)
+
     result = apply_arbox_users_to_leads(repos, arbox_users)
     return jsonify(result)
 
