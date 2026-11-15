@@ -30,19 +30,29 @@
         top: 0;
         left: 0;
         height: 100vh;
-        width: 340px;
+        width: var(--panel-w, 340px);
         background: #fff;
-        border-left: 1px solid #ddd;
-        box-shadow: 2px 0 10px rgba(0,0,0,0.08);
+        border-right: 1px solid #ddd;
         direction: rtl;
         display: flex;
         flex-direction: column;
-        transform: translateX(-340px);
+        transform: translateX(calc(-1 * var(--panel-w, 340px)));
         transition: transform 0.2s ease;
         font-size: 13px;
         color: #111;
       }
       .panel.open { transform: translateX(0); }
+      .panel.resizing, .toggle.resizing { transition: none; }
+      .resize-handle {
+        position: absolute;
+        top: 0;
+        right: -4px;
+        width: 8px;
+        height: 100%;
+        cursor: ew-resize;
+        z-index: 2;
+      }
+      .resize-handle:hover, .panel.resizing .resize-handle { background: rgba(37, 99, 235, 0.25); }
       .toggle {
         position: fixed;
         top: 70px;
@@ -57,23 +67,29 @@
         font-size: 12px;
         transition: left 0.2s ease;
       }
-      .toggle.open { left: 340px; }
+      .toggle.open { left: var(--panel-w, 340px); }
       .header {
         padding: 12px 14px;
         border-bottom: 1px solid #eee;
         display: flex;
         align-items: center;
         justify-content: space-between;
+        gap: 8px;
       }
-      .header h2 { font-size: 14px; margin: 0; }
-      .refresh-btn {
+      .header h2 { font-size: 14px; margin: 0; white-space: nowrap; }
+      .header-actions { display: flex; align-items: center; gap: 4px; }
+      .refresh-btn, .zoom-btn {
         border: none;
         background: none;
         cursor: pointer;
         font-size: 14px;
         color: #2563eb;
+        padding: 2px 6px;
+        border-radius: 4px;
       }
-      .body { padding: 14px; overflow-y: auto; flex: 1; }
+      .zoom-btn { font-size: 12px; font-weight: bold; }
+      .refresh-btn:hover, .zoom-btn:hover { background: #eef2ff; }
+      .body { padding: 14px; overflow-y: auto; overflow-x: hidden; flex: 1; zoom: var(--text-scale, 1); }
       .row { margin-bottom: 10px; }
       .label { color: #888; font-size: 11px; margin-bottom: 2px; }
       .value { font-size: 13px; }
@@ -147,9 +163,14 @@
     </style>
     <button class="toggle">CRM</button>
     <div class="panel">
+      <div class="resize-handle" title="גררי כדי לשנות רוחב"></div>
       <div class="header">
         <h2>מידע לקוח</h2>
-        <button class="refresh-btn" title="רענון">⟳</button>
+        <div class="header-actions">
+          <button class="zoom-btn" data-zoom="-1" title="הקטנת טקסט">A−</button>
+          <button class="zoom-btn" data-zoom="1" title="הגדלת טקסט">A+</button>
+          <button class="refresh-btn" title="רענון">⟳</button>
+        </div>
       </div>
       <div class="body"></div>
     </div>
@@ -160,14 +181,91 @@
   const bodyEl = shadow.querySelector(".body");
   const refreshBtn = shadow.querySelector(".refresh-btn");
 
+  // --- פריסה: הפאנל "דוחף" את וואטסאפ הצידה במקום לצוף מעליה ולהסתיר חלק מהשיחה. ---
+  // מצמצמים את ה-body של וואטסאפ ברוחב הפאנל; transform על ה-body הופך אותו לבסיס של
+  // אלמנטים ב-position:fixed (תפריטים/חלונות קופצים של וואטסאפ), כך שגם הם זזים יחד איתו.
+  // ה-host שלנו יושב על documentElement ולא בתוך ה-body, אז הוא לא מושפע מזה
+  const MIN_WIDTH = 260;
+  const DEFAULT_WIDTH = 340;
+  const SCALE_STEPS = [0.85, 0.9, 1, 1.1, 1.2, 1.3, 1.4];
+
   let panelOpen = true;
-  function setOpen(open) {
-    panelOpen = open;
-    panelEl.classList.toggle("open", open);
-    toggleEl.classList.toggle("open", open);
+  let panelWidth = DEFAULT_WIDTH;
+  let scaleIndex = SCALE_STEPS.indexOf(1);
+
+  const layoutStyle = document.createElement("style");
+  layoutStyle.id = "atlas-crm-layout";
+  (document.head || document.documentElement).appendChild(layoutStyle);
+
+  function maxWidth() {
+    return Math.max(MIN_WIDTH, Math.min(700, Math.floor(window.innerWidth * 0.6)));
   }
-  setOpen(true);
-  toggleEl.addEventListener("click", () => setOpen(!panelOpen));
+
+  function clampWidth(width) {
+    return Math.min(maxWidth(), Math.max(MIN_WIDTH, Math.round(width)));
+  }
+
+  function applyLayout() {
+    host.style.setProperty("--panel-w", `${panelWidth}px`);
+    host.style.setProperty("--text-scale", String(SCALE_STEPS[scaleIndex]));
+    panelEl.classList.toggle("open", panelOpen);
+    toggleEl.classList.toggle("open", panelOpen);
+    layoutStyle.textContent = panelOpen
+      ? `body { margin-left: ${panelWidth}px !important; width: calc(100% - ${panelWidth}px) !important; ` +
+        `transform: translateZ(0); overflow: hidden !important; }`
+      : "";
+  }
+
+  function savePrefs() {
+    chrome.storage.local.set({ atlasPanelOpen: panelOpen, atlasPanelWidth: panelWidth, atlasTextScale: scaleIndex });
+  }
+
+  toggleEl.addEventListener("click", () => {
+    panelOpen = !panelOpen;
+    applyLayout();
+    savePrefs();
+  });
+
+  shadow.querySelectorAll(".zoom-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const next = scaleIndex + Number(btn.dataset.zoom);
+      scaleIndex = Math.min(SCALE_STEPS.length - 1, Math.max(0, next));
+      applyLayout();
+      savePrefs();
+    });
+  });
+
+  const handleEl = shadow.querySelector(".resize-handle");
+  handleEl.addEventListener("pointerdown", (event) => {
+    event.preventDefault();
+    handleEl.setPointerCapture(event.pointerId);
+    panelEl.classList.add("resizing");
+    toggleEl.classList.add("resizing");
+  });
+  handleEl.addEventListener("pointermove", (event) => {
+    if (!handleEl.hasPointerCapture(event.pointerId)) return;
+    panelWidth = clampWidth(event.clientX); // הפאנל מוצמד לשמאל, אז הרוחב = מיקום העכבר
+    applyLayout();
+  });
+  handleEl.addEventListener("pointerup", (event) => {
+    handleEl.releasePointerCapture(event.pointerId);
+    panelEl.classList.remove("resizing");
+    toggleEl.classList.remove("resizing");
+    savePrefs();
+  });
+
+  window.addEventListener("resize", () => {
+    panelWidth = clampWidth(panelWidth);
+    applyLayout();
+  });
+
+  applyLayout();
+  chrome.storage.local.get(["atlasPanelOpen", "atlasPanelWidth", "atlasTextScale"]).then((prefs) => {
+    if (typeof prefs.atlasPanelOpen === "boolean") panelOpen = prefs.atlasPanelOpen;
+    if (typeof prefs.atlasPanelWidth === "number") panelWidth = clampWidth(prefs.atlasPanelWidth);
+    if (typeof prefs.atlasTextScale === "number" && SCALE_STEPS[prefs.atlasTextScale]) scaleIndex = prefs.atlasTextScale;
+    applyLayout();
+  });
 
   // --- מצב ---
 
