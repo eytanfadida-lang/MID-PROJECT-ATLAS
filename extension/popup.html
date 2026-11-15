@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <title>CRM - אפרת רוזנברג</title>
+  <style>
+    body {
+      width: 260px;
+      font-family: Arial, sans-serif;
+      padding: 16px;
+      margin: 0;
+      direction: rtl;
+    }
+    h1 {
+      font-size: 15px;
+      margin: 0 0 12px;
+    }
+    label {
+      display: block;
+      font-size: 12px;
+      color: #555;
+      margin: 10px 0 4px;
+    }
+    input {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 7px 8px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      font-size: 13px;
+    }
+    button {
+      width: 100%;
+      margin-top: 14px;
+      padding: 8px;
+      border: none;
+      border-radius: 6px;
+      background: #2563eb;
+      color: #fff;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    button.secondary {
+      background: #e5e7eb;
+      color: #111;
+    }
+    #error {
+      color: #dc2626;
+      font-size: 12px;
+      margin-top: 8px;
+      min-height: 14px;
+    }
+    #logged-in-view {
+      display: none;
+      text-align: center;
+    }
+    #logged-in-view p {
+      font-size: 13px;
+      margin: 4px 0 14px;
+    }
+  </style>
+</head>
+<body>
+  <h1>התחברות לתוסף CRM</h1>
+
+  <div id="login-view">
+    <label for="username">שם משתמש</label>
+    <input id="username" type="text" autocomplete="username" />
+    <label for="password">סיסמה</label>
+    <input id="password" type="password" autocomplete="current-password" />
+    <button id="login-btn">התחברי</button>
+    <div id="error"></div>
+  </div>
+
+  <div id="logged-in-view">
+    <p>מחוברת כ-<strong id="logged-in-username"></strong></p>
+    <button id="logout-btn" class="secondary">התנתקות</button>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

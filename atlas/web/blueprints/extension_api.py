@@ -4,6 +4,7 @@ from flask import Blueprint, abort, g, jsonify, request
 
 from atlas.core.api_auth import token_required
 from atlas.data.context import get_repos
+from atlas.web.blueprints.bot_conversations import _customer_info
 from atlas.settings import BRANCHES
 from atlas.services.phone_utils import normalize_phone
 
@@ -52,16 +53,18 @@ def lookup():
         return jsonify(ok=False, error="מספר טלפון לא תקין"), 400
 
     repos = get_repos()
-    leads_df = repos.leads.get_by_phone(phone)
-    lead = leads_df.iloc[0].to_dict() if not leads_df.empty else None
+    # אותו "כרטיס לקוחה" כמו בחלונית עמוד שיחות הבוט (שם, סניף, גיל, הוראת קבע, חוב, מונה ביקורים)
+    # - כדי שהתוסף והעמוד הפנימי יציגו בדיוק את אותו מידע ולא יתפצלו
+    customer = _customer_info(repos, phone)
 
     return jsonify(
         ok=True,
         phone=phone,
-        lead=lead,
+        lead=customer["lead"],
+        customer=customer,
         status_colors=repos.lead_statuses.get_color_map(),
         branches=BRANCHES,
-        membership=repos.arbox_member_cache.get_details_by_phone(phone),
+        membership=customer["member"],
         recent_visits=repos.arbox_visit_cache.get_recent_by_phone(phone),
     )
 
