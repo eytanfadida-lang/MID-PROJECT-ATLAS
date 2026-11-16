@@ -9259,3 +9259,73 @@ select.status-select,
 .lead-channel .ch-icon-wa {
     color: #25d366;
 }
+
+/* עמוד שיחות הבוט במחשב - כמו עמוד הלידים: בלי כותרת ובלי רווח עליון, והעמוד עצמו לא גולל.
+   שרשרת flex בגובה המסך מקצה את כל הגובה שנשאר לאפליקציית הצ'אט, כך שהגלילה היא רק בתוכה
+   (רשימת השיחות, השיחה, פרטי הלקוחה). במובייל יש לעמוד פריסה משלו (max-width: 800px) */
+@media (min-width: 801px) {
+    html:has(body.page-chat-list),
+    html:has(body.page-chat-thread) {
+        height: 100%;
+        overflow: hidden;
+        overscroll-behavior: none;
+    }
+
+    body.page-chat-list,
+    body.page-chat-thread {
+        position: fixed;
+        inset: 0;
+        width: 100%;
+        overscroll-behavior: none;
+    }
+
+    body.page-chat-list .app-shell,
+    body.page-chat-thread .app-shell {
+        height: 100vh;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+    }
+
+    body.page-chat-list .layout,
+    body.page-chat-thread .layout {
+        flex: 1;
+        min-height: 0;
+        overflow: hidden;
+    }
+
+    body.page-chat-list .content,
+    body.page-chat-thread .content {
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+        overflow: hidden;
+        padding-top: 8px;
+        padding-bottom: 8px;
+    }
+
+    body.page-chat-list .card,
+    body.page-chat-thread .card {
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+        min-height: 0;
+        overflow: hidden;
+        padding: 0;
+        border: none;
+        background: transparent;
+        box-shadow: none;
+    }
+
+    body.page-chat-list .card-header,
+    body.page-chat-thread .card-header {
+        display: none;
+    }
+
+    body.page-chat-list .chat-app,
+    body.page-chat-thread .chat-app {
+        flex: 1;
+        height: auto;
+        min-height: 0;
+    }
+}
