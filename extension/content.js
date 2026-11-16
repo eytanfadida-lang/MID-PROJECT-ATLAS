@@ -92,13 +92,17 @@
       .inline-form { display: flex; gap: 6px; margin-top: 6px; width: 100%; }
       .inline-form input { flex: 1; min-width: 0; }
       .stack-form { display: flex; flex-direction: column; gap: 6px; margin: 6px 0 10px; }
-      .links { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
-      .link-btn {
-        display: inline-block; border: 1px solid #bfdbfe; background: #eff6ff; color: #1d4ed8; border-radius: 8px;
-        font-size: 12px; padding: 5px 10px; cursor: pointer; text-decoration: none; font-family: inherit;
+      .name-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+      .pills { display: flex; gap: 6px; flex-shrink: 0; }
+      .pill-link {
+        display: inline-flex; align-items: center; gap: 3px; height: 0.5cm; padding: 0 7px;
+        border: 1px solid #d1d5db; background: #fff; color: #1f2937; border-radius: 999px;
+        font-size: 11px; font-weight: 600; cursor: pointer; text-decoration: none; font-family: inherit;
+        direction: ltr; white-space: nowrap;
       }
-      .link-btn:hover { background: #dbeafe; }
-      .link-btn:disabled { opacity: 0.6; cursor: default; }
+      .pill-link:hover { background: #f3f4f6; }
+      .pill-link:disabled { opacity: 0.6; cursor: default; }
+      .pill-link svg { width: 10px; height: 10px; }
 
       .section { border-top: 1px solid #eee; margin-top: 8px; }
       .section-head {
@@ -257,6 +261,8 @@
   function badge(label, color) {
     return `<span class="badge" style="background:${escapeHtml(color)}">${escapeHtml(label)}</span>`;
   }
+
+  const EXTERNAL_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h6v6"/><path d="M20 4l-9 9"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg>`;
 
   const TAG_COLORS = ["#2563eb", "#7c3aed", "#db2777", "#ea580c", "#0d9488", "#4d7c0f", "#b45309", "#0369a1"];
   function tagColor(tag) {
@@ -444,17 +450,17 @@
     const displayName = (member && customer.full_name) || (contact && contact.full_name) || (lead && lead.full_name) || currentName || "";
     globalThis.AtlasCRM.contactFirstName = (displayName || "").trim().split(/\s+/)[0] || "";
 
-    let html = `<div class="name">${text(displayName) || "ללא שם"}</div>`;
-    html += `<div class="source">${source ? `נתונים מ-${source}` : "לא נמצא ב-Arbox וב-CRM"}</div>`;
-
-    const links = [];
+    // כפתורי קישור קומפקטיים בצד שמאל של שורת השם (בעברית השם מימין)
+    const pills = [];
     if (member || contact) {
-      links.push(`<button class="link-btn" data-action="open-arbox">כרטיס לקוחה ב-Arbox ↗</button>`);
+      pills.push(`<button class="pill-link" data-action="open-arbox" title="כרטיס הלקוחה ב-Arbox">Arbox ${EXTERNAL_ICON}</button>`);
     }
     if (lead) {
-      links.push(`<a class="link-btn" href="${CRM_BASE}/leads/${encodeURIComponent(lead.id)}/edit" target="_blank" rel="noopener">פתיחה ב-CRM ↗</a>`);
+      pills.push(`<a class="pill-link" href="${CRM_BASE}/leads/${encodeURIComponent(lead.id)}/edit" target="_blank" rel="noopener" title="הליד ב-CRM">CRM ${EXTERNAL_ICON}</a>`);
     }
-    if (links.length) html += `<div class="links">${links.join("")}</div>`;
+    let html = `<div class="name-row"><div class="name">${text(displayName) || "ללא שם"}</div>` +
+      (pills.length ? `<div class="pills">${pills.join("")}</div>` : "") + `</div>`;
+    html += `<div class="source">${source ? `נתונים מ-${source}` : "לא נמצא ב-Arbox וב-CRM"}</div>`;
 
     if (member) {
       html += kv("סטטוס", member.active ? badge("לקוחה פעילה", "#27ae60") : badge("לא פעילה", "#95a5a6"));
@@ -570,7 +576,6 @@
       renderCard();
     } else if (action === "open-arbox") {
       target.disabled = true;
-      target.textContent = "פותח...";
       const result = await sendToBackground({ type: "atlasOpenArboxProfile", phone: currentPhone });
       if (result.status !== 200) {
         errorMessage = result.data?.error || "לא הצלחתי לפתוח את הכרטיס ב-Arbox";
