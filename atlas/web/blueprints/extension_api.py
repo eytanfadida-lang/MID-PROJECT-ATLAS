@@ -7,7 +7,7 @@ from atlas.core.api_auth import token_required
 from atlas.data.context import get_repos
 from atlas.integrations.arbox import client as arbox_client
 from atlas.web.blueprints.bot_conversations import (
-    QUICK_REPLY_BODY_MAX, QUICK_REPLY_TITLE_MAX, _DEFAULT_BRANCHES, _age, _customer_info,
+    QUICK_REPLY_BODY_MAX, QUICK_REPLY_TITLE_MAX, _DEFAULT_BRANCHES, _age, _customer_info, get_arbox_profile_link,
 )
 from atlas.settings import BRANCHES
 from atlas.services.phone_utils import normalize_phone
@@ -237,6 +237,17 @@ def add_lead_note(lead_id):
     repos.leads.update_field(lead_id, "notes", merged_notes)
     repos.contact_extras.log(normalize_phone(lead["phone"]) or lead["phone"], "נוספה הערה", _username())
     return jsonify(ok=True, lead=repos.leads.get_by_id(lead_id))
+
+
+# הקישור לכרטיס של איש הקשר במערכת הניהול של Arbox (נשלף מ-Arbox בפעם הראשונה ונשמר - ראו
+# get_arbox_profile_link). נקרא רק בלחיצה על הכפתור, לא בכל החלפת שיחה
+@bp.route("/contacts/<phone>/arbox-profile", methods=["GET"])
+@token_required
+def arbox_profile_link(phone):
+    link = get_arbox_profile_link(_phone_or_400(phone))
+    if not link:
+        return jsonify(ok=False, error="לא נמצא כרטיס ב-Arbox למספר הזה"), 404
+    return jsonify(ok=True, link=link)
 
 
 # --- תגיות (לפי טלפון - עובד גם ללקוחה שאין לה ליד) ---

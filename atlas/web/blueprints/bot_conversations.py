@@ -309,9 +309,8 @@ def _load_profile_links():
         return {}
 
 
-@bp.route("/<phone>/arbox-profile")
-@admin_required
-def arbox_profile(phone):
+# הקישור לכרטיס ב-Arbox לטלפון נתון, או "" אם אין. משותף לעמוד השיחות ולתוסף ה-Chrome (extension_api.py)
+def get_arbox_profile_link(phone):
     key = normalize_phone(phone) or phone
     links = _load_profile_links()
     link = links.get(key)
@@ -329,7 +328,14 @@ def arbox_profile(phone):
                 ARBOX_PROFILE_LINKS_FILE.write_text(json.dumps(links, ensure_ascii=False), encoding="utf-8")
             except OSError:
                 pass
-    if not link.startswith(ARBOX_PROFILE_PREFIX):
+    return link if link.startswith(ARBOX_PROFILE_PREFIX) else ""
+
+
+@bp.route("/<phone>/arbox-profile")
+@admin_required
+def arbox_profile(phone):
+    link = get_arbox_profile_link(phone)
+    if not link:
         flash("לא נמצא כרטיס ב-Arbox למספר הזה.", "error")
         return redirect(url_for("bot_conversations.view_conversation", phone=phone))
     return redirect(link)

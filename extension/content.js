@@ -92,7 +92,13 @@
       .inline-form { display: flex; gap: 6px; margin-top: 6px; width: 100%; }
       .inline-form input { flex: 1; min-width: 0; }
       .stack-form { display: flex; flex-direction: column; gap: 6px; margin: 6px 0 10px; }
-      .crm-link { display: inline-block; margin: 10px 0 2px; font-size: 12px; color: #2563eb; }
+      .links { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+      .link-btn {
+        display: inline-block; border: 1px solid #bfdbfe; background: #eff6ff; color: #1d4ed8; border-radius: 8px;
+        font-size: 12px; padding: 5px 10px; cursor: pointer; text-decoration: none; font-family: inherit;
+      }
+      .link-btn:hover { background: #dbeafe; }
+      .link-btn:disabled { opacity: 0.6; cursor: default; }
 
       .section { border-top: 1px solid #eee; margin-top: 8px; }
       .section-head {
@@ -441,6 +447,15 @@
     let html = `<div class="name">${text(displayName) || "ללא שם"}</div>`;
     html += `<div class="source">${source ? `נתונים מ-${source}` : "לא נמצא ב-Arbox וב-CRM"}</div>`;
 
+    const links = [];
+    if (member || contact) {
+      links.push(`<button class="link-btn" data-action="open-arbox">כרטיס לקוחה ב-Arbox ↗</button>`);
+    }
+    if (lead) {
+      links.push(`<a class="link-btn" href="${CRM_BASE}/leads/${encodeURIComponent(lead.id)}/edit" target="_blank" rel="noopener">פתיחה ב-CRM ↗</a>`);
+    }
+    if (links.length) html += `<div class="links">${links.join("")}</div>`;
+
     if (member) {
       html += kv("סטטוס", member.active ? badge("לקוחה פעילה", "#27ae60") : badge("לא פעילה", "#95a5a6"));
     } else if (contact) {
@@ -464,12 +479,11 @@
     if (lead) {
       html += kv("נציג/ה", assignSelect(lead));
       html += kv("ערוץ הגעה", text(lead.channel));
-      html += `<a class="crm-link" href="${CRM_BASE}/leads/${encodeURIComponent(lead.id)}/edit" target="_blank" rel="noopener">פתיחה ב-CRM ↗</a>`;
     }
 
+    html += visitsSection();
     html += notesSection(lead);
     html += tasksSection();
-    html += visitsSection();
     html += activitySection();
     setBody(html);
   }
@@ -553,6 +567,14 @@
       if (ui.addTag) shadow.querySelector('[data-form="add-tag"] input')?.focus();
     } else if (action === "open-create-lead" || action === "cancel-create-lead") {
       ui.createLead = action === "open-create-lead";
+      renderCard();
+    } else if (action === "open-arbox") {
+      target.disabled = true;
+      target.textContent = "פותח...";
+      const result = await sendToBackground({ type: "atlasOpenArboxProfile", phone: currentPhone });
+      if (result.status !== 200) {
+        errorMessage = result.data?.error || "לא הצלחתי לפתוח את הכרטיס ב-Arbox";
+      }
       renderCard();
     } else if (action === "remove-tag") {
       await act(`/api/extension/contacts/${currentPhone}/tags/remove`, { tag: target.dataset.tag });

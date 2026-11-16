@@ -60,6 +60,19 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
+  // פתיחת כרטיס הלקוחה ב-Arbox בלשונית חדשה. נעשה כאן ולא ב-content script, כי window.open אחרי
+  // המתנה לשרת נחסם ע"י חוסם החלונות הקופצים; chrome.tabs.create לא נחסם
+  if (message.type === "atlasOpenArboxProfile") {
+    apiFetch(`/api/extension/contacts/${encodeURIComponent(message.phone)}/arbox-profile`).then((result) => {
+      const link = result.data && result.data.link;
+      if (result.status === 200 && typeof link === "string" && link.startsWith("https://manage.arboxapp.com/")) {
+        chrome.tabs.create({ url: link });
+      }
+      sendResponse(result);
+    });
+    return true;
+  }
+
   if (message.type === "atlasAuthState") {
     chrome.storage.local.get(["token", "username"]).then((stored) =>
       sendResponse({ loggedIn: Boolean(stored.token), username: stored.username || null })
