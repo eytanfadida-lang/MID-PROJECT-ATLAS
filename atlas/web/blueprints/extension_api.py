@@ -1,6 +1,6 @@
 import datetime
 
-from flask import Blueprint, abort, g, jsonify, request
+from flask import Blueprint, abort, g, jsonify, render_template, request
 
 from atlas.core import roles
 from atlas.core.api_auth import token_required
@@ -74,6 +74,12 @@ def _forbidden(error):
 @bp.errorhandler(404)
 def _not_found(error):
     return jsonify(ok=False, error="לא נמצא"), 404
+
+
+# מדיניות הפרטיות של התוסף - עמוד ציבורי (בלי התחברות), כי חנות Chrome דורשת קישור אליו בטופס הפרסום
+@bp.route("/privacy", methods=["GET"])
+def privacy():
+    return render_template("extension_privacy.html")
 
 
 @bp.route("/login", methods=["POST"])
