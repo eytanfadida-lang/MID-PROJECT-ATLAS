@@ -314,6 +314,7 @@ class AutomationDB:
         self._seed_studio_closure_manual_campaign(conn)
         self._seed_expired_membership_winback_manual_campaign(conn)
         self._seed_inactive_master_winback_manual_campaign(conn)
+        self._seed_inactive_gold_motzkin_manual_campaign(conn)
         self._seed_strength_room_master_upgrade_manual_campaign(conn)
         self._seed_attendance_milestone_automation(conn)
         self._migrate_upgrade360_automations_to_templates(conn)
@@ -1340,6 +1341,50 @@ class AutomationDB:
         }
         now = datetime.datetime.now().isoformat(timespec="seconds")
         trigger_config = {"schedule_type": "once", "run_at": "2026-11-02T18:30"}
+        cursor = conn.execute(
+            "INSERT INTO automations (tenant_id, name, trigger_type, trigger_config, enabled, "
+            "created_at, updated_at) VALUES (1, ?, 'scheduled', ?, 0, ?, ?)",
+            (name, json.dumps(trigger_config, ensure_ascii=False), now, now),
+        )
+        automation_id = cursor.lastrowid
+        conn.execute(
+            "INSERT INTO automation_steps (automation_id, step_order, delay_minutes, action_type, "
+            "action_config) VALUES (?, 1, 0, 'send_whatsapp_message', ?)",
+            (automation_id, json.dumps(action_config, ensure_ascii=False)),
+        )
+        for phone, full_name in recipients:
+            conn.execute(
+                "INSERT INTO automation_recipients (automation_id, phone, full_name, created_at) "
+                "VALUES (?, ?, ?, ?)",
+                (automation_id, phone, full_name, now),
+            )
+        conn.commit()
+
+    # קמפיין חד-פעמי (2026-11-16, 18:30) ללקוחות גולד במוצקין שהמנוי שלהן הסתיים ב-1.8-1.11.26 ושאינן
+    # פעילות בשום צורה - תבנית "gold_inactive_doors_open" (MARKETING). כמו הקמפיין של המאסטר: הנמענים
+    # נטענים מקובץ מקומי שלא נכנס לגיט (הריפו ציבורי), ואם הקובץ חסר - לא עושים כלום. נוצר כבוי
+    # (enabled=0) - מפעילים ידנית רק אחרי שמטא אישרה את התבנית
+    @staticmethod
+    def _seed_inactive_gold_motzkin_manual_campaign(conn):
+        import datetime
+
+        name = "לקוחות גולד מוצקין לא פעילות - שליחה ידנית 16.11.26"
+        if conn.execute("SELECT 1 FROM automations WHERE name = ?", (name,)).fetchone():
+            return
+        recipients_file = secret(".winback_gold_motzkin_recipients.json")
+        try:
+            recipients = json.loads(recipients_file.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            return
+
+        action_config = {
+            "mode": "template",
+            "template_name": "gold_inactive_doors_open",
+            "template_language": "he",
+            "param_templates": ["{first_name}"],
+        }
+        now = datetime.datetime.now().isoformat(timespec="seconds")
+        trigger_config = {"schedule_type": "once", "run_at": "2026-11-16T18:30"}
         cursor = conn.execute(
             "INSERT INTO automations (tenant_id, name, trigger_type, trigger_config, enabled, "
             "created_at, updated_at) VALUES (1, ?, 'scheduled', ?, 0, ?, ?)",
