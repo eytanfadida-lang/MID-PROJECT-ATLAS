@@ -1068,32 +1068,6 @@ label {
     margin: 0;
 }
 
-/* תת-קבוצה לפי שם משותף בתוך קטגוריה (למשל "לקוחות שעזבו - 14/35 ימים", ראו
-   _subgroup_by_name בבלופרינט/automationsToggleGroup ב-list.html) - שורת כותרת ניתנת ללחיצה
-   בתוך הטבלה עצמה (לא <details> אמיתי - אי אפשר לקנן <details> בתוך <tr>) */
-.automations-group-header-row {
-    cursor: pointer;
-    background: var(--surface-2);
-    font-weight: 600;
-}
-
-.automations-group-header-row:hover {
-    background: #eef2f7;
-}
-
-.automations-group-arrow {
-    display: inline-block;
-    transition: transform 0.15s ease;
-}
-
-.automations-group-header-row.expanded .automations-group-arrow {
-    transform: rotate(90deg);
-}
-
-.automations-group-member td:first-child {
-    padding-inline-start: 28px;
-}
-
 /* לשוניות בפאנל הפירוט של אוטומציה (הודעה/תזמון/נמענים/הרצות אחרונות) - במקום לערום את כל
    הסעיפים זה מתחת לזה (היה תופס המון גובה), מציגים סעיף אחד בכל פעם. ראו automationsSwitchTab
    ב-list.html. דפוס לשוניות רגיל, לא <details> - כי צריך לזכור "מי פעילה" בין כל הלשוניות יחד */
@@ -6822,59 +6796,8 @@ body.dark .auto-time-input {
     margin-top: 14px;
 }
 
-.auto-group-head {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    width: 100%;
-    margin: 0 0 10px;
-    padding: 10px 14px;
-    border: 1.5px dashed var(--border-strong);
-    border-radius: 12px;
-    background: none;
-    color: var(--text);
-    font: inherit;
-    font-weight: 700;
-    text-align: right;
-    cursor: pointer;
-}
-
-.auto-group-head small {
-    color: var(--muted);
-    font-weight: 600;
-}
-
-.auto-group-head svg {
-    width: 20px;
-    height: 20px;
-    fill: none;
-    stroke: currentColor;
-    stroke-width: 2.2;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-    transform: rotate(90deg);
-    transition: transform 0.15s ease;
-}
-
-.auto-group-head.expanded svg {
-    transform: rotate(0deg);
-}
-
-.auto-card-member {
-    margin-inline-start: 18px;
-}
-
 .auto-card.is-filtered,
-.auto-group-head.is-filtered,
 .auto-section.is-filtered {
-    display: none;
-}
-
-.auto-list.is-filtering .auto-card[data-group][hidden] {
-    display: block;
-}
-
-.auto-list.is-filtering .auto-card.is-filtered[data-group][hidden] {
     display: none;
 }
 
@@ -6930,10 +6853,6 @@ body.dark .auto-time-input {
 
     .auto-card-body {
         padding: 4px 12px 14px;
-    }
-
-    .auto-card-member {
-        margin-inline-start: 8px;
     }
 }
 

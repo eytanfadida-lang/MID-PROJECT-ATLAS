@@ -8,15 +8,13 @@
 {% set cat_active = {} %}
 {% for category_key, category in (grouped_automations or {}).items() %}
     {% set cns = namespace(active=0) %}
-    {% for row in category.rows %}
-        {% if row.kind != 'group_header' %}
-            {% set ns.total = ns.total + 1 %}
-            {% set ns.ok = ns.ok + (row.automation.success_count or 0) %}
-            {% set ns.fail = ns.fail + (row.automation.failed_count or 0) %}
-            {% if row.automation.enabled %}
-                {% set ns.active = ns.active + 1 %}
-                {% set cns.active = cns.active + 1 %}
-            {% endif %}
+    {% for automation in category.automations %}
+        {% set ns.total = ns.total + 1 %}
+        {% set ns.ok = ns.ok + (automation.success_count or 0) %}
+        {% set ns.fail = ns.fail + (automation.failed_count or 0) %}
+        {% if automation.enabled %}
+            {% set ns.active = ns.active + 1 %}
+            {% set cns.active = cns.active + 1 %}
         {% endif %}
     {% endfor %}
     {% set _ = cat_active.update({category_key: cns.active}) %}
@@ -61,14 +59,7 @@
 <section class="auto-section" data-cat="{{ category_key }}">
     <h2 class="auto-section-title">{{ category_labels.get(category_key, category_key) }}
         <span>{{ cat_active[category_key] }} פעילות מתוך {{ category.count }}</span></h2>
-    {% for row in category.rows %}
-    {% if row.kind == 'group_header' %}
-    <button type="button" class="auto-group-head" data-group-toggle="{{ row.group_id }}" aria-expanded="false" onclick="automationsToggleGroup(this)">
-        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
-        <span>{{ row.name }}</span> <small>{{ row.count }} הודעות</small>
-    </button>
-    {% else %}
-    {% set a = row.automation %}
+    {% for a in category.automations %}
     {% set tc = a.trigger_config %}
     {% set summary %}
                 {% if a.trigger_type == 'scheduled' %}
@@ -117,9 +108,8 @@
                     {{ 'הרשמה לשיעור ניסיון' if a.trigger_type == 'trial_booked' else a.trigger_type }}
                 {% endif %}
     {% endset %}
-    <article id="automation-{{ a.id }}" class="auto-card{{ '' if a.enabled else ' is-off' }}{{ ' auto-card-member' if row.group_id else '' }}"
-             data-enabled="{{ 1 if a.enabled else 0 }}" data-search="{{ a.name }} {{ summary|striptags|trim }}"
-             {% if row.group_id %}data-group="{{ row.group_id }}" hidden{% endif %}>
+    <article id="automation-{{ a.id }}" class="auto-card{{ '' if a.enabled else ' is-off' }}"
+             data-enabled="{{ 1 if a.enabled else 0 }}" data-search="{{ a.name }} {{ summary|striptags|trim }}">
         <div class="auto-card-head">
             <div class="auto-card-main">
                 <h3 class="auto-card-title">{{ a.name }}</h3>
@@ -305,7 +295,6 @@
                 </div>
         </div>
     </article>
-    {% endif %}
     {% endfor %}
 </section>
 {% endfor %}
@@ -325,26 +314,6 @@ function automationsToggleDetails(id, btn) {
     body.hidden = !body.hidden;
     btn.setAttribute('aria-expanded', body.hidden ? 'false' : 'true');
     btn.closest('.auto-card').classList.toggle('is-open', !body.hidden);
-}
-
-// מכווצת/פותחת קבוצת שם משותף (למשל "לקוחות שעזבו - 14/35 ימים", ראו _subgroup_by_name בבלופרינט).
-// מוגבלת לקטגוריה (section) אחת, כי group_id חוזר בין קטגוריות. כשמכווצים - סוגרת גם עריכות פתוחות
-function automationsToggleGroup(head) {
-    var groupId = head.dataset.groupToggle;
-    var members = head.closest('.auto-section').querySelectorAll('[data-group="' + groupId + '"]');
-    var open = head.getAttribute('aria-expanded') === 'true';
-    members.forEach(function (card) {
-        card.hidden = open;
-        if (open) {
-            var body = card.querySelector('.auto-card-body');
-            var btn = card.querySelector('.auto-chevron');
-            if (body) body.hidden = true;
-            if (btn) btn.setAttribute('aria-expanded', 'false');
-            card.classList.remove('is-open');
-        }
-    });
-    head.setAttribute('aria-expanded', open ? 'false' : 'true');
-    head.classList.toggle('expanded', !open);
 }
 
 // מפעילה/מכבה יום בודד ישירות מהעיגולים בתצוגת-הסיכום (בלי לפתוח את כרטיס העריכה המלא) -
@@ -418,7 +387,7 @@ function automationsSwitchTab(btn) {
     });
 }
 
-// סינון בצד הלקוח: לשונית קטגוריה + חיפוש בשם/בתזמון + סטטוס. בזמן חיפוש/סינון חברות בקבוצה מכווצת מוצגות
+// סינון בצד הלקוח: לשונית קטגוריה + חיפוש בשם/בתזמון + סטטוס
 (function () {
     var list = document.getElementById('auto-list');
     if (!list) return;
@@ -430,21 +399,15 @@ function automationsSwitchTab(btn) {
     function apply() {
         var q = (search.value || '').trim().toLowerCase();
         var st = status.value;
-        var filtering = !!(q || st);
-        list.classList.toggle('is-filtering', filtering);
         var anyVisible = false;
         list.querySelectorAll('.auto-section').forEach(function (section) {
             var sectionVisible = false;
-            var groupSeen = {};
             section.querySelectorAll('.auto-card').forEach(function (card) {
                 var ok = (!cat || section.dataset.cat === cat)
                     && (!st || card.dataset.enabled === st)
                     && (!q || (card.dataset.search || '').toLowerCase().indexOf(q) !== -1);
                 card.classList.toggle('is-filtered', !ok);
-                if (ok) { sectionVisible = true; if (card.dataset.group) groupSeen[card.dataset.group] = true; }
-            });
-            section.querySelectorAll('.auto-group-head').forEach(function (head) {
-                head.classList.toggle('is-filtered', !groupSeen[head.dataset.groupToggle]);
+                if (ok) sectionVisible = true;
             });
             section.classList.toggle('is-filtered', !sectionVisible);
             if (sectionVisible) anyVisible = true;
@@ -467,17 +430,12 @@ function automationsSwitchTab(btn) {
     status.addEventListener('change', apply);
 })();
 
-// פותחת אוטומטית את האוטומציה שחזרנו אליה אחרי שמירה (ראו _back_to_list בבלופרינט),
-// כולל פתיחת הקבוצה שלה אם היא חברה בקבוצת שם משותף
+// פותחת אוטומטית את האוטומציה שחזרנו אליה אחרי שמירה (ראו _back_to_list בבלופרינט)
 if (window.location.hash && window.location.hash.startsWith('#automation-')) {
     var automationId = window.location.hash.replace('#automation-', '');
     var card = document.getElementById('automation-' + automationId);
     var body = document.getElementById('details-' + automationId);
     if (card && body) {
-        if (card.dataset.group) {
-            var head = card.closest('.auto-section').querySelector('[data-group-toggle="' + card.dataset.group + '"]');
-            if (head && head.getAttribute('aria-expanded') !== 'true') automationsToggleGroup(head);
-        }
         body.hidden = false;
         card.classList.add('is-open');
         var chev = card.querySelector('.auto-chevron');
