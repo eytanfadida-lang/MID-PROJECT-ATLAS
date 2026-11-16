@@ -1,5 +1,6 @@
 import datetime
 import json
+import time
 
 import requests
 
@@ -60,18 +61,29 @@ def load_location_branch_map():
         return {}
 
 
+# GET ל-Arbox עם המתנה וניסיון חוזר כשהיא עונה 429 ("יותר מדי בקשות") - מאומת בייצור (16/11/26):
+# הסנכרון שולח כ-60 בקשות בריצה, ופעם אחת נתקל ב-429 באמצע. מכבדים Retry-After אם נשלח
+def _get_with_retry(url, api_key, params, attempts=3):
+    for attempt in range(attempts):
+        response = requests.get(
+            url, headers={"Accept": "application/json", "api-key": api_key}, params=params, timeout=30,
+        )
+        if response.status_code != 429 or attempt == attempts - 1:
+            break
+        retry_after = response.headers.get("Retry-After", "")
+        time.sleep(int(retry_after) if retry_after.isdigit() else 10 * (attempt + 1))
+    response.raise_for_status()
+    return response
+
+
 # מושכת את כל המשתמשים מ-Arbox (עם pagination), לפי פרמטרי הסינון שהועברו
 def fetch_arbox_users(api_key, **filters):
     users = []
     page = 1
     while True:
-        response = requests.get(
-            f"{API_BASE_URL}/users",
-            headers={"Accept": "application/json", "api-key": api_key},
-            params={**filters, "limit": PAGE_LIMIT, "page": page},
-            timeout=30,
+        response = _get_with_retry(
+            f"{API_BASE_URL}/users", api_key, {**filters, "limit": PAGE_LIMIT, "page": page},
         )
-        response.raise_for_status()
         page_users = response.json().get("data", []) or []
         users.extend(page_users)
         if len(page_users) < PAGE_LIMIT:
@@ -89,13 +101,10 @@ def _fetch_arbox_report(api_key, report_name, from_date, to_date):
     rows = []
     page = 1
     while True:
-        response = requests.get(
-            f"{API_BASE_URL}/reports/{report_name}",
-            headers={"Accept": "application/json", "api-key": api_key},
-            params={"fromDate": from_date, "toDate": to_date, "limit": PAGE_LIMIT, "page": page},
-            timeout=30,
+        response = _get_with_retry(
+            f"{API_BASE_URL}/reports/{report_name}", api_key,
+            {"fromDate": from_date, "toDate": to_date, "limit": PAGE_LIMIT, "page": page},
         )
-        response.raise_for_status()
         page_rows = response.json().get("data", []) or []
         rows.extend(page_rows)
         if len(page_rows) < PAGE_LIMIT:
