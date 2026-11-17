@@ -246,27 +246,9 @@
                         </div>
                         <button type="submit" class="btn">ייבוא מקובץ</button>
                     </form>
-                    {% if a.recipients %}
-                    <table class="mobile-cards">
-                        <thead><tr><th>טלפון</th><th>שם</th><th></th></tr></thead>
-                        <tbody>
-                            {% for r in a.recipients %}
-                            <tr>
-                                <td class="m-title" dir="ltr">{{ r.phone }}</td>
-                                <td data-label="שם">{{ r.full_name or '' }}</td>
-                                <td>
-                                    <form method="post" action="{{ url_for('automations.remove_recipient', automation_id=a.id, recipient_id=r.id) }}" style="display:inline;">
-                                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                                        <button type="submit" class="btn" onclick="return confirm('להסיר נמען זה?');">הסרה</button>
-                                    </form>
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                    {% else %}
-                    <p class="empty-state">אין עדיין נמענים.</p>
-                    {% endif %}
+                    <div class="auto-recipients-lazy" data-url="{{ url_for('automations.recipients_panel', automation_id=a.id) }}">
+                        <p class="hint">טוען נמענים…</p>
+                    </div>
                     {% else %}
                     <p class="hint">הקהל נשלף אוטומטית מ-Arbox בכל הרצה (לפי ההגדרות בתזמון למעלה) - אין רשימת נמענים ידנית לנהל.</p>
                     {% endif %}
@@ -385,6 +367,17 @@ function automationsSwitchTab(btn) {
     container.querySelectorAll('.automations-tab-panel').forEach(function (p) {
         p.hidden = p.dataset.tab !== tab;
     });
+    // רשימת הנמענים נטענת רק בפתיחה הראשונה של הלשונית (בקמפיינים גדולים היא מאות שורות)
+    var lazy = tab === 'recipients' && container.querySelector('.auto-recipients-lazy[data-url]');
+    if (lazy) {
+        var url = lazy.dataset.url;
+        lazy.removeAttribute('data-url');
+        fetch(url, { credentials: 'same-origin' }).then(function (r) {
+            if (!r.ok) throw new Error('bad status');
+            return r.text();
+        }).then(function (html) { lazy.innerHTML = html; })
+          .catch(function () { lazy.innerHTML = '<p class="hint">טעינת הנמענים נכשלה - רענני את העמוד.</p>'; });
+    }
 }
 
 // סינון בצד הלקוח: לשונית קטגוריה + חיפוש בשם/בתזמון + סטטוס

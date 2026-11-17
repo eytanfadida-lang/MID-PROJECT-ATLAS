@@ -69,6 +69,35 @@ def _number_labels(conversations):
     return sorted({c["bot_phone_label"] for c in conversations})
 
 
+# כמה שיחות מציגים ברשימה כברירת מחדל. עם מאות שיחות, רינדור כולן (ושליפתן מחדש בכל רענון אוטומטי)
+# הכביד מאוד על הדף, במיוחד בטלפון. שיחות שלא נקראו מוצגות תמיד, בלי קשר למגבלה; חיפוש (q) נעשה בשרת
+# על כל השיחות; all=1 מציג את כולן
+CHAT_LIST_LIMIT = 150
+
+
+# בוחרת אילו שיחות להציג ברשימה, ומחזירה גם את המונים האמיתיים (על כל השיחות) לכפתורי הסינון
+def _list_context(conversations):
+    total = len(conversations)
+    unread = sum(1 for c in conversations if c.get("unread"))
+    q = (request.args.get("q") or "").strip().lower()
+    shown = conversations
+    if q:
+        digits = re.sub(r"\D", "", q)
+        shown = [
+            c for c in conversations
+            if q in (c.get("full_name") or "").lower() or (digits and digits in re.sub(r"\D", "", c["phone"]))
+        ]
+    truncated = False
+    if request.args.get("all") != "1" and len(shown) > CHAT_LIST_LIMIT:
+        keep = {c["phone"] for c in shown[:CHAT_LIST_LIMIT]}
+        shown = [c for c in shown if c["phone"] in keep or c.get("unread")]
+        truncated = True
+    return dict(
+        conversations=shown, total_count=total, unread_count=unread, list_truncated=truncated,
+        list_query=request.args.get("q") or "", number_labels=_number_labels(conversations),
+    )
+
+
 @bp.route("/")
 @admin_required
 def list_conversations():
@@ -77,9 +106,9 @@ def list_conversations():
         _with_number_labels(repos.customer_bot_messages.get_conversation_summaries(), repos), repos
     )
     return render_template(
-        "bot_conversations/index.html", conversations=conversations, active_phone=None, messages=None,
+        "bot_conversations/index.html", active_phone=None, messages=None,
         active_conversation=None, signature=repos.customer_bot_messages.get_state_signature(),
-        number_labels=_number_labels(conversations),
+        **_list_context(conversations),
     )
 
 
@@ -374,9 +403,8 @@ def view_conversation(phone):
     active_conversation = next((c for c in conversations if c["phone"] == phone), None)
     return render_template(
         "bot_conversations/index.html",
-        conversations=conversations,
         signature=repos.customer_bot_messages.get_state_signature(),
-        number_labels=_number_labels(conversations),
+        **_list_context(conversations),
         **_thread_context(repos, phone, messages, active_conversation),
     )
 

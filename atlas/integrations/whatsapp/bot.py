@@ -215,6 +215,23 @@ def list_message_templates(config):
     return templates
 
 
+# כמו list_message_templates, עם קאש קצר בזיכרון התהליך - לעמודים שרק צריכים לבחור תבנית (עמוד
+# האוטומציות). בלי זה כל טעינה חיכתה לקריאת רשת ל-Meta (שנייה ומעלה, ולפעמים הרבה יותר).
+# create_message_template מנקה את הקאש, כדי שתבנית חדשה תופיע מיד
+_TEMPLATE_LIST_CACHE = {}
+_TEMPLATE_LIST_CACHE_TTL_SECONDS = 300
+
+
+def list_message_templates_cached(config):
+    key = id(config)
+    cached = _TEMPLATE_LIST_CACHE.get(key)
+    if cached and (time.time() - cached[1]) < _TEMPLATE_LIST_CACHE_TTL_SECONDS:
+        return cached[0]
+    templates = list_message_templates(config)
+    _TEMPLATE_LIST_CACHE[key] = (templates, time.time())
+    return templates
+
+
 # יוצרת תבנית הודעה חדשה ושולחת אותה לאישור מטא - חוזרת מיד עם status="PENDING" (או
 # שגיאה אם השם/המבנה לא תקינים), האישור/דחייה בפועל קורה אצל Meta באופן אסינכרוני
 # (בדרך כלל דקות עד יום) - ראו list_message_templates לבדיקת סטטוס מאוחר יותר.
@@ -239,6 +256,7 @@ def create_message_template(config, name, category, language_code, body_text, bo
         timeout=30,
     )
     response.raise_for_status()
+    _TEMPLATE_LIST_CACHE.clear()
     return response.json()
 
 

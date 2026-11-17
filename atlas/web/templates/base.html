@@ -17,7 +17,6 @@
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/apple-touch-icon.png') }}">
     <title>{% block page_title %}מנהל תורים{% endblock %}</title>
     <link rel="preload" href="{{ url_for('static', filename='fonts/assistant-hebrew.woff2') }}" as="font" type="font/woff2" crossorigin>
-    <link rel="preload" href="{{ url_for('static', filename='fonts/secular-one-hebrew.woff2') }}" as="font" type="font/woff2" crossorigin>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css', v=asset_version) }}">
 </head>
 {% set ep = request.endpoint %}

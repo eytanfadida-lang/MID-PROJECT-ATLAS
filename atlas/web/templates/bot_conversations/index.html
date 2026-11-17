@@ -3,11 +3,10 @@
 {% block page_heading %}שיחות בוט הלקוחות{% endblock %}
 
 {% block content %}
-{% set unread_count = (conversations | selectattr('unread') | list | length) if conversations else 0 %}
 <div class="chat-app" id="chat-app" data-signature="{{ signature }}" data-state-url="{{ url_for('bot_conversations.poll_state') }}" data-csrf="{{ csrf_token }}" data-list-url="{{ url_for('bot_conversations.list_conversations') }}">
     <div class="chat-app-list">
         <div class="chat-list-tools">
-            <input type="text" id="chat-search" placeholder="חיפוש לפי שם או טלפון" aria-label="חיפוש שיחות" dir="auto">
+            <input type="text" id="chat-search" placeholder="חיפוש לפי שם או טלפון" aria-label="חיפוש שיחות" dir="auto" value="{{ list_query }}">
             {% if number_labels and number_labels | length > 1 %}
             <select id="chat-number-filter" class="chat-number-filter" aria-label="סינון לפי מספר">
                 <option value="">כל המספרים</option>
@@ -15,7 +14,7 @@
             </select>
             {% endif %}
             <div class="chat-list-filters">
-                <button type="button" class="wa-chip active" data-chat-filter="all">הכל (<span id="chat-count-all">{{ conversations | length }}</span>)</button>
+                <button type="button" class="wa-chip active" data-chat-filter="all">הכל (<span id="chat-count-all">{{ total_count }}</span>)</button>
                 <button type="button" class="wa-chip" data-chat-filter="unread">לא נקראו (<span id="chat-count-unread">{{ unread_count }}</span>)</button>
             </div>
         </div>
@@ -51,6 +50,13 @@
                 {% endif %}
             </div>
             {% endfor %}
+            {% if list_truncated %}
+            <a class="chat-list-more" href="{{ url_for('bot_conversations.list_conversations', all=1) }}" data-load-all>
+                מוצגות {{ conversations | length }} השיחות האחרונות מתוך {{ total_count }} · הצגת כל השיחות
+            </a>
+            {% endif %}
+            {% elif list_query %}
+            <p class="empty-state">לא נמצאו שיחות.</p>
             {% else %}
             <p class="empty-state">אין עדיין שיחות עם בוט הלקוחות.</p>
             {% endif %}
@@ -121,7 +127,24 @@
         var noResults = document.getElementById('chat-no-results');
         if (noResults) noResults.hidden = rows.length === 0 || visible !== 0;
     }
-    if (search) search.addEventListener('input', applyFilters);
+    // חיפוש: סינון מיידי של מה שכבר מוצג, ואחרי הפסקה קצרה בהקלדה - חיפוש בשרת על כל השיחות (הרשימה
+    // מציגה רק את האחרונות). "הצגת כל השיחות" טוען את כולן במקום, בלי לעזוב את הדף
+    var showAll = new URL(window.location.href).searchParams.get('all') === '1';
+    var searchTimer = null;
+    if (search) search.addEventListener('input', function () {
+        applyFilters();
+        clearTimeout(searchTimer);
+        searchTimer = setTimeout(function () { inFlight = false; tick(true); }, 300);
+    });
+    itemsEl.addEventListener('click', function (e) {
+        var more = e.target.closest('[data-load-all]');
+        if (!more) return;
+        e.preventDefault();
+        showAll = true;
+        more.textContent = 'טוען את כל השיחות…';
+        inFlight = false;
+        tick(true);
+    });
     if (numberFilter) numberFilter.addEventListener('change', applyFilters);
     chips.forEach(function (chip) {
         chip.addEventListener('click', function () {
@@ -300,6 +323,9 @@
     function reloadParts() {
         var url = new URL(window.location.href);
         url.searchParams.set('poll', '1');
+        var q = search ? search.value.trim() : '';
+        if (q) url.searchParams.set('q', q); else url.searchParams.delete('q');
+        if (showAll) url.searchParams.set('all', '1');
         url.searchParams.set('visible', document.visibilityState === 'visible' ? '1' : '0');
         return fetch(url.toString(), { credentials: 'same-origin' }).then(function (r) {
             if (!r.ok) throw new Error('bad status');

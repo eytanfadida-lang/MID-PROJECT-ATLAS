@@ -9248,3 +9248,18 @@ select.status-select,
         min-height: 0;
     }
 }
+
+/* רשימת השיחות: הדפדפן מדלג על ציור שורות שמחוץ למסך - גלילה חלקה גם עם מאות שיחות */
+.chat-list-row {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 76px;
+}
+
+.chat-list-more {
+    display: block;
+    padding: 14px 12px;
+    color: var(--muted);
+    font-size: 13px;
+    text-align: center;
+    text-decoration: underline;
+}

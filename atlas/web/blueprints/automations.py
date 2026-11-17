@@ -27,7 +27,7 @@ def _get_approved_templates():
     if not whatsapp_bot.load_waba_id(config):
         return []
     try:
-        templates = whatsapp_bot.list_message_templates(config)
+        templates = whatsapp_bot.list_message_templates_cached(config)
     except Exception:
         return []
     enriched = []
@@ -387,9 +387,8 @@ def list_automations():
             automation["trigger_type"] == "scheduled"
             and automation["trigger_config"].get("audience_source") not in DYNAMIC_AUDIENCE_SOURCES
         )
-        automation["recipients"] = (
-            repos.automations.get_recipients(automation["id"]) if is_manual_audience else None
-        )
+        # הרשימה עצמה נטענת רק בפתיחת הלשונית (recipients_panel); כאן רק מסמנים שיש קהל ידני
+        automation["recipients"] = [] if is_manual_audience else None
         automation["executions"] = repos.automations.get_recent_executions(automation["id"], limit=10)
         automation["message_history"] = (
             repos.automations.get_step_history(automation["steps"][0]["id"]) if automation["steps"] else []
@@ -400,6 +399,18 @@ def list_automations():
         membership_types=repos.arbox_member_cache.get_distinct_membership_types(), locations=LOCATIONS,
         approved_templates=_get_approved_templates(),
     )
+
+
+# תוכן לשונית "נמענים" של אוטומציה אחת - נטען ב-fetch רק כשפותחים את הלשונית, ולא בכל טעינת עמוד
+@bp.route("/<int:automation_id>/recipients-panel")
+@admin_required
+def recipients_panel(automation_id):
+    repos = get_repos()
+    automation = repos.automations.get_by_id(automation_id)
+    if automation is None:
+        abort(404)
+    automation["recipients"] = repos.automations.get_recipients(automation_id)
+    return render_template("automations/_recipients_table.html", a=automation)
 
 
 @bp.route("/new", methods=["GET", "POST"])
