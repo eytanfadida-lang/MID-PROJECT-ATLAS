@@ -259,7 +259,8 @@
             if (old) old.remove();
             el.classList.remove('chat-bubble-failed');
             status.textContent = 'שולח…';
-            fetch(form.action, {
+            var sentTo = form.action;
+            fetch(sentTo, {
                 method: 'POST',
                 body: data,
                 credentials: 'same-origin',
@@ -270,6 +271,17 @@
                 if (res.ok) {
                     dropPending(el);
                     status.textContent = 'נשלח';
+                    var openForm = document.querySelector('.chat-reply-form');
+                    // אם בינתיים עברו לשיחה אחרת - לא מציגים בה את השיחה הקודמת
+                    if (res.fragment && window.__chatApplyThread && openForm && openForm.action === sentTo) {
+                        // השרת החזיר את השיחה המעודכנת - מחליפים בה את הבועה הזמנית מיד, בלי עוד בקשות
+                        var box = document.createElement('div');
+                        box.innerHTML = res.fragment;
+                        el.remove();
+                        window.__chatApplyThread(box);
+                        if (res.signature) lastSignature = res.signature;
+                        return;
+                    }
                     inFlight = false;
                     tick(true);  // מביא את ההודעה האמיתית ומחליף בה את הבועה הזמנית
                 } else {
@@ -320,19 +332,52 @@
         return true;
     }
 
+    // בטלפון, כשפתוחה שיחה, הרשימה מוסתרת - מרעננים רק את השיחה (בקשה קטנה בהרבה)
+    function listHidden() {
+        return document.body.classList.contains('page-chat-thread') && listEl.offsetParent === null;
+    }
+    // מחליפה את ההודעות וכותרת השיחה בגרסה טרייה (מתוך דף מלא או מתוך פאנל השיחה בלבד)
+    function applyThread(root) {
+        var curThread = document.querySelector('.chat-app-thread .chat-thread');
+        var freshThread = root.querySelector('.chat-thread');
+        if (curThread && freshThread && freshThread.innerHTML !== lastThreadHtml) {
+            lastThreadHtml = freshThread.innerHTML;
+            var nearBottom = curThread.scrollHeight - curThread.scrollTop - curThread.clientHeight < 80;
+            var keep = curThread.scrollTop;
+            curThread.innerHTML = freshThread.innerHTML;
+            pendingBubbles.forEach(function (el) { curThread.appendChild(el); });
+            curThread.scrollTop = nearBottom || pendingBubbles.length ? curThread.scrollHeight : keep;
+        }
+        swapHtml(document.querySelector('.chat-thread-header'), root.querySelector('.chat-thread-header'));
+    }
+    window.__chatApplyThread = applyThread;
+
     function reloadParts() {
         var url = new URL(window.location.href);
         url.searchParams.set('poll', '1');
+        var threadOnly = listHidden();
+        if (threadOnly) url.searchParams.set('parts', 'thread');
         var q = search ? search.value.trim() : '';
         if (q) url.searchParams.set('q', q); else url.searchParams.delete('q');
         if (showAll) url.searchParams.set('all', '1');
         url.searchParams.set('visible', document.visibilityState === 'visible' ? '1' : '0');
         return fetch(url.toString(), { credentials: 'same-origin' }).then(function (r) {
             if (!r.ok) throw new Error('bad status');
-            return r.text();
-        }).then(function (html) {
+            var sig = r.headers.get('X-Chat-Signature');
+            return r.text().then(function (html) { return { html: html, sig: sig }; });
+        }).then(function (res) {
+            var html = res.html;
+            if (threadOnly) {
+                var box = document.createElement('div');
+                box.innerHTML = html;
+                if (!box.querySelector('.chat-thread')) return;
+                applyThread(box);
+                if (res.sig) lastSignature = res.sig;
+                return;
+            }
             var doc = new DOMParser().parseFromString(html, 'text/html');
             if (!doc.getElementById('chat-app')) return;  // למשל הועברנו לדף התחברות - לא נוגעים
+            if (res.sig) lastSignature = res.sig;
 
             var listScroll = listEl.scrollTop;
             if (swapHtml(itemsEl, doc.getElementById('chat-list-items'))) {
@@ -344,18 +389,7 @@
                 if (cur && fresh) cur.textContent = fresh.textContent;
             });
             updateTitle();
-
-            var curThread = document.querySelector('.chat-app-thread .chat-thread');
-            var freshThread = doc.querySelector('.chat-app-thread .chat-thread');
-            if (curThread && freshThread && freshThread.innerHTML !== lastThreadHtml) {
-                lastThreadHtml = freshThread.innerHTML;
-                var nearBottom = curThread.scrollHeight - curThread.scrollTop - curThread.clientHeight < 80;
-                var keep = curThread.scrollTop;
-                curThread.innerHTML = freshThread.innerHTML;
-                pendingBubbles.forEach(function (el) { curThread.appendChild(el); });
-                curThread.scrollTop = nearBottom || pendingBubbles.length ? curThread.scrollHeight : keep;
-            }
-            swapHtml(document.querySelector('.chat-thread-header'), doc.querySelector('.chat-thread-header'));
+            applyThread(doc.querySelector('.chat-app-thread') || doc);
         });
     }
 
@@ -367,11 +401,8 @@
             return r.json();
         }).then(function (state) {
             if (!force && state.signature === lastSignature) return;
-            return reloadParts().then(function () {
-                // הרענון עצמו יכול לשנות מצב (סימון שיחה פתוחה כנקראת) - מעדכנים את החתימה אחריו
-                return fetch(app.dataset.stateUrl, { credentials: 'same-origin' }).then(function (r) { return r.json(); })
-                    .then(function (s2) { lastSignature = s2.signature; });
-            });
+            // החתימה המעודכנת מגיעה בכותרת של אותה תשובה (גם אם הרענון עצמו סימן את השיחה כנקראת)
+            return reloadParts();
         }).catch(function () { /* שגיאת רשת רגעית - מנסים שוב בבדיקה הבאה */ })
           .then(function () { inFlight = false; });
     }
@@ -513,6 +544,8 @@
         resetThreadState();
         setView('list');
         highlightActive(null);
+        inFlight = false;
+        tick(true);  // בזמן שהשיחה הייתה פתוחה בטלפון הרשימה לא רועננה
         if (push) history.replaceState({ chat: true }, '', app.dataset.listUrl);
     }
     // חלונית "פרטי לקוחה": במסך רחב היא תמיד מוצגת בצד; במסך צר נפתחת/נסגרת בכפתור בכותרת השיחה

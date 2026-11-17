@@ -105,11 +105,14 @@ def list_conversations():
     conversations = _with_names(
         _with_number_labels(repos.customer_bot_messages.get_conversation_summaries(), repos), repos
     )
-    return render_template(
+    signature = repos.customer_bot_messages.get_state_signature()
+    response = current_app.make_response(render_template(
         "bot_conversations/index.html", active_phone=None, messages=None,
-        active_conversation=None, signature=repos.customer_bot_messages.get_state_signature(),
+        active_conversation=None, signature=signature,
         **_list_context(conversations),
-    )
+    ))
+    response.headers["X-Chat-Signature"] = signature
+    return response
 
 
 # חתימת המצב הנוכחית של כל השיחות - העמוד בודק אותה כל כמה שניות ורענן את עצמו רק כשהיא
@@ -370,6 +373,19 @@ def arbox_profile(phone):
     return redirect(link)
 
 
+# פאנל השיחה הפתוחה בלבד (בלי כל הרשימה) - לפתיחת שיחה, לרענון אוטומטי כשרק השיחה גלויה (בטלפון),
+# ולתשובה על שליחת הודעה. החתימה הנוכחית מוחזרת בכותרת, כדי שהדף לא יצטרך בקשה נוספת כדי לדעת אותה
+def _thread_fragment_response(repos, phone, messages):
+    summaries = _with_names(_with_number_labels(repos.customer_bot_messages.get_conversation_summaries(phone), repos), repos)
+    html = render_template(
+        "bot_conversations/_thread.html",
+        **_thread_context(repos, phone, messages, summaries[0] if summaries else None),
+    )
+    response = current_app.response_class(html, mimetype="text/html")
+    response.headers["X-Chat-Signature"] = repos.customer_bot_messages.get_state_signature()
+    return response
+
+
 @bp.route("/<phone>")
 @admin_required
 def view_conversation(phone):
@@ -385,28 +401,24 @@ def view_conversation(phone):
     if not messages:
         abort(404)
 
-    # fragment=1: פתיחת שיחה מתוך הרשימה בלי לטעון את כל הדף - מחזירה רק את פאנל השיחה (בלי שליפת כל
-    # הרשימה), והחתימה הנוכחית בכותרת כדי שהרענון האוטומטי לא יטען שוב מיותר
-    if request.args.get("fragment") == "1":
-        summaries = _with_names(_with_number_labels(repos.customer_bot_messages.get_conversation_summaries(phone), repos), repos)
-        html = render_template(
-            "bot_conversations/_thread.html",
-            **_thread_context(repos, phone, messages, summaries[0] if summaries else None),
-        )
-        response = current_app.response_class(html, mimetype="text/html")
-        response.headers["X-Chat-Signature"] = repos.customer_bot_messages.get_state_signature()
-        return response
+    # fragment=1: פתיחת שיחה מתוך הרשימה בלי לטעון את כל הדף; parts=thread: רענון אוטומטי בטלפון,
+    # כשהרשימה מוסתרת מאחורי השיחה - אין טעם לשלוף ולשלוח אותה
+    if request.args.get("fragment") == "1" or (is_poll and request.args.get("parts") == "thread"):
+        return _thread_fragment_response(repos, phone, messages)
 
     conversations = _with_names(
         _with_number_labels(repos.customer_bot_messages.get_conversation_summaries(), repos), repos
     )
     active_conversation = next((c for c in conversations if c["phone"] == phone), None)
-    return render_template(
+    signature = repos.customer_bot_messages.get_state_signature()
+    response = current_app.make_response(render_template(
         "bot_conversations/index.html",
-        signature=repos.customer_bot_messages.get_state_signature(),
+        signature=signature,
         **_list_context(conversations),
         **_thread_context(repos, phone, messages, active_conversation),
-    )
+    ))
+    response.headers["X-Chat-Signature"] = signature
+    return response
 
 
 # שומרת את הקובץ שהועלה גם מקומית (תחת static/uploads, כדי שהתמונה/קובץ יוצגו בתוך
@@ -506,5 +518,7 @@ def reply(phone):
     wamid = whatsapp_bot.extract_wamid(response)
     repos.customer_bot_messages.log(phone, "out", log_body, bot_phone_number_id, attachment_url, wamid=wamid)
     if request.headers.get("X-Requested-With") == "fetch":
-        return jsonify(ok=True)
+        # מחזירים מיד את השיחה המעודכנת - הדף מחליף בה את הבועה הזמנית בלי עוד סבב בקשות לשרת
+        fragment = _thread_fragment_response(repos, phone, repos.customer_bot_messages.get_by_phone(phone))
+        return jsonify(ok=True, fragment=fragment.get_data(as_text=True), signature=fragment.headers["X-Chat-Signature"])
     return redirect(url_for("bot_conversations.view_conversation", phone=phone))
