@@ -10,6 +10,7 @@ from atlas.core.auth import admin_required
 from atlas.services import linked_whatsapp
 from atlas.services.phone_utils import normalize_phone, to_whatsapp_format
 from atlas.integrations.arbox import client as arbox_client
+from atlas.services import quick_reply_images
 from atlas.integrations.whatsapp import bot as whatsapp_bot
 import json
 
@@ -147,15 +148,14 @@ def save_quick_reply():
     body = (request.form.get("body") or "").strip()[:QUICK_REPLY_BODY_MAX]
     category = (request.form.get("category") or "").strip()[:QUICK_REPLY_TITLE_MAX]
     favorite = request.form.get("favorite") == "1"
-    if not body:
-        return jsonify(ok=False, error="צריך לכתוב את טקסט ההודעה"), 400
-    title = title or body.splitlines()[0][:40]
-    reply_id = request.form.get("id", type=int)
-    if reply_id:
-        if not repos.quick_replies.update(reply_id, title, body, category, favorite):
-            return jsonify(ok=False, error="התגובה לא נמצאה"), 404
-    else:
-        repos.quick_replies.create(title, body, category, favorite)
+    image = request.files.get("image")
+    new_image = (lambda: quick_reply_images.save_image(image.read(), image.mimetype)) if image and image.filename else None
+    ok, error = quick_reply_images.save_reply(
+        repos, request.form.get("id", type=int), title, body, category, favorite,
+        new_image=new_image, remove=request.form.get("remove_image") == "1",
+    )
+    if not ok:
+        return jsonify(ok=False, error=error), 400
     return _quick_replies_payload(repos)
 
 
@@ -171,7 +171,7 @@ def favorite_quick_reply(reply_id):
 @admin_required
 def delete_quick_reply(reply_id):
     repos = get_repos()
-    repos.quick_replies.delete(reply_id)
+    quick_reply_images.delete_reply(repos, reply_id)
     return _quick_replies_payload(repos)
 
 

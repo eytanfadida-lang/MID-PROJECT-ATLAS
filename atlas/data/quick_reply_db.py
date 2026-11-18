@@ -24,6 +24,11 @@ class QuickReplyDB:
                 updated_at TEXT NOT NULL
             )
         """)
+        # תמונה מצורפת (כתובת קובץ סטטי, ראו atlas/services/quick_reply_images.py) - נוספה אחרי שהטבלה
+        # כבר הייתה בשימוש, לכן מיגרציה מותנית
+        columns = {row[1] for row in conn.execute("PRAGMA table_info(quick_replies)")}
+        if "image_url" not in columns:
+            conn.execute("ALTER TABLE quick_replies ADD COLUMN image_url TEXT NOT NULL DEFAULT ''")
         conn.execute("""
             CREATE TABLE IF NOT EXISTS quick_reply_categories (
                 name TEXT PRIMARY KEY,

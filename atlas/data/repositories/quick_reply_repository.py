@@ -11,12 +11,23 @@ class QuickReplyRepository:
 
     def get_all(self):
         rows = self.conn.execute(
-            f"SELECT id, title, body, category, favorite FROM {TABLE_NAME} ORDER BY favorite DESC, title"
+            f"SELECT id, title, body, category, favorite, image_url FROM {TABLE_NAME} ORDER BY favorite DESC, title"
         ).fetchall()
         return [
-            {"id": row[0], "title": row[1], "body": row[2], "category": row[3], "favorite": bool(row[4])}
+            {"id": row[0], "title": row[1], "body": row[2], "category": row[3], "favorite": bool(row[4]),
+             "image_url": row[5] or ""}
             for row in rows
         ]
+
+    def get_image_url(self, reply_id):
+        row = self.conn.execute(f"SELECT image_url FROM {TABLE_NAME} WHERE id = ?", (reply_id,)).fetchone()
+        return (row[0] or "") if row else None
+
+    def set_image(self, reply_id, image_url):
+        self.conn.execute(
+            f"UPDATE {TABLE_NAME} SET image_url = ?, updated_at = ? WHERE id = ?", (image_url or "", _now(), reply_id)
+        )
+        self.conn.commit()
 
     # הקטגוריות שנוצרו במפורש + כל קטגוריה שיש בה תגובה (למקרה שנמחקה מהרשימה אבל עדיין בשימוש)
     def get_categories(self):

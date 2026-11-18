@@ -57,6 +57,10 @@
         display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
       }
       .empty { color: #999; text-align: center; padding: 30px 0; }
+      .card-image { display: block; max-width: 100%; max-height: 120px; border-radius: 8px; margin-top: 6px; object-fit: cover; }
+      .image-current { display: flex; align-items: center; gap: 10px; }
+      .image-current img { max-width: 120px; max-height: 80px; border-radius: 8px; object-fit: cover; }
+      .link { border: none; background: none; color: #b91c1c; cursor: pointer; font-size: 12px; text-decoration: underline; padding: 0; }
       .form { padding: 4px 20px 20px; display: flex; flex-direction: column; gap: 10px; overflow-y: auto; }
       .form label { font-size: 12px; color: #666; }
       .form input, .form textarea { width: 100%; padding: 8px 10px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px; font-family: inherit; }
@@ -84,6 +88,38 @@
   let query = "";
   let editing = null; // null = רשימה; {} = תגובה חדשה; אובייקט = עריכה
   let errorMessage = "";
+
+  // --- תמונות של תגובות (מגיעות מה-background כ-data URL, ראו background.js) ---
+
+  const imageCache = new Map();
+  function loadImage(path) {
+    if (!imageCache.has(path)) {
+      imageCache.set(path, globalThis.AtlasCRM.sendToBackground({ type: "atlasFetchImage", path }).then((result) => {
+        if (!result || !result.ok) {
+          imageCache.delete(path);
+          throw new Error("image load failed");
+        }
+        return result.dataUrl;
+      }));
+    }
+    return imageCache.get(path);
+  }
+
+  // ממלאת את התמונות הממוזערות שברשימה אחרי שהיא נבנתה (הטעינה אסינכרונית)
+  function fillImages(root) {
+    root.querySelectorAll("img[data-image-path]").forEach((img) => {
+      loadImage(img.dataset.imagePath).then((url) => { img.src = url; }).catch(() => img.remove());
+    });
+  }
+
+  function dataUrlToFile(dataUrl, name) {
+    const [head, b64] = dataUrl.split(",");
+    const type = (head.match(/data:([^;]+)/) || [])[1] || "image/jpeg";
+    const binary = atob(b64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    return new File([bytes], name, { type });
+  }
 
   // --- תיבת הכתיבה של וואטסאפ ---
 
@@ -133,6 +169,40 @@
         document.execCommand("insertText", false, textToInsert);
       }
     }, 80);
+    return true;
+  }
+
+  // שליחה עם תמונה: מדביקים את התמונה בתיבת הכתיבה - וואטסאפ פותחת את חלון התצוגה המקדימה שלה, עם שדה
+  // כיתוב. אחרי שהחלון נפתח, מכניסים את הטקסט לשדה הכיתוב (שמקבל את הפוקוס). השליחה עצמה - בלחיצה שלך
+  async function insertImageWithCaption(imagePath, caption) {
+    const composer = findComposer();
+    if (!composer) return false;
+    const dataUrl = await loadImage(imagePath);
+    const file = dataUrlToFile(dataUrl, imagePath.split("/").pop() || "image.jpg");
+    composer.focus();
+    const clipboard = new DataTransfer();
+    clipboard.items.add(file);
+    composer.dispatchEvent(new ClipboardEvent("paste", { clipboardData: clipboard, bubbles: true, cancelable: true }));
+    if (!caption) return true;
+    // מחכים שחלון התמונה ייפתח ושדה הכיתוב יקבל פוקוס (עד כ-3 שניות)
+    for (let i = 0; i < 15; i++) {
+      await new Promise((resolve) => setTimeout(resolve, 200));
+      const active = document.activeElement;
+      if (active && active !== composer && active.isContentEditable) {
+        const text = new DataTransfer();
+        text.setData("text/plain", caption);
+        const before = active.innerText;
+        active.dispatchEvent(new ClipboardEvent("paste", { clipboardData: text, bubbles: true, cancelable: true }));
+        setTimeout(() => {
+          if (active.innerText === before) document.execCommand("insertText", false, caption);
+        }, 80);
+        return true;
+      }
+    }
+    // החלון לא נפתח - לפחות הטקסט ייכנס לתיבת הכתיבה הרגילה
+    console.info(`${LOG} image preview did not open, inserting text only`);
+    insertIntoComposer(caption);
+    alert("לא הצלחתי לצרף את התמונה אוטומטית - הטקסט הוכנס. אפשר לצרף את התמונה ידנית");
     return true;
   }
 
@@ -190,11 +260,13 @@
       <div class="tabs">${tabsHtml}</div>
       <div class="list">${cardsHtml()}</div>
     `;
+    fillImages(modal);
     const searchInput = modal.querySelector(".search input");
     searchInput.addEventListener("input", () => {
       query = searchInput.value;
       // מרנדרים רק את הרשימה, כדי לא לאבד את הפוקוס בשדה החיפוש תוך כדי הקלדה
       modal.querySelector(".list").innerHTML = cardsHtml();
+      fillImages(modal);
     });
     searchInput.focus();
   }
@@ -210,7 +282,8 @@
               title="מועדף"${library.can_edit ? "" : " disabled"}>★</button>
           </span>
         </div>
-        <div class="card-body">${escapeHtml(reply.body)}</div>
+        ${reply.image_url ? `<img class="card-image" alt="" data-image-path="${escapeHtml(reply.image_url)}">` : ""}
+        ${reply.body ? `<div class="card-body">${escapeHtml(reply.body)}</div>` : ""}
       </div>`).join("");
     return html || `<div class="empty">אין תגובות כאן</div>`;
   }
@@ -231,6 +304,10 @@
         <span class="hint">אפשר לכתוב {שם} - יוחלף בשם הפרטי של הלקוחה כשמכניסים את ההודעה</span>
         <label>קטגוריה<input name="category" list="atlas-qr-cats" maxlength="80" value="${escapeHtml(reply.category || (tab !== "all" && tab !== "fav" ? tab : ""))}" /></label>
         <datalist id="atlas-qr-cats">${categoryOptions}</datalist>
+        <label>תמונה (אופציונלי) - תישלח עם הטקסט ככיתוב
+          ${reply.image_url ? `<span class="image-current"><img alt="" data-image-path="${escapeHtml(reply.image_url)}"><button class="link" type="button" data-action="remove-image">הסרת התמונה</button></span>` : ""}
+          <input type="file" name="image" accept="image/jpeg,image/png,image/webp,image/gif" />
+        </label>
         <label><input type="checkbox" name="favorite" style="width:auto"${reply.favorite ? " checked" : ""} /> מועדף</label>
         <div class="form-actions">
           <div style="display:flex; gap:8px">
@@ -241,6 +318,7 @@
         </div>
       </form>
     `;
+    fillImages(modal);
     modal.querySelector('textarea[name="body"]').focus();
   }
 
@@ -303,6 +381,11 @@
       const firstName = globalThis.AtlasCRM.contactFirstName || "";
       const textToInsert = reply.body.replace(/\{שם\}/g, firstName).replace(/ {2,}/g, " ");
       closeModal();
+      if (reply.image_url) {
+        const done = await insertImageWithCaption(reply.image_url, textToInsert).catch(() => false);
+        if (!done) alert("לא מצאתי את תיבת הכתיבה או את התמונה - נסי לפתוח את השיחה ולנסות שוב");
+        return;
+      }
       if (!insertIntoComposer(textToInsert)) {
         await navigator.clipboard.writeText(textToInsert).catch(() => {});
         alert("לא מצאתי את תיבת הכתיבה - ההודעה הועתקה, אפשר להדביק (Ctrl+V)");
@@ -328,6 +411,9 @@
       if (!confirm("למחוק את התגובה הזו? היא תימחק לכל העובדות.")) return;
       if (await mutate(`/api/extension/quick-replies/${target.dataset.id}/delete`)) editing = null;
       render();
+    } else if (action === "remove-image") {
+      editing.remove_image = true;
+      target.closest(".image-current").remove();
     } else if (action === "add-category") {
       const name = (prompt("שם הקטגוריה החדשה:") || "").trim();
       if (!name) return;
@@ -340,12 +426,29 @@
     event.preventDefault();
     const form = event.target;
     const fields = Object.fromEntries(new FormData(form).entries());
+    const file = form.querySelector('input[name="image"]').files[0];
+    let imageData = null;
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        errorMessage = "התמונה גדולה מדי (עד 5MB)";
+        render();
+        return;
+      }
+      imageData = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
     const ok = await mutate("/api/extension/quick-replies/save", {
       id: editing.id || null,
       title: fields.title,
       body: fields.body,
       category: fields.category,
       favorite: Boolean(fields.favorite),
+      image_data: imageData,
+      remove_image: Boolean(editing.remove_image),
     });
     if (ok) editing = null;
     render();

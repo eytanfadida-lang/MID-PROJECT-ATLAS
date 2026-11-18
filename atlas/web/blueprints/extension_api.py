@@ -2,6 +2,7 @@ import datetime
 
 from flask import Blueprint, abort, g, jsonify, render_template, request
 
+from atlas.services import quick_reply_images
 from atlas.core import roles
 from atlas.core.api_auth import token_required
 from atlas.data.context import get_repos
@@ -365,17 +366,18 @@ def save_quick_reply():
     body = (payload.get("body") or "").strip()[:QUICK_REPLY_BODY_MAX]
     category = (payload.get("category") or "").strip()[:QUICK_REPLY_TITLE_MAX]
     favorite = bool(payload.get("favorite"))
-    if not body:
-        return jsonify(ok=False, error="צריך לכתוב את טקסט ההודעה"), 400
-    title = title or body.splitlines()[0][:40]
+    # התוסף שולח תמונה חדשה כ-data URL (התקשורת איתו היא JSON בלבד)
+    image_data = payload.get("image_data")
+    new_image = (lambda: quick_reply_images.save_data_url(image_data)) if image_data else None
 
     repos = get_repos()
     reply_id = payload.get("id")
-    if reply_id:
-        if not repos.quick_replies.update(int(reply_id), title, body, category, favorite):
-            return jsonify(ok=False, error="התגובה לא נמצאה"), 404
-    else:
-        repos.quick_replies.create(title, body, category, favorite)
+    ok, error = quick_reply_images.save_reply(
+        repos, int(reply_id) if reply_id else None, title, body, category, favorite,
+        new_image=new_image, remove=bool(payload.get("remove_image")),
+    )
+    if not ok:
+        return jsonify(ok=False, error=error), 400
     return _quick_replies_payload(repos)
 
 
@@ -393,7 +395,7 @@ def favorite_quick_reply(reply_id):
 def delete_quick_reply(reply_id):
     _require_admin()
     repos = get_repos()
-    repos.quick_replies.delete(reply_id)
+    quick_reply_images.delete_reply(repos, reply_id)
     return _quick_replies_payload(repos)
 
 

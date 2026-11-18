@@ -73,6 +73,32 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
+  // תמונה של תגובה מהירה, כ-data URL. האתר של וואטסאפ חוסם טעינת תמונות מהשרת שלנו (CSP), ולכן
+  // ה-background מוריד אותה ומעביר את התוכן עצמו. רק מתיקיית התמונות של התגובות
+  if (message.type === "atlasFetchImage") {
+    const path = String(message.path || "");
+    if (!path.startsWith("/static/uploads/quick-replies/")) {
+      sendResponse({ ok: false });
+      return false;
+    }
+    fetch(`${API_BASE}${path}`)
+      .then((response) => {
+        if (!response.ok) throw new Error(`status ${response.status}`);
+        const type = response.headers.get("Content-Type") || "image/jpeg";
+        return response.arrayBuffer().then((buffer) => ({ type, buffer }));
+      })
+      .then(({ type, buffer }) => {
+        const bytes = new Uint8Array(buffer);
+        let binary = "";
+        for (let i = 0; i < bytes.length; i += 0x8000) {
+          binary += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+        }
+        sendResponse({ ok: true, dataUrl: `data:${type.split(";")[0]};base64,${btoa(binary)}` });
+      })
+      .catch(() => sendResponse({ ok: false }));
+    return true;
+  }
+
   if (message.type === "atlasAuthState") {
     chrome.storage.local.get(["token", "username"]).then((stored) =>
       sendResponse({ loggedIn: Boolean(stored.token), username: stored.username || null })

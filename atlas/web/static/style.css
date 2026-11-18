@@ -9263,3 +9263,38 @@ select.status-select,
     text-align: center;
     text-decoration: underline;
 }
+
+/* תמונה בתגובות מהירות: תמונה ממוזערת בכרטיס, ושדה תמונה בטופס */
+.qr-card-image {
+    display: block;
+    max-width: 100%;
+    max-height: 120px;
+    margin-top: 6px;
+    border-radius: 8px;
+    object-fit: cover;
+}
+
+.qr-image-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.qr-image-current {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.qr-image-current[hidden] {
+    display: none;
+}
+
+.qr-image-current img {
+    max-width: 120px;
+    max-height: 80px;
+    border-radius: 8px;
+    object-fit: cover;
+}
