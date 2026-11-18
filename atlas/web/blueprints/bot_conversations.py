@@ -148,11 +148,13 @@ def save_quick_reply():
     body = (request.form.get("body") or "").strip()[:QUICK_REPLY_BODY_MAX]
     category = (request.form.get("category") or "").strip()[:QUICK_REPLY_TITLE_MAX]
     favorite = request.form.get("favorite") == "1"
-    image = request.files.get("image")
-    new_image = (lambda: quick_reply_images.save_image(image.read(), image.mimetype)) if image and image.filename else None
+    new_images = [
+        (lambda f=f: quick_reply_images.save_image(f.read(), f.mimetype))
+        for f in request.files.getlist("images") if f and f.filename
+    ]
     ok, error = quick_reply_images.save_reply(
         repos, request.form.get("id", type=int), title, body, category, favorite,
-        new_image=new_image, remove=request.form.get("remove_image") == "1",
+        new_images=new_images, remove_urls=request.form.getlist("remove_image"),
     )
     if not ok:
         return jsonify(ok=False, error=error), 400
@@ -421,6 +423,9 @@ def view_conversation(phone):
     return response
 
 
+MAX_REPLY_ATTACHMENTS = 10
+
+
 # שומרת את הקובץ שהועלה גם מקומית (תחת static/uploads, כדי שהתמונה/קובץ יוצגו בתוך
 # בועת הצ'אט שלנו) וגם ב-Meta (media_id, דרוש כדי לשלוח את הקובץ בפועל בוואטסאפ)
 def _save_upload_locally(phone, uploaded_file):
@@ -456,8 +461,10 @@ def _reply_failed(phone, message, status=400):
 @admin_required
 def reply(phone):
     body = request.form.get("body", "").strip()
-    uploaded_file = request.files.get("attachment")
-    has_attachment = bool(uploaded_file and uploaded_file.filename)
+    # אפשר כמה קבצים (למשל תגובה מהירה עם כמה תמונות): כל קובץ נשלח כהודעה נפרדת, והטקסט - ככיתוב
+    # של הראשון (כמו בוואטסאפ). בלי קבצים - הודעת טקסט רגילה
+    uploaded_files = [f for f in request.files.getlist("attachment") if f and f.filename][:MAX_REPLY_ATTACHMENTS]
+    has_attachment = bool(uploaded_files)
 
     if not body and not has_attachment:
         return _reply_failed(phone, "יש להזין תוכן הודעה או לצרף קובץ.")
@@ -470,19 +477,21 @@ def reply(phone):
     # (עד כמה שניות). נתיב נפרד לגמרי מה-API הרשמי, כולל מספרים זרים שלא עוברים נרמול ישראלי
     linked_id = linked_whatsapp.account_id_of(bot_phone_number_id)
     if linked_id is not None:
-        attachment_url = attachment_mime = attachment_name = None
-        if has_attachment:
-            attachment_mime = uploaded_file.content_type or "application/octet-stream"
-            attachment_name = uploaded_file.filename
+        for uploaded_file in uploaded_files:
             if len(uploaded_file.read()) > linked_whatsapp.MAX_ATTACHMENT_BYTES:
-                return _reply_failed(phone, "הקובץ גדול מדי (עד 10MB).")
+                return _reply_failed(phone, f"הקובץ {uploaded_file.filename} גדול מדי (עד 10MB).")
             uploaded_file.seek(0)
-            attachment_url = _save_upload_locally(phone, uploaded_file)
-        queued, result = linked_whatsapp.queue_outgoing(
-            repos, linked_id, phone, body, attachment_url, attachment_mime, attachment_name
-        )
-        if not queued:
-            return _reply_failed(phone, result, status=409)
+        for index, uploaded_file in enumerate(uploaded_files or [None]):
+            attachment_url = attachment_mime = attachment_name = None
+            if uploaded_file is not None:
+                attachment_mime = uploaded_file.content_type or "application/octet-stream"
+                attachment_name = uploaded_file.filename
+                attachment_url = _save_upload_locally(phone, uploaded_file)
+            queued, result = linked_whatsapp.queue_outgoing(
+                repos, linked_id, phone, body if index == 0 else "", attachment_url, attachment_mime, attachment_name
+            )
+            if not queued:
+                return _reply_failed(phone, result, status=409)
         if request.headers.get("X-Requested-With") == "fetch":
             return jsonify(ok=True)
         return redirect(url_for("bot_conversations.view_conversation", phone=phone))
@@ -492,31 +501,37 @@ def reply(phone):
         return _reply_failed(phone, "מספר טלפון לא תקין לשליחה.")
     bot_config = whatsapp_bot.CUSTOMER_BOT
 
-    attachment_url = None
+    sent = 0
     try:
         if has_attachment:
-            mime_type = uploaded_file.content_type or "application/octet-stream"
-            file_bytes = uploaded_file.read()
-            attachment_url = _save_upload_locally(phone, uploaded_file)
-
-            media_id = whatsapp_bot.upload_media(
-                bot_config, file_bytes, uploaded_file.filename, mime_type, phone_number_id=bot_phone_number_id
-            )
-            media_type = "image" if mime_type.startswith("image/") else "document"
-            response = whatsapp_bot.send_media_message(
-                bot_config, whatsapp_phone, media_id, media_type,
-                phone_number_id=bot_phone_number_id, caption=body or None,
-            )
+            for index, uploaded_file in enumerate(uploaded_files):
+                caption = body if index == 0 else ""
+                mime_type = uploaded_file.content_type or "application/octet-stream"
+                file_bytes = uploaded_file.read()
+                attachment_url = _save_upload_locally(phone, uploaded_file)
+                media_id = whatsapp_bot.upload_media(
+                    bot_config, file_bytes, uploaded_file.filename, mime_type, phone_number_id=bot_phone_number_id
+                )
+                media_type = "image" if mime_type.startswith("image/") else "document"
+                response = whatsapp_bot.send_media_message(
+                    bot_config, whatsapp_phone, media_id, media_type,
+                    phone_number_id=bot_phone_number_id, caption=caption or None,
+                )
+                repos.customer_bot_messages.log(
+                    phone, "out", caption or "📎 " + uploaded_file.filename, bot_phone_number_id, attachment_url,
+                    wamid=whatsapp_bot.extract_wamid(response),
+                )
+                sent += 1
         else:
             response = whatsapp_bot.send_text_message(
                 bot_config, whatsapp_phone, body, phone_number_id=bot_phone_number_id
             )
+            repos.customer_bot_messages.log(
+                phone, "out", body, bot_phone_number_id, None, wamid=whatsapp_bot.extract_wamid(response)
+            )
     except Exception as exc:
-        return _reply_failed(phone, f"שליחת ההודעה נכשלה: {exc}", status=502)
-
-    log_body = body or ("📎 " + uploaded_file.filename if has_attachment else "")
-    wamid = whatsapp_bot.extract_wamid(response)
-    repos.customer_bot_messages.log(phone, "out", log_body, bot_phone_number_id, attachment_url, wamid=wamid)
+        partial = f" (נשלחו {sent} מתוך {len(uploaded_files)} קבצים)" if sent else ""
+        return _reply_failed(phone, f"שליחת ההודעה נכשלה{partial}: {exc}", status=502)
     if request.headers.get("X-Requested-With") == "fetch":
         # מחזירים מיד את השיחה המעודכנת - הדף מחליף בה את הבועה הזמנית בלי עוד סבב בקשות לשרת
         fragment = _thread_fragment_response(repos, phone, repos.customer_bot_messages.get_by_phone(phone))

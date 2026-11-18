@@ -57,9 +57,14 @@
         display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
       }
       .empty { color: #999; text-align: center; padding: 30px 0; }
-      .card-image { display: block; max-width: 100%; max-height: 120px; border-radius: 8px; margin-top: 6px; object-fit: cover; }
-      .image-current { display: flex; align-items: center; gap: 10px; }
-      .image-current img { max-width: 120px; max-height: 80px; border-radius: 8px; object-fit: cover; }
+      .card-images { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 6px; }
+      .card-image { width: 64px; height: 64px; border-radius: 8px; object-fit: cover; }
+      .card-more { color: #64748b; font-size: 13px; font-weight: bold; }
+      .image-current { display: flex; flex-wrap: wrap; gap: 10px; margin: 6px 0; }
+      .image-item { position: relative; display: inline-flex; }
+      .image-item img { width: 72px; height: 72px; border-radius: 8px; object-fit: cover; }
+      .image-x { position: absolute; top: -6px; left: -6px; width: 22px; height: 22px; border: none; border-radius: 50%;
+        background: #dc2626; color: #fff; font-size: 14px; line-height: 1; cursor: pointer; padding: 0; }
       .link { border: none; background: none; color: #b91c1c; cursor: pointer; font-size: 12px; text-decoration: underline; padding: 0; }
       .form { padding: 4px 20px 20px; display: flex; flex-direction: column; gap: 10px; overflow-y: auto; }
       .form label { font-size: 12px; color: #666; }
@@ -174,14 +179,13 @@
 
   // שליחה עם תמונה: מדביקים את התמונה בתיבת הכתיבה - וואטסאפ פותחת את חלון התצוגה המקדימה שלה, עם שדה
   // כיתוב. אחרי שהחלון נפתח, מכניסים את הטקסט לשדה הכיתוב (שמקבל את הפוקוס). השליחה עצמה - בלחיצה שלך
-  async function insertImageWithCaption(imagePath, caption) {
+  async function insertImagesWithCaption(imagePaths, caption) {
     const composer = findComposer();
     if (!composer) return false;
-    const dataUrl = await loadImage(imagePath);
-    const file = dataUrlToFile(dataUrl, imagePath.split("/").pop() || "image.jpg");
+    const dataUrls = await Promise.all(imagePaths.map(loadImage));
     composer.focus();
     const clipboard = new DataTransfer();
-    clipboard.items.add(file);
+    dataUrls.forEach((dataUrl, i) => clipboard.items.add(dataUrlToFile(dataUrl, imagePaths[i].split("/").pop() || "image.jpg")));
     composer.dispatchEvent(new ClipboardEvent("paste", { clipboardData: clipboard, bubbles: true, cancelable: true }));
     if (!caption) return true;
     // מחכים שחלון התמונה ייפתח ושדה הכיתוב יקבל פוקוס (עד כ-3 שניות)
@@ -282,7 +286,9 @@
               title="מועדף"${library.can_edit ? "" : " disabled"}>★</button>
           </span>
         </div>
-        ${reply.image_url ? `<img class="card-image" alt="" data-image-path="${escapeHtml(reply.image_url)}">` : ""}
+        ${(reply.image_urls || []).length ? `<div class="card-images">${reply.image_urls.slice(0, 4).map((u) =>
+          `<img class="card-image" alt="" data-image-path="${escapeHtml(u)}">`).join("")}${reply.image_urls.length > 4
+          ? `<span class="card-more">+${reply.image_urls.length - 4}</span>` : ""}</div>` : ""}
         ${reply.body ? `<div class="card-body">${escapeHtml(reply.body)}</div>` : ""}
       </div>`).join("");
     return html || `<div class="empty">אין תגובות כאן</div>`;
@@ -304,9 +310,10 @@
         <span class="hint">אפשר לכתוב {שם} - יוחלף בשם הפרטי של הלקוחה כשמכניסים את ההודעה</span>
         <label>קטגוריה<input name="category" list="atlas-qr-cats" maxlength="80" value="${escapeHtml(reply.category || (tab !== "all" && tab !== "fav" ? tab : ""))}" /></label>
         <datalist id="atlas-qr-cats">${categoryOptions}</datalist>
-        <label>תמונה (אופציונלי) - תישלח עם הטקסט ככיתוב
-          ${reply.image_url ? `<span class="image-current"><img alt="" data-image-path="${escapeHtml(reply.image_url)}"><button class="link" type="button" data-action="remove-image">הסרת התמונה</button></span>` : ""}
-          <input type="file" name="image" accept="image/jpeg,image/png,image/webp,image/gif" />
+        <label>תמונות (אופציונלי, עד 10) - הטקסט יישלח ככיתוב של הראשונה
+          <span class="image-current">${(reply.image_urls || []).filter((u) => !(reply.remove_images || []).includes(u)).map((u) =>
+            `<span class="image-item"><img alt="" data-image-path="${escapeHtml(u)}"><button class="image-x" type="button" data-action="remove-image" data-url="${escapeHtml(u)}" title="הסרת התמונה">×</button></span>`).join("")}</span>
+          <input type="file" name="images" multiple accept="image/jpeg,image/png,image/webp,image/gif" />
         </label>
         <label><input type="checkbox" name="favorite" style="width:auto"${reply.favorite ? " checked" : ""} /> מועדף</label>
         <div class="form-actions">
@@ -381,8 +388,8 @@
       const firstName = globalThis.AtlasCRM.contactFirstName || "";
       const textToInsert = reply.body.replace(/\{שם\}/g, firstName).replace(/ {2,}/g, " ");
       closeModal();
-      if (reply.image_url) {
-        const done = await insertImageWithCaption(reply.image_url, textToInsert).catch(() => false);
+      if ((reply.image_urls || []).length) {
+        const done = await insertImagesWithCaption(reply.image_urls, textToInsert).catch(() => false);
         if (!done) alert("לא מצאתי את תיבת הכתיבה או את התמונה - נסי לפתוח את השיחה ולנסות שוב");
         return;
       }
@@ -412,8 +419,8 @@
       if (await mutate(`/api/extension/quick-replies/${target.dataset.id}/delete`)) editing = null;
       render();
     } else if (action === "remove-image") {
-      editing.remove_image = true;
-      target.closest(".image-current").remove();
+      editing.remove_images = (editing.remove_images || []).concat(target.dataset.url);
+      target.closest(".image-item").remove();
     } else if (action === "add-category") {
       const name = (prompt("שם הקטגוריה החדשה:") || "").trim();
       if (!name) return;
@@ -426,29 +433,26 @@
     event.preventDefault();
     const form = event.target;
     const fields = Object.fromEntries(new FormData(form).entries());
-    const file = form.querySelector('input[name="image"]').files[0];
-    let imageData = null;
-    if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        errorMessage = "התמונה גדולה מדי (עד 5MB)";
-        render();
-        return;
-      }
-      imageData = await new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
+    const files = Array.from(form.querySelector('input[name="images"]').files);
+    if (files.some((f) => f.size > 5 * 1024 * 1024)) {
+      errorMessage = "אחת התמונות גדולה מדי (עד 5MB לתמונה)";
+      render();
+      return;
     }
+    const imagesData = await Promise.all(files.map((file) => new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    })));
     const ok = await mutate("/api/extension/quick-replies/save", {
       id: editing.id || null,
       title: fields.title,
       body: fields.body,
       category: fields.category,
       favorite: Boolean(fields.favorite),
-      image_data: imageData,
-      remove_image: Boolean(editing.remove_image),
+      images_data: imagesData,
+      remove_images: editing.remove_images || [],
     });
     if (ok) editing = null;
     render();

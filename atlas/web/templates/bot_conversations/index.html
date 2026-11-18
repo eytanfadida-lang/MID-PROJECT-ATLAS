@@ -92,12 +92,9 @@
         </label>
         <label>טקסט ההודעה<textarea name="body" rows="7" maxlength="4000" required placeholder="אפשר לכתוב {שם} - יוחלף בשם הפרטי של הלקוחה"></textarea></label>
         <div class="qr-image-field">
-            <span class="qr-image-label">תמונה (אופציונלי) - תישלח עם הטקסט ככיתוב</span>
-            <div class="qr-image-current" id="qr-image-current" hidden>
-                <img alt="התמונה של התגובה">
-                <button type="button" class="qr-link qr-link-danger" id="qr-image-remove">הסרת התמונה</button>
-            </div>
-            <input type="file" name="image" id="qr-image-input" accept="image/jpeg,image/png,image/webp,image/gif">
+            <span class="qr-image-label">תמונות (אופציונלי, עד 10) - הטקסט יישלח ככיתוב של הראשונה</span>
+            <div class="qr-image-current" id="qr-image-current"></div>
+            <input type="file" name="images" id="qr-image-input" multiple accept="image/jpeg,image/png,image/webp,image/gif">
         </div>
         <label class="qr-check"><input type="checkbox" name="favorite" value="1"> מועדף</label>
         <p class="qr-error" id="qr-error" hidden></p>
@@ -202,7 +199,7 @@
             var hasFile = file.files && file.files.length > 0;
             send.disabled = !body.value.trim() && !hasFile;
             fileName.hidden = !hasFile;
-            fileName.textContent = hasFile ? file.files[0].name : '';
+            fileName.textContent = !hasFile ? '' : file.files.length > 1 ? file.files.length + ' קבצים' : file.files[0].name;
         }
         // תיבת הכתיבה גדלה עם הטקסט (עד גובה מסוים) במקום להישאר שורה אחת
         function autoGrow() {
@@ -227,7 +224,7 @@
             var text = body.value.trim();
             var attached = file.files && file.files.length > 0 ? file.files[0] : null;
             var data = new FormData(form);
-            var bubble = addPendingBubble(text, attached ? attached.name : '');
+            var bubble = addPendingBubble(text, !attached ? '' : file.files.length > 1 ? file.files.length + ' קבצים' : attached.name);
             body.value = '';
             file.value = '';
             refresh();
@@ -660,12 +657,18 @@
             });
             top.appendChild(star);
             card.appendChild(top);
-            if (r.image_url) {
-                var thumb = qrEl('img', 'qr-card-image');
-                thumb.src = r.image_url;
-                thumb.alt = '';
-                thumb.loading = 'lazy';
-                card.appendChild(thumb);
+            var urls = r.image_urls || [];
+            if (urls.length) {
+                var strip = qrEl('div', 'qr-card-images');
+                urls.slice(0, 4).forEach(function (u) {
+                    var thumb = qrEl('img', 'qr-card-image');
+                    thumb.src = u;
+                    thumb.alt = '';
+                    thumb.loading = 'lazy';
+                    strip.appendChild(thumb);
+                });
+                if (urls.length > 4) strip.appendChild(qrEl('span', 'qr-card-more', '+' + (urls.length - 4)));
+                card.appendChild(strip);
             }
             if (r.body) card.appendChild(qrEl('div', 'qr-card-body', r.body));
             var actions = qrEl('div', 'qr-card-actions');
@@ -683,17 +686,17 @@
             actions.appendChild(edit);
             actions.appendChild(del);
             card.appendChild(actions);
-            function use() { qrInsert(r.body, r.image_url); }
+            function use() { qrInsert(r.body, r.image_urls || []); }
             card.addEventListener('click', use);
             card.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); use(); } });
             items.appendChild(card);
         });
     }
-    function qrInsert(text, imageUrl) {
+    function qrInsert(text, imageUrls) {
         var formEl = document.querySelector('.chat-reply-form');
         var box = document.getElementById('chat-body');
         if (!formEl || !box) return;
-        if (imageUrl) qrAttachImage(imageUrl);
+        if (imageUrls.length) qrAttachImages(imageUrls);
         var first = formEl.dataset.firstName || '';
         // בלי שם ידוע - "היי {שם}!" הופך ל"היי!" ולא "היי !"
         text = text.replace(/\{שם\}/g, first).replace(/[ \t]+([,!?.])/g, '$1');
@@ -703,20 +706,24 @@
         qrClose();
         box.focus();
     }
-    // מצרפת את תמונת התגובה לשדה הקובץ של תיבת הכתיבה - כמו בחירת קובץ ידנית, כך שהיא נשלחת עם הטקסט
-    function qrAttachImage(url) {
+    // מצרפת את תמונות התגובה לשדה הקבצים של תיבת הכתיבה - כמו בחירת קבצים ידנית, כך שהן נשלחות עם הטקסט
+    // (הטקסט ככיתוב של הראשונה)
+    function qrAttachImages(urls) {
         var input = document.getElementById('chat-attachment');
         if (!input || typeof DataTransfer === 'undefined') return;
-        fetch(url, { credentials: 'same-origin' }).then(function (r) {
-            if (!r.ok) throw new Error('bad status');
-            return r.blob();
-        }).then(function (blob) {
-            var name = url.split('/').pop() || 'image.jpg';
+        Promise.all(urls.map(function (url) {
+            return fetch(url, { credentials: 'same-origin' }).then(function (r) {
+                if (!r.ok) throw new Error('bad status');
+                return r.blob();
+            }).then(function (blob) {
+                return new File([blob], url.split('/').pop() || 'image.jpg', { type: blob.type || 'image/jpeg' });
+            });
+        })).then(function (files) {
             var dt = new DataTransfer();
-            dt.items.add(new File([blob], name, { type: blob.type || 'image/jpeg' }));
+            files.forEach(function (f) { dt.items.add(f); });
             input.files = dt.files;
             input.dispatchEvent(new Event('change', { bubbles: true }));
-        }).catch(function () { alert('לא הצלחתי לצרף את התמונה של התגובה - אפשר לצרף אותה ידנית'); });
+        }).catch(function () { alert('לא הצלחתי לצרף את התמונות של התגובה - אפשר לצרף אותן ידנית'); });
     }
     function qrShow(view) {
         document.getElementById('qr-list-view').hidden = view !== 'list';
@@ -734,11 +741,23 @@
         f.elements.body.value = r ? r.body : '';
         sel.value = r ? r.category : (qrTab.indexOf('cat:') === 0 ? qrTab.slice(4) : '');
         f.elements.favorite.checked = r ? r.favorite : qrTab === 'fav';
-        f.elements.image.value = '';
-        qrRemoveImage = false;
+        f.elements.images.value = '';
+        qrRemovedImages = [];
         var current = document.getElementById('qr-image-current');
-        current.hidden = !(r && r.image_url);
-        if (r && r.image_url) current.querySelector('img').src = r.image_url;
+        current.textContent = '';
+        ((r && r.image_urls) || []).forEach(function (u) {
+            var item = qrEl('span', 'qr-image-item');
+            var img = qrEl('img');
+            img.src = u;
+            img.alt = '';
+            var x = qrEl('button', 'qr-image-x', '×');
+            x.type = 'button';
+            x.title = 'הסרת התמונה';
+            x.addEventListener('click', function () { qrRemovedImages.push(u); item.remove(); });
+            item.appendChild(img);
+            item.appendChild(x);
+            current.appendChild(item);
+        });
         document.getElementById('qr-error').hidden = true;
         qrShow('form');
         f.elements.title.focus();
@@ -756,11 +775,7 @@
     document.getElementById('qr-close').addEventListener('click', qrClose);
     document.getElementById('qr-new').addEventListener('click', function () { qrOpenForm(null); });
     document.getElementById('qr-cancel').addEventListener('click', function () { qrShow('list'); });
-    var qrRemoveImage = false;
-    document.getElementById('qr-image-remove').addEventListener('click', function () {
-        qrRemoveImage = true;
-        document.getElementById('qr-image-current').hidden = true;
-    });
+    var qrRemovedImages = [];
     document.getElementById('qr-search').addEventListener('input', qrRender);
     document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !qr.hidden) qrClose(); });
     document.getElementById('qr-form').addEventListener('submit', function (e) {
@@ -772,8 +787,8 @@
         data.set('body', f.elements.body.value);
         data.set('category', f.elements.category.value);
         data.set('favorite', f.elements.favorite.checked ? '1' : '0');
-        if (f.elements.image.files.length) data.set('image', f.elements.image.files[0]);
-        if (qrRemoveImage) data.set('remove_image', '1');
+        Array.prototype.forEach.call(f.elements.images.files, function (file) { data.append('images', file); });
+        qrRemovedImages.forEach(function (u) { data.append('remove_image', u); });
         qrPost(qr.dataset.saveUrl, data).then(function (d) { qrData = d; qrShow('list'); qrRender(); })
           .catch(function (err) { var el = document.getElementById('qr-error'); el.textContent = err.message; el.hidden = false; });
     });

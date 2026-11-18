@@ -9298,3 +9298,55 @@ select.status-select,
     border-radius: 8px;
     object-fit: cover;
 }
+
+/* כמה תמונות בתגובה מהירה: שורת תמונות ממוזערות בכרטיס, ורשימת תמונות עם כפתור הסרה בטופס */
+.qr-card-images {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    margin-top: 6px;
+}
+
+.qr-card-images .qr-card-image {
+    width: 64px;
+    height: 64px;
+    margin-top: 0;
+}
+
+.qr-card-more {
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.qr-image-current {
+    flex-wrap: wrap;
+}
+
+.qr-image-item {
+    position: relative;
+    display: inline-flex;
+}
+
+.qr-image-item img {
+    width: 72px;
+    height: 72px;
+    border-radius: 8px;
+    object-fit: cover;
+}
+
+.qr-image-x {
+    position: absolute;
+    top: -6px;
+    inset-inline-end: -6px;
+    width: 22px;
+    height: 22px;
+    border: none;
+    border-radius: 50%;
+    background: var(--danger);
+    color: #fff;
+    font-size: 14px;
+    line-height: 1;
+    cursor: pointer;
+}

@@ -366,15 +366,16 @@ def save_quick_reply():
     body = (payload.get("body") or "").strip()[:QUICK_REPLY_BODY_MAX]
     category = (payload.get("category") or "").strip()[:QUICK_REPLY_TITLE_MAX]
     favorite = bool(payload.get("favorite"))
-    # התוסף שולח תמונה חדשה כ-data URL (התקשורת איתו היא JSON בלבד)
-    image_data = payload.get("image_data")
-    new_image = (lambda: quick_reply_images.save_data_url(image_data)) if image_data else None
+    # התוסף שולח תמונות חדשות כ-data URL (התקשורת איתו היא JSON בלבד), ורשימת תמונות קיימות להסרה
+    images_data = payload.get("images_data") or ([payload["image_data"]] if payload.get("image_data") else [])
+    new_images = [(lambda d=d: quick_reply_images.save_data_url(d)) for d in images_data if isinstance(d, str)]
+    remove_urls = [u for u in (payload.get("remove_images") or []) if isinstance(u, str)]
 
     repos = get_repos()
     reply_id = payload.get("id")
     ok, error = quick_reply_images.save_reply(
         repos, int(reply_id) if reply_id else None, title, body, category, favorite,
-        new_image=new_image, remove=bool(payload.get("remove_image")),
+        new_images=new_images, remove_urls=remove_urls,
     )
     if not ok:
         return jsonify(ok=False, error=error), 400

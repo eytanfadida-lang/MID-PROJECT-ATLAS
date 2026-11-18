@@ -29,6 +29,9 @@ class QuickReplyDB:
         columns = {row[1] for row in conn.execute("PRAGMA table_info(quick_replies)")}
         if "image_url" not in columns:
             conn.execute("ALTER TABLE quick_replies ADD COLUMN image_url TEXT NOT NULL DEFAULT ''")
+        # כמה תמונות לתגובה: רשימת כתובות כ-JSON. image_url נשאר = התמונה הראשונה (תאימות לאחור)
+        if "image_urls" not in columns:
+            conn.execute("ALTER TABLE quick_replies ADD COLUMN image_urls TEXT NOT NULL DEFAULT ''")
         conn.execute("""
             CREATE TABLE IF NOT EXISTS quick_reply_categories (
                 name TEXT PRIMARY KEY,

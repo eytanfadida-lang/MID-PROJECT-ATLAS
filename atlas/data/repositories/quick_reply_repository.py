@@ -1,4 +1,5 @@
 import datetime
+import json
 
 TABLE_NAME = "quick_replies"
 CATEGORIES_TABLE = "quick_reply_categories"
@@ -11,21 +12,26 @@ class QuickReplyRepository:
 
     def get_all(self):
         rows = self.conn.execute(
-            f"SELECT id, title, body, category, favorite, image_url FROM {TABLE_NAME} ORDER BY favorite DESC, title"
+            f"SELECT id, title, body, category, favorite, image_url, image_urls FROM {TABLE_NAME} ORDER BY favorite DESC, title"
         ).fetchall()
-        return [
-            {"id": row[0], "title": row[1], "body": row[2], "category": row[3], "favorite": bool(row[4]),
-             "image_url": row[5] or ""}
-            for row in rows
-        ]
+        result = []
+        for row in rows:
+            urls = _urls(row[5], row[6])
+            result.append({
+                "id": row[0], "title": row[1], "body": row[2], "category": row[3], "favorite": bool(row[4]),
+                "image_urls": urls, "image_url": urls[0] if urls else "",
+            })
+        return result
 
-    def get_image_url(self, reply_id):
-        row = self.conn.execute(f"SELECT image_url FROM {TABLE_NAME} WHERE id = ?", (reply_id,)).fetchone()
-        return (row[0] or "") if row else None
+    # רשימת התמונות של תגובה (None אם התגובה לא קיימת)
+    def get_image_urls(self, reply_id):
+        row = self.conn.execute(f"SELECT image_url, image_urls FROM {TABLE_NAME} WHERE id = ?", (reply_id,)).fetchone()
+        return _urls(row[0], row[1]) if row else None
 
-    def set_image(self, reply_id, image_url):
+    def set_images(self, reply_id, urls):
         self.conn.execute(
-            f"UPDATE {TABLE_NAME} SET image_url = ?, updated_at = ? WHERE id = ?", (image_url or "", _now(), reply_id)
+            f"UPDATE {TABLE_NAME} SET image_urls = ?, image_url = ?, updated_at = ? WHERE id = ?",
+            (json.dumps(urls), urls[0] if urls else "", _now(), reply_id),
         )
         self.conn.commit()
 
@@ -76,6 +82,17 @@ class QuickReplyRepository:
         cursor = self.conn.execute(f"DELETE FROM {TABLE_NAME} WHERE id = ?", (reply_id,))
         self.conn.commit()
         return cursor.rowcount == 1
+
+
+# image_urls (JSON) הוא המקור; תגובות שנשמרו לפני שהיו כמה תמונות - רק image_url
+def _urls(single, many):
+    try:
+        urls = json.loads(many) if many else []
+    except ValueError:
+        urls = []
+    if not urls and single:
+        urls = [single]
+    return [u for u in urls if isinstance(u, str) and u]
 
 
 def _now():

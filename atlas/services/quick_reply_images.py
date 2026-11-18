@@ -56,30 +56,43 @@ def delete_image(url):
         pass
 
 
-# שמירת תגובה מהירה עם שינוי תמונה אופציונלי - משותף לעמוד השיחות ולתוסף. new_image: פונקציה שמחזירה
-# כתובת תמונה חדשה (או None אם לא צורפה), remove: להסיר את התמונה הקיימת. מחזירה (ok, שגיאה)
-def save_reply(repos, reply_id, title, body, category, favorite, new_image=None, remove=False):
-    old_url = repos.quick_replies.get_image_url(reply_id) if reply_id else ""
-    if reply_id and old_url is None:
+MAX_IMAGES = 10
+
+
+# שמירת תגובה מהירה עם תמונות - משותף לעמוד השיחות ולתוסף. new_images: רשימת פונקציות, כל אחת שומרת
+# תמונה חדשה ומחזירה את הכתובת שלה (נוספות בסוף); remove_urls: תמונות קיימות להסרה. מחזירה (ok, שגיאה)
+def save_reply(repos, reply_id, title, body, category, favorite, new_images=(), remove_urls=()):
+    old_urls = repos.quick_replies.get_image_urls(reply_id) if reply_id else []
+    if reply_id and old_urls is None:
         return False, "התגובה לא נמצאה"
+    kept = [u for u in old_urls if u not in set(remove_urls)]
+    if len(kept) + len(new_images) > MAX_IMAGES:
+        return False, f"אפשר לצרף עד {MAX_IMAGES} תמונות לתגובה"
+    added = []
     try:
-        image_url = new_image() if new_image else None
+        for save in new_images:
+            added.append(save())
     except ImageError as exc:
+        for url in added:
+            delete_image(url)
         return False, str(exc)
-    final_url = image_url or ("" if remove else old_url)
-    if not body and not final_url:
+    final = kept + added
+    if not body and not final:
         return False, "צריך לכתוב את טקסט ההודעה או לצרף תמונה"
-    title = title or (body.splitlines()[0][:40] if body else "תמונה")
+    title = title or (body.splitlines()[0][:40] if body else "תמונות")
     if reply_id:
         repos.quick_replies.update(reply_id, title, body, category, favorite)
     else:
         reply_id = repos.quick_replies.create(title, body, category, favorite)
-    if final_url != old_url:
-        repos.quick_replies.set_image(reply_id, final_url)
-        delete_image(old_url)
+    if final != old_urls:
+        repos.quick_replies.set_images(reply_id, final)
+        for url in old_urls:
+            if url not in final:
+                delete_image(url)
     return True, None
 
 
 def delete_reply(repos, reply_id):
-    delete_image(repos.quick_replies.get_image_url(reply_id))
+    for url in repos.quick_replies.get_image_urls(reply_id) or []:
+        delete_image(url)
     repos.quick_replies.delete(reply_id)
