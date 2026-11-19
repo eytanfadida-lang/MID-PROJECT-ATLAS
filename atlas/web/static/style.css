@@ -9353,3 +9353,27 @@ select.status-select,
 
 /* מחיקת אוטומציה - בתחתית פרטי הכרטיס, רחוק מהמתג, כדי שלא יילחץ בטעות */
 .auto-delete-form { display: flex; justify-content: flex-start; padding: 12px 16px 16px; border-top: 1px solid var(--border); margin-top: 8px; }
+
+/* תצוגה מקדימה של ההודעה בעריכת אוטומציה (_message_fields.html) - עמודה שמאלית, נשארת דביקה בגלילה */
+.automations-tab-panel .form-card:has(.msg-editor) { max-width: 980px; }
+.af-form:has(.msg-editor) { max-width: 1000px; }
+.msg-editor { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 24px; align-items: start; }
+.msg-editor-fields .form-group { max-width: none; }
+.msg-preview { position: sticky; top: 16px; }
+.msg-preview-title { font-weight: 700; font-size: 14px; margin-bottom: 8px; }
+.msg-preview-chat {
+    background: #efeae2; border-radius: 12px; padding: 16px 12px; min-height: 160px;
+    border: 1px solid var(--border);
+}
+.msg-preview-bubble {
+    position: relative; background: #d9fdd3; color: #111b21; border-radius: 0 8px 8px 8px;
+    padding: 6px 9px 18px; max-width: 92%; margin-inline-start: auto; box-shadow: 0 1px 0.5px rgba(11, 20, 26, 0.13);
+    font-size: 14.5px; line-height: 1.45; overflow-wrap: anywhere;
+}
+.msg-preview-text.is-empty { color: #667781; font-style: italic; }
+.msg-preview-time { position: absolute; bottom: 3px; inset-inline-end: 8px; font-size: 11px; color: #667781; }
+.msg-preview-note { color: var(--muted); font-size: 12px; margin-top: 6px; }
+@media (max-width: 860px) {
+    .msg-editor { grid-template-columns: 1fr; }
+    .msg-preview { position: static; }
+}
