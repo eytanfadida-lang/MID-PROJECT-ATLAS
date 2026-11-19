@@ -237,7 +237,13 @@ def _send_template_action(repos, due_action, action_config):
 # ראו atlas/factory.py). קודם מאפסת claimed שנתקעו (תהליך קודם שלא סיים), ואז מבצעת את כל
 # הפעולות שהגיע זמנן. claim_due_action הוא UPDATE מותנה (WHERE status='pending') - אם שתי
 # הרצות חופפות, השנייה פשוט לא תצליח לתפוס את מה שהראשונה כבר תפסה (idempotent)
+# כל בקשה ל-Arbox מתוך ה-poller נספרת במונה תחת "automation" (ראו request_source ב-client.py)
 def process_due_actions(repos, limit=50):
+    with arbox_client.request_source("automation"):
+        return _process_due_actions(repos, limit)
+
+
+def _process_due_actions(repos, limit=50):
     stale = repos.automations.reclaim_stale_claims()
     for row in stale:
         repos.automations.log_execution(

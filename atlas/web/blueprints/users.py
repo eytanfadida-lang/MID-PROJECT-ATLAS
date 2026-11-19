@@ -1,3 +1,5 @@
+import calendar
+import datetime
 import sqlite3
 
 from flask import Blueprint, render_template, request, redirect, url_for, flash
@@ -43,6 +45,36 @@ def change_my_password():
 def list_users():
     df = get_repos().users.get_all()
     return render_template("users/list.html", users=to_records(df))
+
+
+# כמה בקשות נשלחו ל-Arbox החודש מתוך המכסה (20,000), לפי מקור ולפי יום - ראו arbox_usage_repository.py
+@bp.route("/arbox-usage")
+@admin_required
+def arbox_usage():
+    from atlas.data.repositories.arbox_usage_repository import (
+        ALERT_THRESHOLD, BRAKE_THRESHOLD, MONTHLY_LIMIT, SOURCE_LABELS,
+    )
+    from atlas.services.time_utils import utc_now_to_israel
+
+    now_israel = utc_now_to_israel(datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None))
+    month = now_israel.strftime("%Y-%m")
+    usage = get_repos().arbox_usage
+    total = usage.month_total(month)
+    days_in_month = calendar.monthrange(now_israel.year, now_israel.month)[1]
+    # תחזית לסוף החודש לפי קצב הימים שעברו (לא כולל היום, שעוד לא נגמר) - רק אם עבר לפחות יום
+    daily = usage.month_daily(month)
+    past_days = [d for d in daily if d["day"] < now_israel.date().isoformat()]
+    forecast = None
+    if past_days:
+        past_total = sum(d["total"] for d in past_days)
+        remaining_days = days_in_month - now_israel.day + 1  # כולל היום
+        forecast = int(past_total + past_total / len(past_days) * remaining_days)
+    return render_template(
+        "users/arbox_usage.html",
+        month=now_israel.strftime("%m/%Y"), total=total, limit=MONTHLY_LIMIT,
+        alert=ALERT_THRESHOLD, brake=BRAKE_THRESHOLD, percent=min(100, round(total * 100 / MONTHLY_LIMIT)),
+        by_source=usage.month_by_source(month), daily=daily, labels=SOURCE_LABELS, forecast=forecast,
+    )
 
 
 @bp.route("/new", methods=["GET", "POST"])

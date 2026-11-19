@@ -1,5 +1,8 @@
+import contextlib
 import datetime
 import json
+import sqlite3
+import threading
 import time
 
 import requests
@@ -10,7 +13,56 @@ API_BASE_URL = "https://arboxserver.arboxapp.com/api/public/v3"
 API_KEY_FILE = secret(".arbox_api_key")
 API_KEY_PLACEHOLDER = "PUT_YOUR_ARBOX_API_KEY_HERE"
 LOCATION_MAP_FILE = secret("arbox_location_map.json")
+# מאומת מול ה-API (19/11/26): limit=5000 נדחה עם "'limit' must be smaller than 500" - זו התקרה
 PAGE_LIMIT = 500
+
+# מונה בקשות - ל-Arbox יש מכסה של 20,000 בקשות בחודש. כל בקשה (כולל ניסיון חוזר אחרי 429)
+# נרשמת בטבלת arbox_api_usage עם המקור שלה. המקור נקבע ע"י מי שקורא (request_source למטה),
+# ברירת המחדל "app" = בוט/תוסף/מערכת. thread-local כי השרת מטפל בכמה בקשות במקביל
+_source_state = threading.local()
+
+
+@contextlib.contextmanager
+def request_source(name):
+    previous = getattr(_source_state, "name", None)
+    _source_state.name = name
+    try:
+        yield
+    finally:
+        _source_state.name = previous
+
+
+def set_default_request_source(name):
+    """לסקריפטים שרצים כתהליך נפרד (למשל arbox_push_sync.py) - קובע מקור לכל התהליך."""
+    global _default_source
+    _default_source = name
+
+
+_default_source = "app"
+
+
+def _record_request():
+    # רישום בלבד - לעולם לא מפיל את הבקשה עצמה (למשל אם הטבלה עוד לא קיימת או ה-DB נעול)
+    try:
+        from atlas.data.db import DB_FILE
+        from atlas.data.repositories.arbox_usage_repository import ArboxUsageRepository
+        from atlas.services.time_utils import utc_now_to_israel
+
+        day = utc_now_to_israel(datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)).date().isoformat()
+        source = getattr(_source_state, "name", None) or _default_source
+        conn = sqlite3.connect(DB_FILE, timeout=5)
+        try:
+            ArboxUsageRepository(conn).add(day, source)
+        finally:
+            conn.close()
+    except Exception:  # noqa: BLE001
+        pass
+
+
+def _send(method, url, **kwargs):
+    response = requests.request(method, url, **kwargs)
+    _record_request()
+    return response
 
 
 # שולפת הודעת שגיאה קריאה מתגובת שגיאה של Arbox, לדיווח אמיתי ללקוח/ה (למשל ב-book_trial_class
@@ -65,7 +117,7 @@ def load_location_branch_map():
 # הסנכרון שולח כ-60 בקשות בריצה, ופעם אחת נתקל ב-429 באמצע. מכבדים Retry-After אם נשלח
 def _get_with_retry(url, api_key, params, attempts=3):
     for attempt in range(attempts):
-        response = requests.get(
+        response = _send("GET",
             url, headers={"Accept": "application/json", "api-key": api_key}, params=params, timeout=30,
         )
         if response.status_code != 429 or attempt == attempts - 1:
@@ -214,7 +266,7 @@ def fetch_arbox_schedule(api_key, from_date, to_date):
     sessions = []
     page = 1
     while True:
-        response = requests.get(
+        response = _send("GET",
             f"{API_BASE_URL}/schedule",
             headers={"Accept": "application/json", "api-key": api_key},
             params={"from_date": from_date, "to_date": to_date, "limit": PAGE_LIMIT, "page": page},
@@ -237,7 +289,7 @@ def fetch_arbox_active_memberships(api_key):
     memberships = []
     page = 1
     while True:
-        response = requests.get(
+        response = _send("GET",
             f"{API_BASE_URL}/users/memberships",
             headers={"Accept": "application/json", "api-key": api_key},
             params={"active": "1", "limit": PAGE_LIMIT, "page": page},
@@ -256,7 +308,7 @@ def fetch_arbox_active_memberships(api_key):
 # ולכן דורשת שהתהליך שקורא לפונקציה הזו יוכל להגיע ל-Arbox יוצא (לא PythonAnywhere
 # בתוכנית החינמית, ראו §3.8 בתוכנית)
 def book_arbox_session(api_key, user_id, schedule_id, membership_user_id):
-    response = requests.post(
+    response = _send("POST",
         f"{API_BASE_URL}/schedule/bookSession",
         headers={"Accept": "application/json", "api-key": api_key},
         json={"user_id": user_id, "schedule_id": schedule_id, "membership_user_id": membership_user_id},
@@ -267,7 +319,7 @@ def book_arbox_session(api_key, user_id, schedule_id, membership_user_id):
 
 # מבטלת רישום קיים של משתמש לשיעור ב-Arbox
 def cancel_arbox_booking(api_key, user_id, schedule_id):
-    response = requests.post(
+    response = _send("POST",
         f"{API_BASE_URL}/schedule/cancelUserBooking",
         headers={"Accept": "application/json", "api-key": api_key},
         json={"user_id": user_id, "schedule_id": schedule_id},
@@ -280,7 +332,7 @@ def cancel_arbox_booking(api_key, user_id, schedule_id):
 # ראשון שנמצא, או None אם אין. נחוץ כדי לדעת אם לקוחה/מתעניינת חדשה כבר קיימת
 # ב-Arbox (כליד, למשל) לפני שרושמים אותה לשיעור ניסיון
 def search_arbox_user_by_phone(api_key, phone):
-    response = requests.get(
+    response = _send("GET",
         f"{API_BASE_URL}/users/searchUser",
         headers={"Accept": "application/json", "api-key": api_key},
         params={"type": "phone", "value": phone},
@@ -297,7 +349,7 @@ def search_arbox_user_by_phone(api_key, phone):
 # וגם client לא-פעיל (לא רק פעיל כמו שחשבנו קודם) - מקבל רק user_id שנוצר דרך /leads.
 # ראו _resolve_or_create_trial_user_id ב-customer_assistant.py
 def search_arbox_user_record_by_phone(api_key, phone):
-    response = requests.get(
+    response = _send("GET",
         f"{API_BASE_URL}/users/searchUser",
         headers={"Accept": "application/json", "api-key": api_key},
         params={"type": "phone", "value": phone},
@@ -312,7 +364,7 @@ def search_arbox_user_record_by_phone(api_key, phone):
 # ה-user_id שהוא מחזיר עם "not valid"; רק לידים שנוצרו דרך /leads עובדים) - למשל
 # מתעניינת חדשה שרוצה שיעור ניסיון ועדיין לא קיימת ב-Arbox בכלל. מחזירה את ה-user_id
 def create_arbox_lead(api_key, first_name, last_name, phone, location_id):
-    response = requests.post(
+    response = _send("POST",
         f"{API_BASE_URL}/leads",
         headers={"Accept": "application/json", "api-key": api_key},
         json={"first_name": first_name, "last_name": last_name, "phone": phone, "location_id": location_id},
@@ -326,7 +378,7 @@ def create_arbox_lead(api_key, first_name, last_name, phone, location_id):
 # פעיל (בשונה מ-bookSession הרגיל). Arbox עצמה דוחה את הבקשה אם השיעור מלא, וזו
 # בפועל הדרך היחידה לדעת אם יש מקום פנוי (אין endpoint נפרד לכך)
 def book_arbox_trial(api_key, user_id, schedule_id):
-    response = requests.post(
+    response = _send("POST",
         f"{API_BASE_URL}/schedule/booking/trial",
         headers={"Accept": "application/json", "api-key": api_key},
         json={"user_id": user_id, "schedule_id": schedule_id},
@@ -337,7 +389,7 @@ def book_arbox_trial(api_key, user_id, schedule_id):
 
 # מבטלת רישום קיים לשיעור ניסיון
 def cancel_arbox_trial(api_key, user_id, schedule_id):
-    response = requests.delete(
+    response = _send("DELETE",
         f"{API_BASE_URL}/schedule/booking/trial",
         headers={"Accept": "application/json", "api-key": api_key},
         params={"user_id": user_id, "schedule_id": schedule_id},

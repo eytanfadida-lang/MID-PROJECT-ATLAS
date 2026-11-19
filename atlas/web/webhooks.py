@@ -272,6 +272,10 @@ def receive_arbox_sync_data():
     bookings_to_date = payload.get("bookings_to_date")
     if isinstance(bookings, list) and bookings_from_date and bookings_to_date:
         repos.arbox_visit_cache.replace_range(bookings_from_date, bookings_to_date, bookings)
+        # השולח מושך רק אתמול והיום (תקציב בקשות Arbox), אז ההיסטוריה נשמרת כאן ומתנקה אחרי 45 יום
+        repos.arbox_visit_cache.prune_before(
+            (datetime.date.today() - datetime.timedelta(days=VISIT_HISTORY_DAYS)).isoformat()
+        )
 
     # משתמשי Arbox שאינם לקוחות (לידים/עובדות/אגרגטור) - לכרטיס איש הקשר בתוסף. אופציונלי כמו למעלה
     contacts = payload.get("contacts")
@@ -279,7 +283,39 @@ def receive_arbox_sync_data():
         repos.arbox_contact_cache.replace_all(contacts)
 
     result = apply_arbox_users_to_leads(repos, arbox_users)
+    _alert_arbox_usage(repos)
     return jsonify(result)
+
+
+VISIT_HISTORY_DAYS = 45
+
+
+# התראת Web Push למנהלים (רק להם, לא לכל הצוות) כשמספר הבקשות ל-Arbox החודש עובר סף - כל סף
+# פעם אחת בחודש. נבדק אחרי כל ריצת סנכרון, שהיא הצרכנית העיקרית של המכסה
+def _alert_arbox_usage(repos):
+    from atlas.core import roles
+    from atlas.data.repositories.arbox_usage_repository import (
+        ALERT_THRESHOLD, BRAKE_THRESHOLD, MONTHLY_LIMIT,
+    )
+    from atlas.services import time_utils, web_push
+
+    try:
+        month = time_utils.utc_now_to_israel(datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)).strftime("%Y-%m")
+        used = repos.arbox_usage.month_total(month)
+        threshold = next((t for t in (BRAKE_THRESHOLD, ALERT_THRESHOLD) if used >= t), None)
+        if threshold is None or not repos.arbox_usage.claim_alert(month, threshold):
+            return
+        body = f"{used:,} מתוך {MONTHLY_LIMIT:,} בקשות החודש."
+        if threshold == BRAKE_THRESHOLD:
+            body += " הסנכרון ירד לפעמיים ביום עד סוף החודש."
+        payload = {"title": "Arbox: מתקרבים למכסה", "body": body, "tag": "arbox-usage", "url": "/users/arbox-usage"}
+        users = repos.users.get_all()
+        admins = set(users[users["role"] == roles.ADMIN]["username"])
+        for subscription in repos.push_subscriptions.get_all():
+            if subscription["username"] in admins:
+                web_push.send_to_subscription(subscription, payload)
+    except Exception as exc:  # noqa: BLE001 - התראה לא מפילה את הסנכרון
+        print(f"[arbox usage alert] failed: {exc}")
 
 
 # מקבלת ליד חדש מ-Google Ads (Lead Form extension, webhook delivery). האימות הוא לפי

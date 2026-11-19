@@ -43,6 +43,8 @@ from atlas.data.contact_extras_db import ContactExtrasDB
 from atlas.data.repositories.contact_extras_repository import ContactExtrasRepository
 from atlas.data.arbox_contact_cache_db import ArboxContactCacheDB
 from atlas.data.repositories.arbox_contact_cache_repository import ArboxContactCacheRepository
+from atlas.data.arbox_usage_db import ArboxUsageDB
+from atlas.data.repositories.arbox_usage_repository import ArboxUsageRepository
 
 
 # מריצה חד-פעמית באתחול (import-time של app.py): יוצרת/ממגרת את כל הטבלאות,
@@ -53,7 +55,7 @@ def bootstrap_databases():
         AppointmentDB, CustomerDB, LeadDB, UserDB, WhatsAppStateDB, BotContentGapDB,
         ArboxMemberCacheDB, ArboxClassCacheDB, CustomerBotMessageDB, AutomationDB,
         ArboxEntranceCountDB, PushSubscriptionDB, LinkedWhatsAppDB, QuickReplyDB,
-        ApiTokenDB, ArboxVisitCacheDB, ContactExtrasDB, ArboxContactCacheDB,
+        ApiTokenDB, ArboxVisitCacheDB, ContactExtrasDB, ArboxContactCacheDB, ArboxUsageDB,
     ):
         instance = db_class()
         instance.close()
@@ -99,6 +101,7 @@ def get_repos():
             arbox_visit_cache=ArboxVisitCacheRepository(conn),
             contact_extras=ContactExtrasRepository(conn),
             arbox_contact_cache=ArboxContactCacheRepository(conn),
+            arbox_usage=ArboxUsageRepository(conn),
         )
     return g.repos
 

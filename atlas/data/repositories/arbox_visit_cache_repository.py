@@ -43,6 +43,13 @@ class ArboxVisitCacheRepository:
         self.conn.commit()
         return len(rows)
 
+    # הסנכרון מושך רק אתמול והיום (תקציב בקשות Arbox) והישנים נשמרים - כאן מנקים מה שעבר את
+    # חלון ההיסטוריה, כדי שהטבלה לא תגדל בלי סוף
+    def prune_before(self, before_date):
+        cursor = self.conn.execute(f"DELETE FROM {TABLE_NAME} WHERE visit_date < ?", (before_date,))
+        self.conn.commit()
+        return cursor.rowcount
+
     # הביקורים האחרונים של טלפון נתון, החדש ביותר קודם - לפאנל בתוסף
     def get_recent_by_phone(self, phone, limit=10):
         rows = self.conn.execute(

@@ -290,3 +290,6 @@ gateway/.env
 .campaign_*.json
 .roller_free_trials.json
 .arbox_profile_links.json
+
+# תאריך הסנכרון היומי האחרון של לידים/אנשי צוות מ-Arbox (arbox_push_sync.py)
+.arbox_contacts_synced_date
