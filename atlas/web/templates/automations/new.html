@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block page_title %}אוטומציה מתוזמנת חדשה{% endblock %}
+{% block page_heading %}אוטומציה מתוזמנת חדשה{% endblock %}
+
+{% block content %}
+<div class="automations-header">
+    <div class="automations-actions">
+        <a href="{{ url_for('automations.list_automations') }}" class="btn btn-ghost">חזרה לאוטומציות</a>
+    </div>
+</div>
+
+<form method="post" class="af-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+    <section class="af-section">
+        <h2 class="af-section-title"><span class="af-step">1</span> שם האוטומציה</h2>
+        <div class="form-group">
+            <label for="af-name">שם שיופיע ברשימה</label>
+            <input type="text" id="af-name" name="name" value="{{ form.get('name', '') }}" required autofocus>
+        </div>
+    </section>
+
+    <section class="af-section">
+        <h2 class="af-section-title"><span class="af-step">2</span> למי ומתי לשלוח</h2>
+        {% include "automations/_schedule_fields.html" %}
+    </section>
+
+    <section class="af-section">
+        <h2 class="af-section-title"><span class="af-step">3</span> תוכן ההודעה</h2>
+        {% include "automations/_message_fields.html" %}
+    </section>
+
+    <div class="af-actions">
+        <button type="submit" class="btn">יצירת האוטומציה</button>
+        <a href="{{ url_for('automations.list_automations') }}" class="btn btn-ghost">ביטול</a>
+    </div>
+</form>
+{% endblock %}

@@ -1,7 +1,7 @@
 import sqlite3
 import unittest
 
-from lead_repository import LeadRepository
+from atlas.data.repositories.lead_repository import LeadRepository
 
 
 class LeadRepositoryBulkActionsTests(unittest.TestCase):

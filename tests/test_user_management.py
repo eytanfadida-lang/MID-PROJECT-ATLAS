@@ -1,7 +1,7 @@
 import sqlite3
 import unittest
 
-from user_repository import UserRepository
+from atlas.data.repositories.user_repository import UserRepository
 
 
 class UserRepositoryManagementTests(unittest.TestCase):

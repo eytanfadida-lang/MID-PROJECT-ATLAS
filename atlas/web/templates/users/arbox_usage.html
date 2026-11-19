@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block page_title %}שימוש ב-Arbox - מנהל תורים{% endblock %}
+{% block page_heading %}בקשות ל-Arbox - {{ month }}{% endblock %}
+
+{% block content %}
+<style>
+    .arbox-usage-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+    .arbox-usage-total { font-size: 28px; font-weight: 700; }
+    .arbox-usage-sub { color: var(--muted); font-size: 14px; margin-top: 4px; }
+    .arbox-usage-bar { height: 12px; background: var(--border); border-radius: 6px; overflow: hidden; margin-top: 12px; }
+    .arbox-usage-bar span { display: block; height: 100%; border-radius: 6px; }
+</style>
+
+{% set bar_color = '#dc2626' if total >= brake else ('#f59e0b' if total >= alert else '#16a34a') %}
+<div class="arbox-usage-card">
+    <div class="arbox-usage-total">{{ '{:,}'.format(total) }} / {{ '{:,}'.format(limit) }}</div>
+    <div class="arbox-usage-sub">
+        {{ percent }}% מהמכסה החודשית
+        {% if forecast is not none %} · תחזית לסוף החודש: כ-{{ '{:,}'.format(forecast) }}{% endif %}
+    </div>
+    <div class="arbox-usage-bar"><span style="width: {{ percent }}%; background: {{ bar_color }};"></span></div>
+    <div class="arbox-usage-sub">
+        מעל {{ '{:,}'.format(alert) }} נשלחת התראה, ומעל {{ '{:,}'.format(brake) }} הסנכרון יורד לפעמיים ביום עד סוף החודש.
+        {% if total >= brake %}<strong>הבלם פעיל עכשיו.</strong>{% endif %}
+    </div>
+</div>
+
+<div class="automations-table-wrap cust-table-wrap">
+<table class="cust-table">
+    <thead><tr><th>מקור</th><th>בקשות החודש</th></tr></thead>
+    <tbody>
+        {% for row in by_source %}
+        <tr><td>{{ row.label }}</td><td>{{ '{:,}'.format(row.count) }}</td></tr>
+        {% else %}
+        <tr><td colspan="2" class="cust-muted">עדיין לא נרשמו בקשות החודש</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+</div>
+
+{% if daily %}
+<h3 style="margin-top: 20px;">לפי יום</h3>
+<div class="automations-table-wrap cust-table-wrap">
+<table class="cust-table">
+    <thead>
+        <tr><th>תאריך</th><th>סה"כ</th>{% for key, label in labels.items() %}<th>{{ label }}</th>{% endfor %}</tr>
+    </thead>
+    <tbody>
+        {% for d in daily %}
+        <tr>
+            <td>{{ d.day[8:10] }}/{{ d.day[5:7] }}</td>
+            <td><strong>{{ '{:,}'.format(d.total) }}</strong></td>
+            {% for key in labels %}<td>{{ '{:,}'.format(d.by_source.get(key, 0)) }}</td>{% endfor %}
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,207 @@
+{% extends "base.html" %}
+{% block page_title %}תבניות וואטסאפ{% endblock %}
+{% block page_heading %}תבניות וואטסאפ{% endblock %}
+
+{% block content %}
+{% set n_approved = templates | selectattr('status', 'equalto', 'APPROVED') | list | length %}
+{% set n_rejected = templates | selectattr('status', 'equalto', 'REJECTED') | list | length %}
+{% set n_pending = templates | selectattr('status', 'equalto', 'PENDING') | list | length %}
+
+<details class="wa-info">
+    <summary>מה זה תבנית מאושרת ולמה צריך אותה?</summary>
+    <p class="hint">
+        תבנית מאושרת (בניגוד להודעה חופשית) מגיעה ללקוחה גם אם היא לא כתבה לבוט ב-24 השעות
+        האחרונות - זה הפתרון לבעיית "ההודעות לא מגיעות" באוטומציות שידור. כל תבנית נשלחת כאן
+        לאישור מטא (לא מיידי - בדרך כלל דקות עד יום), ואפשר לרענן את העמוד כדי לראות את הסטטוס
+        המעודכן (מטא היא מקור האמת, אין שמירה מקומית).
+    </p>
+</details>
+
+{% if error %}
+<p class="flash flash-error">{{ error }}</p>
+{% endif %}
+
+<div class="automations-stats">
+    <div class="auto-stat">
+        <span class="auto-stat-label">סה״כ תבניות</span>
+        <span class="auto-stat-value">{{ templates | length }}</span>
+    </div>
+    <div class="auto-stat auto-stat-green">
+        <span class="auto-stat-label">מאושרות</span>
+        <span class="auto-stat-value">{{ n_approved }}</span>
+    </div>
+    <div class="auto-stat auto-stat-gray">
+        <span class="auto-stat-label">ממתינות</span>
+        <span class="auto-stat-value">{{ n_pending }}</span>
+    </div>
+    <div class="auto-stat {{ 'auto-stat-red' if n_rejected else 'auto-stat-gray' }}">
+        <span class="auto-stat-label">נדחו</span>
+        <span class="auto-stat-value">{{ n_rejected }}</span>
+    </div>
+</div>
+
+<div class="wa-section-head">
+    <h2>תבניות קיימות</h2>
+    <a href="#wa-new-form" class="btn btn-sm">＋ תבנית חדשה</a>
+</div>
+
+{% if templates %}
+<div class="wa-filters">
+    <input type="text" id="wa-search" placeholder="חיפוש לפי שם או תוכן" aria-label="חיפוש תבניות">
+    <button type="button" class="wa-chip active" data-filter="all">הכל</button>
+    <button type="button" class="wa-chip" data-filter="APPROVED">מאושרות</button>
+    <button type="button" class="wa-chip" data-filter="PENDING">ממתינות</button>
+    <button type="button" class="wa-chip" data-filter="REJECTED">נדחו</button>
+</div>
+
+<div class="wa-grid" id="wa-grid">
+    {% for t in templates %}
+    {% set body = namespace(text='', footer='') %}
+    {% for c in t.components %}
+        {% if c.type == 'BODY' %}{% set body.text = c.text %}{% endif %}
+        {% if c.type == 'FOOTER' %}{% set body.footer = c.text %}{% endif %}
+    {% endfor %}
+    <article class="wa-card" data-status="{{ t.status }}" data-search="{{ (t.name ~ ' ' ~ body.text) | lower }}">
+        <header class="wa-card-head">
+            <code class="wa-name">{{ t.name }}</code>
+            <span class="badge {{ 'badge-green' if t.status == 'APPROVED' else ('badge-red' if t.status == 'REJECTED' else 'badge-gray') }}">
+                {{ status_labels.get(t.status, t.status) }}
+            </span>
+        </header>
+        <div class="wa-meta">
+            <span class="category-pill {{ 'wa-pill-marketing' if t.category == 'MARKETING' else '' }}">{{ t.category }}</span>
+            <span class="category-pill">{{ t.language }}</span>
+        </div>
+        <div class="wa-bubble">
+            <div class="wa-bubble-text">{{ body.text }}</div>
+            {% if body.footer %}<div class="wa-bubble-footer">{{ body.footer }}</div>{% endif %}
+        </div>
+    </article>
+    {% endfor %}
+</div>
+<p class="empty-state" id="wa-no-results" hidden>לא נמצאו תבניות שמתאימות לסינון.</p>
+{% else %}
+<div class="empty-state automations-empty">
+    <strong>אין עדיין תבניות</strong>
+    <p class="hint">צרו תבנית ראשונה בטופס למטה ושלחו אותה לאישור Meta.</p>
+</div>
+{% endif %}
+
+<div class="wa-new" id="wa-new-form">
+    <h2>תבנית חדשה</h2>
+    <div class="wa-new-layout">
+        <form method="post" action="{{ url_for('whatsapp_templates.create_template') }}" class="wa-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <div class="form-group">
+                <label>שם התבנית (אותיות לועזיות קטנות, ספרות וקו תחתון בלבד)</label>
+                <input type="text" name="name" placeholder="למשל: membership_reminder" required pattern="[a-z0-9_]+">
+            </div>
+            <div class="form-group">
+                <label>קטגוריה</label>
+                <select name="category">
+                    <option value="UTILITY">UTILITY - עדכון/שירות ללקוחה קיימת (קל יותר לאישור)</option>
+                    <option value="MARKETING">MARKETING - שיווקי/מבצע (בדיקה מחמירה יותר של מטא)</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>תוכן ההודעה</label>
+                <textarea name="body_text" id="wa-body" rows="4" required placeholder="היי {{ '{{1}}' }}! התזכורת שלך בנוגע ל{{ '{{2}}' }}..."></textarea>
+                <p class="hint">
+                    אפשר להשתמש ב-{{ '{{1}}' }}, {{ '{{2}}' }} וכו' כמשתנים (ימולאו בזמן השליחה בפועל).
+                    לכל משתנה חובה למלא ערך דוגמה למטה - מטא דורשת את זה כדי לבדוק את התבנית.
+                </p>
+            </div>
+            <div class="form-group">
+                <label>ערכי דוגמה למשתנים (לפי הסדר - {{ '{{1}}' }} ראשון וכו')</label>
+                <input type="text" name="example_values" class="wa-example" placeholder="דוגמה למשתנה 1 (למשל: שרית)">
+                <input type="text" name="example_values" class="wa-example" placeholder="דוגמה למשתנה 2 (אופציונלי)">
+                <input type="text" name="example_values" class="wa-example" placeholder="דוגמה למשתנה 3 (אופציונלי)">
+            </div>
+            <div class="form-group">
+                <label>כותרת תחתונה (אופציונלי, טקסט קבוע)</label>
+                <input type="text" name="footer_text" id="wa-footer" placeholder="למשל: סטודיו אפרת רוזנברג">
+            </div>
+            <button type="submit" class="btn">שליחה לאישור Meta</button>
+        </form>
+
+        <aside class="wa-preview" aria-label="תצוגה מקדימה">
+            <div class="wa-preview-title">תצוגה מקדימה</div>
+            <div class="chat-thread wa-preview-thread">
+                <div class="wa-bubble wa-bubble-preview">
+                    <div class="wa-bubble-text" id="wa-preview-text"><span class="wa-placeholder">ההודעה תופיע כאן בזמן שאת/ה כותב/ת…</span></div>
+                    <div class="wa-bubble-footer" id="wa-preview-footer" hidden></div>
+                </div>
+            </div>
+        </aside>
+    </div>
+</div>
+
+<script>
+(function () {
+    // מדגיש משתנים כמו {{1}} בתוך גוף כל תבנית (התוכן כבר עבר escape בצד השרת, אז החלפה על
+    // innerHTML בטוחה - מוסיפה רק את ה-span של הדגשה סביב התבנית המדויקת)
+    document.querySelectorAll('.wa-card .wa-bubble-text').forEach(function (el) {
+        el.innerHTML = el.innerHTML.replace(/\{\{\s*(\d+)\s*\}\}/g, '<span class="wa-var">\u007b\u007b$1\u007d\u007d</span>');
+    });
+
+    // סינון לפי סטטוס + חיפוש טקסט חופשי (בצד הדפדפן בלבד - כל התבניות כבר נטענו)
+    var grid = document.getElementById('wa-grid');
+    if (grid) {
+        var cards = grid.querySelectorAll('.wa-card');
+        var chips = document.querySelectorAll('.wa-chip');
+        var search = document.getElementById('wa-search');
+        var noResults = document.getElementById('wa-no-results');
+        var activeFilter = 'all';
+        function applyFilters() {
+            var q = search.value.trim().toLowerCase();
+            var visible = 0;
+            cards.forEach(function (card) {
+                var okStatus = activeFilter === 'all' || card.dataset.status === activeFilter;
+                var okText = !q || card.dataset.search.indexOf(q) !== -1;
+                card.hidden = !(okStatus && okText);
+                if (!card.hidden) visible++;
+            });
+            noResults.hidden = visible !== 0;
+        }
+        chips.forEach(function (chip) {
+            chip.addEventListener('click', function () {
+                activeFilter = chip.dataset.filter;
+                chips.forEach(function (c) { c.classList.toggle('active', c === chip); });
+                applyFilters();
+            });
+        });
+        search.addEventListener('input', applyFilters);
+    }
+
+    // תצוגה מקדימה חיה של ההודעה: מחליף {{n}} בערך הדוגמה שמולא (או משאיר את המשתנה אם ריק)
+    var body = document.getElementById('wa-body');
+    var footer = document.getElementById('wa-footer');
+    var previewText = document.getElementById('wa-preview-text');
+    var previewFooter = document.getElementById('wa-preview-footer');
+    var examples = document.querySelectorAll('.wa-example');
+    function escapeHtml(s) {
+        return s.replace(/[&<>"']/g, function (ch) {
+            return {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[ch];
+        });
+    }
+    function renderPreview() {
+        var text = body.value;
+        if (!text.trim()) {
+            previewText.innerHTML = '<span class="wa-placeholder">ההודעה תופיע כאן בזמן שאת/ה כותב/ת…</span>';
+        } else {
+            previewText.innerHTML = escapeHtml(text).replace(/\{\{\s*(\d+)\s*\}\}/g, function (m, n) {
+                var val = examples[parseInt(n, 10) - 1];
+                var v = val && val.value.trim();
+                return '<span class="wa-var">' + (v ? escapeHtml(v) : '\u007b\u007b' + n + '\u007d\u007d') + '</span>';
+            });
+        }
+        var f = footer.value.trim();
+        previewFooter.hidden = !f;
+        previewFooter.textContent = f;
+    }
+    [body, footer].concat(Array.prototype.slice.call(examples)).forEach(function (el) {
+        el.addEventListener('input', renderPreview);
+    });
+})();
+</script>
+{% endblock %}

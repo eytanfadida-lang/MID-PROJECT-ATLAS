@@ -1,0 +1,12 @@
+name: Automations run
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch: {}
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - run: curl -sf "https://eytan1985.pythonanywhere.com/tasks/automations-run?token=${{ secrets.AUTOMATIONS_RUN_TOKEN }}"

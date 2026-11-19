@@ -1,8 +1,8 @@
 name: Arbox sync
 
+# התזמון הקבוע עבר ל-PythonAnywhere (4 משימות מתוזמנות, כל 15 דקות - 16/11/26): GitHub הריץ את
+# ה-cron הזה בפועל רק כל 4-7 שעות, ושתי ריצות במקביל גרמו ל-Arbox לענות 429. נשאר להרצה ידנית בלבד
 on:
-  schedule:
-    - cron: "*/15 * * * *"
   workflow_dispatch: {}
 
 jobs:
