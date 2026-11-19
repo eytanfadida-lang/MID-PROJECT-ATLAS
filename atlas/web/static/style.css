@@ -9350,3 +9350,6 @@ select.status-select,
     line-height: 1;
     cursor: pointer;
 }
+
+/* מחיקת אוטומציה - בתחתית פרטי הכרטיס, רחוק מהמתג, כדי שלא יילחץ בטעות */
+.auto-delete-form { display: flex; justify-content: flex-start; padding: 12px 16px 16px; border-top: 1px solid var(--border); margin-top: 8px; }

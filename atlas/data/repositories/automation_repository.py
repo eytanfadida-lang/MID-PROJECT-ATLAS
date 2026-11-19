@@ -15,7 +15,7 @@ class AutomationRepository:
     def get_enabled_by_trigger(self, trigger_type, tenant_id=1):
         rows = self.conn.execute(
             "SELECT id, name, trigger_config FROM automations "
-            "WHERE trigger_type = ? AND tenant_id = ? AND enabled = 1",
+            "WHERE trigger_type = ? AND tenant_id = ? AND enabled = 1 AND deleted_at IS NULL",
             (trigger_type, tenant_id),
         ).fetchall()
         return [
@@ -231,7 +231,7 @@ class AutomationRepository:
     def get_all(self, tenant_id=1):
         rows = self.conn.execute(
             "SELECT id, name, trigger_type, enabled, created_at, trigger_config FROM automations "
-            "WHERE tenant_id = ? ORDER BY id",
+            "WHERE tenant_id = ? AND deleted_at IS NULL ORDER BY id",
             (tenant_id,),
         ).fetchall()
         automations = []
@@ -285,7 +285,7 @@ class AutomationRepository:
     def get_by_id(self, automation_id, tenant_id=1):
         row = self.conn.execute(
             "SELECT id, name, trigger_type, enabled, created_at, trigger_config, last_run_at "
-            "FROM automations WHERE id = ? AND tenant_id = ?",
+            "FROM automations WHERE id = ? AND tenant_id = ? AND deleted_at IS NULL",
             (automation_id, tenant_id),
         ).fetchone()
         if row is None:
@@ -330,7 +330,7 @@ class AutomationRepository:
     def get_scheduled_automations(self, tenant_id=1):
         rows = self.conn.execute(
             "SELECT id, name, trigger_config, last_run_at FROM automations "
-            "WHERE trigger_type = 'scheduled' AND tenant_id = ? AND enabled = 1",
+            "WHERE trigger_type = 'scheduled' AND tenant_id = ? AND enabled = 1 AND deleted_at IS NULL",
             (tenant_id,),
         ).fetchall()
         return [
@@ -411,10 +411,26 @@ class AutomationRepository:
         ).fetchall()
         return [{"id": row[0], "phone": row[1], "full_name": row[2]} for row in rows]
 
+    # מחיקה רכה (ראו deleted_at ב-automation_db.py): מכבה, מסתירה מכל מקום, ומבטלת הודעות שעוד
+    # ממתינות לשליחה בתור (due_actions) - כדי שאוטומציה שנמחקה לא תשלח כלום אחרי המחיקה.
+    # מחזירה כמה הודעות ממתינות בוטלו
+    def delete_automation(self, automation_id):
+        now = datetime.datetime.now().isoformat(timespec="seconds")
+        self.conn.execute(
+            "UPDATE automations SET enabled = 0, deleted_at = ?, updated_at = ? WHERE id = ? AND deleted_at IS NULL",
+            (now, now, automation_id),
+        )
+        cursor = self.conn.execute(
+            "UPDATE due_actions SET status = 'cancelled' WHERE automation_id = ? AND status = 'pending'",
+            (automation_id,),
+        )
+        self.conn.commit()
+        return cursor.rowcount
+
     def toggle_enabled(self, automation_id):
         now = datetime.datetime.now().isoformat(timespec="seconds")
         self.conn.execute(
-            "UPDATE automations SET enabled = 1 - enabled, updated_at = ? WHERE id = ?",
+            "UPDATE automations SET enabled = 1 - enabled, updated_at = ? WHERE id = ? AND deleted_at IS NULL",
             (now, automation_id),
         )
         self.conn.commit()

@@ -672,6 +672,21 @@ def edit_step(automation_id, step_id):
     return _back_to_list(automation_id)
 
 
+@bp.route("/<int:automation_id>/delete", methods=["POST"])
+@admin_required
+def delete_automation(automation_id):
+    repos = get_repos()
+    automation = repos.automations.get_by_id(automation_id)
+    if automation is None:
+        abort(404)
+    cancelled = repos.automations.delete_automation(automation_id)
+    message = f"האוטומציה '{automation['name']}' נמחקה."
+    if cancelled:
+        message += f" בוטלו {cancelled} הודעות שחיכו לשליחה."
+    flash(message, "success")
+    return redirect(url_for("automations.list_automations"))
+
+
 @bp.route("/<int:automation_id>/toggle", methods=["POST"])
 @admin_required
 def toggle_automation(automation_id):

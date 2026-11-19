@@ -328,6 +328,11 @@ class AutomationDB:
         columns = {row[1] for row in conn.execute("PRAGMA table_info(automations)").fetchall()}
         if "last_run_at" not in columns:
             conn.execute("ALTER TABLE automations ADD COLUMN last_run_at TEXT")
+        # מחיקה מהממשק היא "רכה" (deleted_at), לא DELETE אמיתי - פונקציות ה-_seed_* למטה זורעות
+        # אוטומציה מחדש אם אין שורה עם אותו trigger_type/שם, כך שמחיקה אמיתית הייתה "חוזרת" ב-Reload
+        # הבא. השורה נשארת גם כדי שהיסטוריית ההרצות (automation_executions) לא תתייתם
+        if "deleted_at" not in columns:
+            conn.execute("ALTER TABLE automations ADD COLUMN deleted_at TEXT")
 
     # wamid: מזהה ההודעה שהוחזר מוואטסאפ בזמן השליחה - מפתח לקישור חזרה לעדכוני סטטוס משלוח
     # (webhook נפרד, ראו extract_status_updates ב-whatsapp/bot.py). delivery_status:

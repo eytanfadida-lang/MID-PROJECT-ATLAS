@@ -275,6 +275,11 @@
                     {% endif %}
                     </div>
                 </div>
+                <form method="post" action="{{ url_for('automations.delete_automation', automation_id=a.id) }}" class="auto-delete-form" data-name="{{ a.name }}"
+                      onsubmit="return confirm('למחוק את האוטומציה “' + this.dataset.name + '”?\nהיא תיכבה, תיעלם מהרשימה, והודעות שעוד ממתינות לשליחה יבוטלו.');">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <button type="submit" class="btn btn-ghost btn-sm btn-ghost-danger">מחיקת האוטומציה</button>
+                </form>
         </div>
     </article>
     {% endfor %}
