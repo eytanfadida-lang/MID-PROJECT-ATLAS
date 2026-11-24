@@ -51,10 +51,30 @@ def _roller_trial_used(phone):
     return normalize_phone(phone) in _load_roller_free_trials()
 
 
-def _record_roller_trial(phone, schedule_id):
+def _record_roller_trial(phone, schedule_id, key_prefix=""):
     trials = _load_roller_free_trials()
-    trials[normalize_phone(phone)] = {"schedule_id": schedule_id, "at": datetime.datetime.now().isoformat(timespec="seconds")}
+    trials[key_prefix + normalize_phone(phone)] = {"schedule_id": schedule_id, "at": datetime.datetime.now().isoformat(timespec="seconds")}
     ROLLER_FREE_TRIALS_FILE.write_text(json.dumps(trials, ensure_ascii=False), encoding="utf-8")
+
+
+# "אימון רולר במתנה" (24/11/2026) - מנויות שקיבלו את התבנית הזו דרך אוטומציה זכאיות לאימון רולר אחד
+# בחינם שנרשם **בכל מקרה**: גם אם כבר ניצלו את ניסיון הרולר הרגיל, גם אם הן רשומות לאימון אחר, וגם
+# אם למנוי שלהן יש מגבלה שבגללה Arbox דוחה הזמנה רגילה (אז נרשמות כשיעור ניסיון). המתנה עצמה
+# נרשמת בנפרד (מפתח gift:) - פעם אחת לכל מספר
+ROLLER_GIFT_TEMPLATE_NAME = "roller_gift_members"
+ROLLER_GIFT_KEY_PREFIX = "gift:"
+
+
+def _has_unused_roller_gift(repos, phone):
+    phone = normalize_phone(phone)
+    if not phone or (ROLLER_GIFT_KEY_PREFIX + phone) in _load_roller_free_trials():
+        return False
+    try:
+        sent = repos.automations.phones_sent_template(ROLLER_GIFT_TEMPLATE_NAME)
+    except Exception as exc:  # noqa: BLE001
+        print(f"[customer_assistant] roller gift lookup failed: {exc}", flush=True)
+        return False
+    return any(normalize_phone(p) == phone for p in sent)
 
 
 def _load_history(phone):
@@ -139,6 +159,12 @@ SYSTEM_PROMPT_TEMPLATE = """את/ה העוזר/ת הדיגיטלי/ת של הע�
   עלות** באמצעות book_trial_class (גם אם יש לה מנוי; אל תשתמשי בשביל זה ב-book_class), ואל תציגי מחיר
   לניסיון. אם החזר success=false כי הניסיון ללא עלות כבר נוצל - אמרי בנועם שהניסיון ללא עלות מגיע פעם
   אחת, ואז request_human_callback להמשך (בלי להבטיח שום הנחה או מחיר).
+- **"אימון רולר אחד במתנה"** (הודעה שנשלחה למנויות - תופיע בהיסטוריית השיחה): כל מי שמגיבה עליה ורוצה
+  להגיע - רושמים אותה. שאלי מתי נוח לה, הציעי שיעורי "רולר מטריקס" מ-get_class_schedule בימים שביקשה,
+  ורשמי עם book_trial_class (לא book_class). **אל** תסרבי ואל תעכבי בגלל שהיא כבר רשומה לאימון אחר,
+  בגלל מגבלה במנוי שלה, או כי כבר ניצלה בעבר ניסיון רולר - המערכת מטפלת בזה ורושמת אותה בכל מקרה. אל
+  תזכירי מחיר. אם בכל זאת success=false - request_human_callback ("מתנת רולר - לרשום ידנית" + השיעור
+  שבחרה) ואמרי שהצוות ישריין לה מקום.
 - **לעולם אל תכתבי "רשמתי"/"נרשמה"/"הרישום בוצע" אם book_class/book_trial_class לא החזיר success=true.**
   בכשל - אמרי רק שהבקשה הועברה לצוות והם יחזרו לאישור.
 - אם success=false (במנוי או בניסיון) - שדה reason מכיל את הסיבה האמיתית שחזרה מהמערכת (לא
@@ -448,8 +474,16 @@ def _build_tool_executors(repos, caller_phone, last_user_text):
         # טיפול ניסיון רולר מטריקס: ללא עלות, פעם אחת לכל מספר (לקוחה קיימת/לשעבר/חדשה) - הרישום נשמר רק
         # בהצלחה, ובקשה חוזרת נדחית כאן כדי שהצוות יחליט (הבוט לא מציע עוד חינם)
         is_roller = schedule.get("session_name") == ROLLER_SESSION_NAME
-        if is_roller and _roller_trial_used(target_phone):
+        # מתנת רולר מהודעת האוטומציה - עוקפת את "פעם אחת" ואת מגבלות המנוי (ראו _has_unused_roller_gift)
+        is_gift = is_roller and not friend_phone and _has_unused_roller_gift(repos, caller_phone)
+        if is_roller and not is_gift and _roller_trial_used(target_phone):
             return {"success": False, "reason": "טיפול הניסיון ללא עלות כבר נוצל (מגיע פעם אחת בלבד לכל לקוחה)"}
+
+        def _record_roller_success():
+            if is_gift:
+                _record_roller_trial(target_phone, schedule_id, key_prefix=ROLLER_GIFT_KEY_PREFIX)
+            elif is_roller:
+                _record_roller_trial(target_phone, schedule_id)
 
         # קבוע (הוחלט סופית 30/10/2026): מנויה **פעילה** שמבקשת שיעור ניסיון (למשל רולר
         # מטריקס) - endpoint ה"שיעור ניסיון" של Arbox דוחה את ה-user_id שלה עם "user_id is
@@ -478,12 +512,14 @@ def _build_tool_executors(repos, caller_phone, last_user_text):
                     )
                 except Exception as exc:
                     print(f"[customer_assistant] trial_booked automation failed: {exc}", flush=True)
-                if is_roller:
-                    _record_roller_trial(target_phone, schedule_id)
+                _record_roller_success()
                 return {"success": True}
             error_detail = arbox_client.extract_arbox_error_message(response)
             print(f"[customer_assistant] book_trial_class (existing member fallback) failed ({response.status_code}): {error_detail}", flush=True)
-            return {"success": False, "reason": f"Arbox החזירה שגיאה: {error_detail}"}
+            if not is_gift:
+                return {"success": False, "reason": f"Arbox החזירה שגיאה: {error_detail}"}
+            # מתנה: המנוי דחה (רשומה לאימון אחר / מגבלת מנוי) - נרשמת בכל זאת כשיעור ניסיון (דרך ליד)
+            print("[customer_assistant] roller gift: membership booking rejected, booking as trial instead", flush=True)
 
         if friend_phone:
             existing = arbox_client.search_arbox_user_record_by_phone(api_key, target_phone)
@@ -506,8 +542,7 @@ def _build_tool_executors(repos, caller_phone, last_user_text):
                 )
             except Exception as exc:
                 print(f"[customer_assistant] trial_booked automation failed: {exc}", flush=True)
-            if is_roller:
-                _record_roller_trial(target_phone, schedule_id)
+            _record_roller_success()
             return {"success": True}
         error_detail = arbox_client.extract_arbox_error_message(response)
         print(f"[customer_assistant] book_trial_class failed ({response.status_code}): {error_detail}", flush=True)

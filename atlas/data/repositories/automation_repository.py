@@ -154,6 +154,17 @@ class AutomationRepository:
         self.conn.execute("UPDATE due_actions SET status = 'sent' WHERE id = ?", (due_action_id,))
         self.conn.commit()
 
+    # טלפונים (כמו שנשמרו ב-due_actions) שכבר נשלחה אליהם בהצלחה תבנית מסוימת דרך אוטומציה -
+    # משמש את הבוט לזהות מי קיבלה הטבה בהודעה (למשל אימון רולר במתנה, ראו customer_assistant)
+    def phones_sent_template(self, template_name):
+        rows = self.conn.execute(
+            "SELECT DISTINCT d.target_phone FROM due_actions d "
+            "JOIN automation_steps s ON s.id = d.step_id "
+            "WHERE d.status = 'sent' AND s.action_config LIKE ?",
+            (f'%"{template_name}"%',),
+        ).fetchall()
+        return [row[0] for row in rows]
+
     def mark_failed(self, due_action_id):
         self.conn.execute(
             "UPDATE due_actions SET status = 'failed', attempts = attempts + 1 WHERE id = ?",
