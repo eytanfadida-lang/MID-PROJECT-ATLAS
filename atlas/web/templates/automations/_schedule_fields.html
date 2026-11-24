@@ -315,7 +315,7 @@ function automationsToggleAllMembershipTypes(checkbox) {
 }
 (function () {
     var scripts = document.getElementsByTagName('script');
-    var thisForm = scripts[scripts.length - 1].closest('form');
+    var thisForm = (document.currentScript || scripts[scripts.length - 1]).closest('form');
     if (!thisForm) return;
     automationsToggleAudience(thisForm.querySelector('.automations-audience-select'));
     automationsToggleSchedule(thisForm.querySelector('.automations-schedule-type-select'));

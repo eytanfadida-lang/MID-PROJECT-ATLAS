@@ -161,125 +161,8 @@
             <button type="button" class="auto-chevron" aria-expanded="false" aria-label="עריכה ופרטים: {{ a.name }}"
                     onclick="automationsToggleDetails({{ a.id }}, this)"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
         </div>
-        <div id="details-{{ a.id }}" class="auto-card-body" hidden>
-                <div class="automations-details automations-tabs">
-                    <div class="automations-tab-bar">
-                        <button type="button" class="automations-tab-btn active" data-tab="message" onclick="automationsSwitchTab(this)">הודעה</button>
-                        {% if a.trigger_type == 'scheduled' %}
-                        <button type="button" class="automations-tab-btn" data-tab="schedule" onclick="automationsSwitchTab(this)">תזמון</button>
-                        <button type="button" class="automations-tab-btn" data-tab="recipients" onclick="automationsSwitchTab(this)">נמענים</button>
-                        {% endif %}
-                        <button type="button" class="automations-tab-btn" data-tab="executions" onclick="automationsSwitchTab(this)">הרצות אחרונות</button>
-                    </div>
-
-                    <div class="automations-tab-panel" data-tab="message">
-                    {% if a.steps %}
-                    <form method="post" action="{{ url_for('automations.edit_step', automation_id=a.id, step_id=a.steps[0].id) }}" class="form-card">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                        {% set form = a.steps[0].action_config %}
-                        {% set param_templates_list = a.steps[0].action_config.param_templates or [] %}
-                        {% include "automations/_message_fields.html" %}
-
-                        <div class="form-group">
-                            <label>השהייה לפני שליחה (בדקות, 0 = מיידי)</label>
-                            <input type="number" name="delay_minutes" min="0" value="{{ a.steps[0].delay_minutes }}">
-                        </div>
-                        <button type="submit" class="btn">שמירת הודעה</button>
-                    </form>
-                    {% if a.message_history %}
-                    <details class="automations-message-history">
-                        <summary>היסטוריית הודעות שנשמרו ({{ a.message_history|length }})</summary>
-                        <ul>
-                            {% for h in a.message_history %}
-                            <li>
-                                <p class="hint">{{ h.saved_at | format_lead_datetime }}</p>
-                                <p>{{ h.text_template[:150] }}{{ '...' if h.text_template|length > 150 else '' }}</p>
-                                <form method="post" action="{{ url_for('automations.edit_step', automation_id=a.id, step_id=a.steps[0].id) }}" style="display:inline;">
-                                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                                    <input type="hidden" name="text_template" value="{{ h.text_template }}">
-                                    <input type="hidden" name="delay_minutes" value="{{ a.steps[0].delay_minutes }}">
-                                    <button type="submit" class="btn" onclick="return confirm('לשחזר הודעה זו כנוסח הנוכחי?');">שחזור הודעה זו</button>
-                                </form>
-                            </li>
-                            {% endfor %}
-                        </ul>
-                    </details>
-                    {% endif %}
-                    {% endif %}
-                    </div>
-
-                    {% if a.trigger_type == 'scheduled' %}
-                    <div class="automations-tab-panel" data-tab="schedule" hidden>
-                    <form method="post" action="{{ url_for('automations.edit_schedule', automation_id=a.id) }}" class="form-card">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                        {% set form = a.trigger_config %}
-                        {% set selected_weekdays = a.trigger_config.weekdays if a.trigger_config.weekdays is defined and a.trigger_config.weekdays else ([a.trigger_config.get('weekday', 0)] if a.trigger_config.get('schedule_type') == 'weekly' else []) %}
-                        {% set selected_membership_types = a.trigger_config.get('membership_types', []) %}
-                        {% set selected_locations = a.trigger_config.get('locations', []) %}
-                        {% include "automations/_schedule_fields.html" %}
-                        <button type="submit" class="btn">שמירת תזמון</button>
-                    </form>
-                    {% if a.last_run_at %}
-                    <p class="hint">הופעלה לאחרונה: {{ a.last_run_at | format_lead_datetime }}</p>
-                    {% endif %}
-                    </div>
-
-                    <div class="automations-tab-panel" data-tab="recipients" hidden>
-                    {% if a.recipients is not none %}
-                    <form method="post" action="{{ url_for('automations.add_recipient', automation_id=a.id) }}" class="form-card">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                        <div class="form-group">
-                            <label>טלפון</label>
-                            <input type="text" name="phone" placeholder="0501234567" required>
-                        </div>
-                        <div class="form-group">
-                            <label>שם (אופציונלי)</label>
-                            <input type="text" name="full_name">
-                        </div>
-                        <button type="submit" class="btn">הוספת נמען</button>
-                    </form>
-                    <form method="post" action="{{ url_for('automations.import_recipients', automation_id=a.id) }}" class="form-card" enctype="multipart/form-data">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                        <div class="form-group">
-                            <label>או ייבוא מקובץ (CSV/Excel, עמודות "שם מלא" ו"טלפון")</label>
-                            <input type="file" name="file" accept=".csv,.xlsx,.xls" required>
-                        </div>
-                        <button type="submit" class="btn">ייבוא מקובץ</button>
-                    </form>
-                    <div class="auto-recipients-lazy" data-url="{{ url_for('automations.recipients_panel', automation_id=a.id) }}">
-                        <p class="hint">טוען נמענים…</p>
-                    </div>
-                    {% else %}
-                    <p class="hint">הקהל נשלף אוטומטית מ-Arbox בכל הרצה (לפי ההגדרות בתזמון למעלה) - אין רשימת נמענים ידנית לנהל.</p>
-                    {% endif %}
-                    </div>
-                    {% endif %}
-
-                    <div class="automations-tab-panel" data-tab="executions" hidden>
-                    {% if a.executions %}
-                    <table class="mobile-cards">
-                        <thead><tr><th>תאריך</th><th>טלפון</th><th>סטטוס</th><th>פרטים</th></tr></thead>
-                        <tbody>
-                            {% for e in a.executions %}
-                            <tr>
-                                <td class="m-title">{{ e.created_at | format_lead_datetime }}</td>
-                                <td data-label="טלפון">{{ e.target_phone }}</td>
-                                <td data-label="סטטוס"><span class="badge {{ 'badge-green' if e.status == 'success' else 'badge-red' }}">{{ 'הצלחה' if e.status == 'success' else 'כישלון' }}</span></td>
-                                <td data-label="פרטים">{{ e.detail }}</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                    {% else %}
-                    <p class="empty-state">עדיין אין הרצות.</p>
-                    {% endif %}
-                    </div>
-                </div>
-                <form method="post" action="{{ url_for('automations.delete_automation', automation_id=a.id) }}" class="auto-delete-form" data-name="{{ a.name }}"
-                      onsubmit="return confirm('למחוק את האוטומציה “' + this.dataset.name + '”?\nהיא תיכבה, תיעלם מהרשימה, והודעות שעוד ממתינות לשליחה יבוטלו.');">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                    <button type="submit" class="btn btn-ghost btn-sm btn-ghost-danger">מחיקת האוטומציה</button>
-                </form>
+        <div id="details-{{ a.id }}" class="auto-card-body" hidden data-url="{{ url_for('automations.card_body', automation_id=a.id) }}">
+                <p class="hint auto-card-loading">טוען…</p>
         </div>
     </article>
     {% endfor %}
@@ -301,6 +184,29 @@ function automationsToggleDetails(id, btn) {
     body.hidden = !body.hidden;
     btn.setAttribute('aria-expanded', body.hidden ? 'false' : 'true');
     btn.closest('.auto-card').classList.toggle('is-open', !body.hidden);
+    if (!body.hidden) automationsLoadBody(body);
+}
+
+// טוענת את גוף הכרטיס (טפסי העריכה) בפתיחה הראשונה בלבד. סקריפטים שמגיעים ב-innerHTML לא רצים
+// מעצמם, לכן מחליפים כל אחד בעותק חדש (שרץ במקומו, עם document.currentScript שמצביע עליו)
+function automationsLoadBody(body) {
+    var url = body.dataset.url;
+    if (!url) return;
+    body.removeAttribute('data-url');
+    fetch(url, { credentials: 'same-origin' }).then(function (r) {
+        if (!r.ok) throw new Error('bad status');
+        return r.text();
+    }).then(function (html) {
+        body.innerHTML = html;
+        body.querySelectorAll('script').forEach(function (old) {
+            var s = document.createElement('script');
+            s.textContent = old.textContent;
+            old.replaceWith(s);
+        });
+    }).catch(function () {
+        body.dataset.url = url;
+        body.innerHTML = '<p class="hint">הטעינה נכשלה - סגרי ופתחי שוב את הכרטיס.</p>';
+    });
 }
 
 // מפעילה/מכבה יום בודד ישירות מהעיגולים בתצוגת-הסיכום (בלי לפתוח את כרטיס העריכה המלא) -
@@ -435,6 +341,7 @@ if (window.location.hash && window.location.hash.startsWith('#automation-')) {
     var body = document.getElementById('details-' + automationId);
     if (card && body) {
         body.hidden = false;
+        automationsLoadBody(body);
         card.classList.add('is-open');
         var chev = card.querySelector('.auto-chevron');
         if (chev) chev.setAttribute('aria-expanded', 'true');

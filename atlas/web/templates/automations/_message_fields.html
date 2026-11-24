@@ -108,7 +108,7 @@ function automationsUpdatePreview(form) {
 }
 (function () {
     var scripts = document.getElementsByTagName('script');
-    var thisForm = scripts[scripts.length - 1].closest('form');
+    var thisForm = (document.currentScript || scripts[scripts.length - 1]).closest('form');
     if (!thisForm) return;
     automationsToggleMessageMode(thisForm.querySelector('.automations-message-mode-select'));
     var editor = thisForm.querySelector('.msg-editor');

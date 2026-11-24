@@ -371,31 +371,45 @@ def _parse_generic_schedule(form):
     return trigger_config, None
 
 
-# עמוד יחיד מאוחד - לכל אוטומציה נטענים גם השלבים וגם (לאוטומציות מתוזמנות) הנמענים
-# וההרצות האחרונות, כדי שהכל יוצג inline באותה טבלה בלי ניווט לעמוד נפרד
+# עמוד יחיד מאוחד - כרטיס סיכום לכל אוטומציה. טפסי העריכה (הודעה/תזמון/נמענים/הרצות) לא נבנים
+# כאן אלא נטענים ב-fetch רק כשפותחים כרטיס (card_body) - כך העמוד קל, ולא פונה למטא בשביל
+# רשימת התבניות בכל טעינה
 @bp.route("/")
 @admin_required
 def list_automations():
     repos = get_repos()
     automations = repos.automations.get_all()
     for automation in automations:
-        automation["steps"] = repos.automations.get_steps(automation["id"])
         full = repos.automations.get_by_id(automation["id"])
         automation["trigger_config"] = full["trigger_config"]
         automation["last_run_at"] = full["last_run_at"]
-        is_manual_audience = (
-            automation["trigger_type"] == "scheduled"
-            and automation["trigger_config"].get("audience_source") not in DYNAMIC_AUDIENCE_SOURCES
-        )
-        # הרשימה עצמה נטענת רק בפתיחת הלשונית (recipients_panel); כאן רק מסמנים שיש קהל ידני
-        automation["recipients"] = [] if is_manual_audience else None
-        automation["executions"] = repos.automations.get_recent_executions(automation["id"], limit=10)
-        automation["message_history"] = (
-            repos.automations.get_step_history(automation["steps"][0]["id"]) if automation["steps"] else []
-        )
     return render_template(
         "automations/list.html", grouped_automations=_group_by_category(automations),
         category_labels=_CATEGORY_LABELS, weekday_labels=_WEEKDAY_LABELS,
+    )
+
+
+# גוף כרטיס של אוטומציה אחת (כל טפסי העריכה) - נטען ב-fetch בפתיחת הכרטיס
+@bp.route("/<int:automation_id>/body")
+@admin_required
+def card_body(automation_id):
+    repos = get_repos()
+    automation = repos.automations.get_by_id(automation_id)
+    if automation is None:
+        abort(404)
+    automation["steps"] = repos.automations.get_steps(automation_id)
+    is_manual_audience = (
+        automation["trigger_type"] == "scheduled"
+        and automation["trigger_config"].get("audience_source") not in DYNAMIC_AUDIENCE_SOURCES
+    )
+    # הרשימה עצמה נטענת רק בפתיחת הלשונית (recipients_panel); כאן רק מסמנים שיש קהל ידני
+    automation["recipients"] = [] if is_manual_audience else None
+    automation["executions"] = repos.automations.get_recent_executions(automation_id, limit=10)
+    automation["message_history"] = (
+        repos.automations.get_step_history(automation["steps"][0]["id"]) if automation["steps"] else []
+    )
+    return render_template(
+        "automations/_card_body.html", a=automation, weekday_labels=_WEEKDAY_LABELS,
         membership_types=repos.arbox_member_cache.get_distinct_membership_types(), locations=LOCATIONS,
         approved_templates=_get_approved_templates(),
     )
