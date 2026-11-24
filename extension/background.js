@@ -3,7 +3,8 @@
 // פרוטוקול ההודעות: content.js/popup.js שולחים {type:"atlasApiRequest", path, options},
 // ומקבלים {status, data} בחזרה.
 
-const API_BASE = "https://eytan1985.pythonanywhere.com";
+importScripts("config.js");
+const API_BASE = globalThis.ATLAS_BASE_URL;
 
 async function apiFetch(path, options = {}) {
   const stored = await chrome.storage.local.get("token");

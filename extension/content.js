@@ -3,7 +3,7 @@
 // השיחה הפתוחה ומדווח לכאן דרך window.postMessage. עזרים משותפים: shared.js (globalThis.AtlasCRM)
 (function () {
   const { LOG, api, sendToBackground, escapeHtml } = globalThis.AtlasCRM;
-  const CRM_BASE = "https://eytan1985.pythonanywhere.com";
+  const CRM_BASE = globalThis.ATLAS_BASE_URL;
 
   // --- בניית הפאנל (Shadow DOM - מבודד מה-CSS של וואטסאפ בשני הכיוונים) ---
 

@@ -32,7 +32,7 @@
 
     <h2>לאן המידע נשלח</h2>
     <ul>
-        <li>מספר הטלפון נשלח רק לשרת של הסטודיו עצמו (eytan1985.pythonanywhere.com), בחיבור מוצפן (HTTPS).</li>
+        <li>מספר הטלפון נשלח רק לשרת של הסטודיו עצמו ({{ request.host }}), בחיבור מוצפן (HTTPS).</li>
         <li>השרת מחזיר את המידע שכבר שמור אצל הסטודיו על הלקוחה: פרטי ליד, מנוי (Arbox), ביקורים, הערות, תגיות ומשימות.</li>
         <li>פעולות שהעובדת מבצעת בתוסף, כמו הוספת הערה, שינוי סטטוס או משימה, נשמרות באותו שרת.</li>
         <li>המידע <strong>לא נמכר ולא מועבר</strong> לשום גורם חיצוני, ולא משמש לפרסום.</li>
@@ -53,7 +53,7 @@
     <p>This extension is for internal use by the staff of the "Efrat Rosenberg" fitness studio only, and requires an account in the studio's own CRM.</p>
     <ul>
         <li><strong>Data read:</strong> the phone number and contact name of the currently open WhatsApp Web chat, used only to look up that customer in the studio's CRM. The extension does <strong>not</strong> read message contents.</li>
-        <li><strong>Where it is sent:</strong> only to the studio's own server (eytan1985.pythonanywhere.com) over HTTPS. Actions taken in the panel (notes, status, tags, tasks) are saved on the same server.</li>
+        <li><strong>Where it is sent:</strong> only to the studio's own server ({{ request.host }}) over HTTPS. Actions taken in the panel (notes, status, tags, tasks) are saved on the same server.</li>
         <li><strong>No sharing:</strong> data is not sold, shared with third parties, or used for advertising.</li>
         <li><strong>Stored locally:</strong> a personal sign-in token (removed on sign-out) and display preferences.</li>
         <li><strong>Contact:</strong> <a href="mailto:eytanfadida@gmail.com">eytanfadida@gmail.com</a></li>

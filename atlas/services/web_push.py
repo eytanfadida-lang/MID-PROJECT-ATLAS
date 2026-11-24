@@ -8,6 +8,7 @@ import threading
 from types import SimpleNamespace
 
 from atlas.data.db import DB_FILE
+from atlas.settings import PUBLIC_BASE_URL
 from atlas.data.repositories.arbox_member_cache_repository import ArboxMemberCacheRepository
 from atlas.data.repositories.customer_bot_message_repository import CustomerBotMessageRepository
 from atlas.data.repositories.push_subscription_repository import PushSubscriptionRepository
@@ -26,7 +27,7 @@ VAPID_PRIVATE_KEY_FILE = secret(".vapid_private_key")
 
 # כתובת מזהה שנשלחת לשירותי הדחיפה בתוך ה-VAPID (claim "sub"). בכוונה כתובת האתר ולא אימייל
 # אישי - הערך הזה יוצא החוצה לגוגל/אפל. אפשר לדרוס עם משתנה סביבה VAPID_SUBJECT
-VAPID_SUBJECT = os.environ.get("VAPID_SUBJECT", "https://eytan1985.pythonanywhere.com")
+VAPID_SUBJECT = os.environ.get("VAPID_SUBJECT", PUBLIC_BASE_URL)
 
 # האם להציג את תוכן ההודעה (קטע קצר) בהתראה. התראה מופיעה גם במסך נעול - אם לא רוצים שתוכן
 # הודעות של לקוחות יהיה גלוי שם, אפשר לשנות ל-False ותוצג רק "הודעה חדשה" עם שם/מספר השולחת
