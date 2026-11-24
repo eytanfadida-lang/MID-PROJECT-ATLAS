@@ -85,7 +85,7 @@
                         <button type="submit" class="btn">ייבוא מקובץ</button>
                     </form>
                     <div class="auto-recipients-lazy" data-url="{{ url_for('automations.recipients_panel', automation_id=a.id) }}">
-                        <p class="hint">טוען נמענים…</p>
+                        <div class="skel" role="status" aria-label="טוען נמענים"><span class="skel-row"></span><span class="skel-row"></span><span class="skel-row"></span></div>
                     </div>
                     {% else %}
                     <p class="hint">הקהל נשלף אוטומטית מ-Arbox בכל הרצה (לפי ההגדרות בתזמון למעלה) - אין רשימת נמענים ידנית לנהל.</p>

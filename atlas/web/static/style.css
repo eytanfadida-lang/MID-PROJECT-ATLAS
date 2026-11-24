@@ -9377,3 +9377,44 @@ select.status-select,
     .msg-editor { grid-template-columns: 1fr; }
     .msg-preview { position: static; }
 }
+
+/* שלד טעינה (skeleton): צללית של הטפסים שעוד נטענים, עם ברק שעובר עליה - במקום "טוען…" */
+.skel {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 6px 0 4px;
+}
+
+.skel span,
+.skel-tabs span {
+    display: block;
+    border-radius: 10px;
+    background: linear-gradient(90deg, var(--surface-2) 0%, var(--border) 50%, var(--surface-2) 100%);
+    background-size: 200% 100%;
+    animation: skel-shine 1.2s ease-in-out infinite;
+}
+
+.skel-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 6px;
+}
+
+.skel-tabs span { width: 72px; height: 30px; border-radius: 999px; }
+.skel-label { width: 110px; height: 12px; }
+.skel-field { height: 40px; }
+.skel-tall { height: 96px; }
+.skel-btn { width: 120px; height: 38px; }
+.skel-row { height: 34px; }
+.skel span:nth-child(2n) { animation-delay: .1s; }
+.skel span:nth-child(3n) { animation-delay: .2s; }
+
+@keyframes skel-shine {
+    from { background-position: 200% 0; }
+    to { background-position: -200% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .skel span, .skel-tabs span { animation: none; }
+}

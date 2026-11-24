@@ -162,7 +162,12 @@
                     onclick="automationsToggleDetails({{ a.id }}, this)"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
         </div>
         <div id="details-{{ a.id }}" class="auto-card-body" hidden data-url="{{ url_for('automations.card_body', automation_id=a.id) }}">
-                <p class="hint auto-card-loading">טוען…</p>
+                <div class="skel" role="status" aria-label="טוען">
+                    <div class="skel-tabs"><span></span><span></span><span></span><span></span></div>
+                    <span class="skel-label"></span><span class="skel-field"></span>
+                    <span class="skel-label"></span><span class="skel-field skel-tall"></span>
+                    <span class="skel-btn"></span>
+                </div>
         </div>
     </article>
     {% endfor %}
