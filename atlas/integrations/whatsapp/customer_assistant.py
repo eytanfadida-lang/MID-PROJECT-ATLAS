@@ -51,9 +51,17 @@ def _roller_trial_used(phone):
     return normalize_phone(phone) in _load_roller_free_trials()
 
 
-def _record_roller_trial(phone, schedule_id, key_prefix=""):
+def _record_roller_trial(phone, schedule_id, key_prefix="", **booking):
+    # booking: date/start_time של השיעור, method ("session"/"trial") ו-user_id - כדי שאפשר יהיה לבטל
+    # ולהעביר למועד אחר אם הלקוחה מתחרטת לפני הטיפול (ראו _reschedule_roller_if_needed)
     trials = _load_roller_free_trials()
-    trials[key_prefix + normalize_phone(phone)] = {"schedule_id": schedule_id, "at": datetime.datetime.now().isoformat(timespec="seconds")}
+    trials[key_prefix + normalize_phone(phone)] = {
+        "schedule_id": schedule_id, "at": datetime.datetime.now().isoformat(timespec="seconds"), **booking,
+    }
+    _save_roller_free_trials(trials)
+
+
+def _save_roller_free_trials(trials):
     ROLLER_FREE_TRIALS_FILE.write_text(json.dumps(trials, ensure_ascii=False), encoding="utf-8")
 
 
@@ -75,6 +83,35 @@ def _has_unused_roller_gift(repos, phone):
         print(f"[customer_assistant] roller gift lookup failed: {exc}", flush=True)
         return False
     return any(normalize_phone(p) == phone for p in sent)
+
+
+# אם ללקוחה יש טיפול רולר חינם (מתנה או ניסיון רגיל) שעוד לא התקיים, במועד שונה מ-new_schedule_id -
+# מבטלת אותו ב-Arbox ומוחקת את הרישום, כדי שאפשר יהיה לרשום אותה למועד החדש. מחזירה None אם אין מה
+# להעביר, {"success": True, "already_booked": True} אם כבר רשומה בדיוק לשיעור הזה, {"success": True,
+# "was_gift": bool} אם בוטל, או {"success": False, "reason": ...} אם הביטול נכשל
+def _reschedule_roller_if_needed(api_key, phone, new_schedule_id):
+    phone = normalize_phone(phone)
+    trials = _load_roller_free_trials()
+    today = datetime.date.today().isoformat()
+    for key, was_gift in ((ROLLER_GIFT_KEY_PREFIX + phone, True), (phone, False)):
+        record = trials.get(key)
+        if not record or not record.get("date") or record["date"] < today:
+            continue
+        if str(record.get("schedule_id")) == str(new_schedule_id):
+            return {"success": True, "already_booked": True}
+        if record.get("method") == "session":
+            response = arbox_client.cancel_arbox_booking(api_key, record["user_id"], record["schedule_id"])
+        else:
+            response = arbox_client.cancel_arbox_trial(api_key, record["user_id"], record["schedule_id"])
+        if response.status_code != 200:
+            error_detail = arbox_client.extract_arbox_error_message(response)
+            print(f"[customer_assistant] roller reschedule: cancel failed ({response.status_code}): {error_detail}", flush=True)
+            return {"success": False, "reason": f"ביטול המועד הקודם ({record['date']} {record.get('start_time', '')}) נכשל: {error_detail}"}
+        print(f"[customer_assistant] roller reschedule: cancelled {record['schedule_id']} for {phone}", flush=True)
+        del trials[key]
+        _save_roller_free_trials(trials)
+        return {"success": True, "was_gift": was_gift}
+    return None
 
 
 def _load_history(phone):
@@ -165,6 +202,9 @@ SYSTEM_PROMPT_TEMPLATE = """את/ה העוזר/ת הדיגיטלי/ת של הע�
   בגלל מגבלה במנוי שלה, או כי כבר ניצלה בעבר ניסיון רולר - המערכת מטפלת בזה ורושמת אותה בכל מקרה. אל
   תזכירי מחיר. אם בכל זאת success=false - request_human_callback ("מתנת רולר - לרשום ידנית" + השיעור
   שבחרה) ואמרי שהצוות ישריין לה מקום.
+- **שינוי מועד של טיפול רולר שכבר נקבע** ("רגע, התכוונתי לשישי"): פשוט הפעילי book_trial_class עם השיעור
+  החדש - המערכת מבטלת לבד את המועד הקודם ורושמת לחדש. אחרי הצלחה אמרי שהמועד הקודם בוטל ושהיא רשומה
+  למועד החדש. אם success=false - request_human_callback עם המועד הקודם והחדש.
 - **לעולם אל תכתבי "רשמתי"/"נרשמה"/"הרישום בוצע" אם book_class/book_trial_class לא החזיר success=true.**
   בכשל - אמרי רק שהבקשה הועברה לצוות והם יחזרו לאישור.
 - אם success=false (במנוי או בניסיון) - שדה reason מכיל את הסיבה האמיתית שחזרה מהמערכת (לא
@@ -476,14 +516,29 @@ def _build_tool_executors(repos, caller_phone, last_user_text):
         is_roller = schedule.get("session_name") == ROLLER_SESSION_NAME
         # מתנת רולר מהודעת האוטומציה - עוקפת את "פעם אחת" ואת מגבלות המנוי (ראו _has_unused_roller_gift)
         is_gift = is_roller and not friend_phone and _has_unused_roller_gift(repos, caller_phone)
+
+        # שינוי מועד (25/11/2026 - מנויה נרשמה לחמישי ואז ביקשה שישי, והבוט נחסם כי "המתנה נוצלה"): אם כבר
+        # יש לה טיפול רולר חינם **עתידי** במועד אחר - מבטלים אותו ב-Arbox ומשחררים את הזכאות, ואז ממשיכים
+        # לרשום למועד החדש כרגיל. טיפול שכבר עבר (או רישום ישן בלי תאריך) לא נפתח מחדש
+        if is_roller and not friend_phone:
+            moved = _reschedule_roller_if_needed(api_key, target_phone, schedule_id)
+            if moved is not None and not moved["success"]:
+                return moved
+            if moved is not None and moved.get("already_booked"):
+                return {"success": True, "note": "היא כבר רשומה לשיעור הזה - אין צורך ברישום נוסף"}
+            if moved is not None:
+                is_gift = moved["was_gift"] or is_gift
+
         if is_roller and not is_gift and _roller_trial_used(target_phone):
             return {"success": False, "reason": "טיפול הניסיון ללא עלות כבר נוצל (מגיע פעם אחת בלבד לכל לקוחה)"}
 
-        def _record_roller_success():
+        def _record_roller_success(method, user_id):
+            booking = {"date": schedule.get("date"), "start_time": schedule.get("start_time"),
+                       "method": method, "user_id": user_id}
             if is_gift:
-                _record_roller_trial(target_phone, schedule_id, key_prefix=ROLLER_GIFT_KEY_PREFIX)
+                _record_roller_trial(target_phone, schedule_id, key_prefix=ROLLER_GIFT_KEY_PREFIX, **booking)
             elif is_roller:
-                _record_roller_trial(target_phone, schedule_id)
+                _record_roller_trial(target_phone, schedule_id, **booking)
 
         # קבוע (הוחלט סופית 30/10/2026): מנויה **פעילה** שמבקשת שיעור ניסיון (למשל רולר
         # מטריקס) - endpoint ה"שיעור ניסיון" של Arbox דוחה את ה-user_id שלה עם "user_id is
@@ -512,7 +567,7 @@ def _build_tool_executors(repos, caller_phone, last_user_text):
                     )
                 except Exception as exc:
                     print(f"[customer_assistant] trial_booked automation failed: {exc}", flush=True)
-                _record_roller_success()
+                _record_roller_success("session", member["user_id"])
                 return {"success": True}
             error_detail = arbox_client.extract_arbox_error_message(response)
             print(f"[customer_assistant] book_trial_class (existing member fallback) failed ({response.status_code}): {error_detail}", flush=True)
@@ -542,7 +597,7 @@ def _build_tool_executors(repos, caller_phone, last_user_text):
                 )
             except Exception as exc:
                 print(f"[customer_assistant] trial_booked automation failed: {exc}", flush=True)
-            _record_roller_success()
+            _record_roller_success("trial", user_id)
             return {"success": True}
         error_detail = arbox_client.extract_arbox_error_message(response)
         print(f"[customer_assistant] book_trial_class failed ({response.status_code}): {error_detail}", flush=True)
