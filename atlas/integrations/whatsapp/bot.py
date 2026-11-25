@@ -8,6 +8,21 @@ import requests
 
 from atlas.paths import secret
 
+
+# כמו raise_for_status, אבל עם ההסבר של Meta עצמה (קוד + הודעה + פירוט) בטקסט השגיאה - בלי זה ביומן
+# ההרצות נשמר רק "400 Bad Request" ואי אפשר לדעת למה הודעה נכשלה (25/11/2026, מתנת הרולר)
+def _raise_for_meta_error(response):
+    if response.ok:
+        return
+    try:
+        error = response.json().get("error", {})
+        details = (error.get("error_data") or {}).get("details") or ""
+        message = f"Meta {response.status_code} ({error.get('code')}): {error.get('message', '')} {details}".strip()
+    except ValueError:
+        message = f"Meta {response.status_code}: {response.text[:300]}"
+    raise requests.HTTPError(message, response=response)
+
+
 GRAPH_API_VERSION = "v21.0"
 
 
@@ -105,7 +120,7 @@ def send_text_message(config, to, body, phone_number_id=None):
         },
         timeout=30,
     )
-    response.raise_for_status()
+    _raise_for_meta_error(response)
     return response.json()
 
 
@@ -148,7 +163,7 @@ def send_media_message(config, to, media_id, media_type, phone_number_id=None, c
         },
         timeout=30,
     )
-    response.raise_for_status()
+    _raise_for_meta_error(response)
     return response.json()
 
 
@@ -189,7 +204,7 @@ def send_template_message(config, to, template_name, language_code, body_params=
         },
         timeout=30,
     )
-    response.raise_for_status()
+    _raise_for_meta_error(response)
     return response.json()
 
 
