@@ -156,9 +156,10 @@
   const refreshBtn = shadow.querySelector(".refresh-btn");
 
   // --- פריסה: הפאנל "דוחף" את וואטסאפ הצידה במקום לצוף מעליה ולהסתיר חלק מהשיחה. ---
-  // מצמצמים את ה-body של וואטסאפ ברוחב הפאנל; transform על ה-body הופך אותו לבסיס של
-  // אלמנטים ב-position:fixed (תפריטים/חלונות קופצים של וואטסאפ), כך שגם הם זזים יחד איתו.
-  // ה-host שלנו יושב על documentElement ולא בתוך ה-body, אז הוא לא מושפע מזה
+  // מצמצמים את ה-body של וואטסאפ ברוחב הפאנל (margin + width). בלי transform על ה-body:
+  // transform הופך את ה-body לבסיס של אלמנטים ב-position:fixed, ואז התפריטים של וואטסאפ
+  // (קליק ימני, חץ ליד צ'אט) - שמחושבים לפי מיקום העכבר במסך - זזו ברוחב הפאנל ונחתכו מחוץ
+  // לחלון. ה-host שלנו יושב על documentElement ולא בתוך ה-body, אז הוא לא מושפע מזה
   const MIN_WIDTH = 260;
   const DEFAULT_WIDTH = 340;
   const SCALE_STEPS = [0.85, 0.9, 1, 1.1, 1.2, 1.3, 1.4];
@@ -186,7 +187,7 @@
     toggleEl.classList.toggle("open", panelOpen);
     layoutStyle.textContent = panelOpen
       ? `body { margin-left: ${panelWidth}px !important; width: calc(100% - ${panelWidth}px) !important; ` +
-        `transform: translateZ(0); overflow: hidden !important; }`
+        `overflow: hidden !important; }`
       : "";
   }
 
