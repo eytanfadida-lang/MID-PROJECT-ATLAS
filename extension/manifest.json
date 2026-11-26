@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "אפרת רוזנברג CRM - תוסף וואטסאפ",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "מציג מידע מה-CRM (ליד, סטטוס, מנוי, הערות) ותגובות מהירות ישירות בתוך WhatsApp Web",
   "icons": {
     "16": "icons/icon16.png",
@@ -13,7 +13,7 @@
     "default_icon": "icons/icon48.png"
   },
   "permissions": ["storage"],
-  "host_permissions": ["https://eytan1985.pythonanywhere.com/*"],
+  "host_permissions": ["https://crm.efratrosenberg.co.il/*"],
   "background": {
     "service_worker": "background.js"
   },

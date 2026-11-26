@@ -2,7 +2,7 @@ import os
 
 # הכתובת הציבורית של האתר - לשימוש בקוד צד-שרת שצריך את הכתובת המלאה (למשל זיהוי מול שירותי ההתראות).
 # במעבר שרת: להגדיר משתנה סביבה ATLAS_PUBLIC_URL (בקובץ ה-WSGI) או לשנות כאן
-PUBLIC_BASE_URL = os.environ.get("ATLAS_PUBLIC_URL", "https://eytan1985.pythonanywhere.com").rstrip("/")
+PUBLIC_BASE_URL = os.environ.get("ATLAS_PUBLIC_URL", "https://crm.efratrosenberg.co.il").rstrip("/")
 
 # קבועים עסקיים שנצרכים ישירות על ידי אפליקציית ה-Flask (app.py + blueprints).
 # הועברו לכאן מהמודולים המקוריים של ה-CLI (lead_input.py / appointment_input.py /

@@ -13,7 +13,7 @@ PythonAnywhere, Anthropic Console, etc.) explained precisely, with screenshots r
 step.
 
 - **Repo**: public GitHub repo `eytanfadida-lang/MID-PROJECT-ATLAS`, branch `main`.
-- **Live deployment**: PythonAnywhere free tier, `https://eytan1985.pythonanywhere.com`.
+- **Live deployment**: PythonAnywhere EU (user eytan2024), `https://crm.efratrosenberg.co.il`.
   Deploy flow is always: push to GitHub → on PythonAnywhere `git pull` → **Web tab → Reload**
   (code changes never take effect without an explicit Reload; this is forgotten constantly and
   is usually the first thing to check when "it doesn't work").

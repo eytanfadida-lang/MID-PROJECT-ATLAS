@@ -1,5 +1,5 @@
 // Entry point: `node index.js`. Configuration (environment variables):
-//   ATLAS_URL            base URL of the Atlas app, e.g. https://eytan1985.pythonanywhere.com   (required)
+//   ATLAS_URL            base URL of the Atlas app, e.g. https://crm.efratrosenberg.co.il   (required)
 //   GATEWAY_TOKEN_FILE   file holding the shared token (default ../.gateway_token, created by the app)
 //   GATEWAY_TOKEN        the token itself (overrides the file)
 //   AUTH_DIR             where WhatsApp logins are stored (default ./auth - keep it private!)

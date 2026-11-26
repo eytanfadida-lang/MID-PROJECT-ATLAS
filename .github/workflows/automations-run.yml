@@ -9,4 +9,4 @@ jobs:
   run:
     runs-on: ubuntu-latest
     steps:
-      - run: curl -sf "${{ vars.ATLAS_BASE_URL || 'https://eytan1985.pythonanywhere.com' }}/tasks/automations-run?token=${{ secrets.AUTOMATIONS_RUN_TOKEN }}"
+      - run: curl -sf "${{ vars.ATLAS_BASE_URL || 'https://crm.efratrosenberg.co.il' }}/tasks/automations-run?token=${{ secrets.AUTOMATIONS_RUN_TOKEN }}"
