@@ -82,6 +82,10 @@ def process_due_action(repos, due_action):
     action_type = step["action_type"] if step else None
     action_config = step["action_config"] if step else {}
 
+    if action_type == "add_to_whatsapp_group":
+        _add_to_group_action(repos, due_action, action_config)
+        return
+
     if action_type != "send_whatsapp_message":
         repos.automations.mark_failed(due_action["id"])
         repos.automations.log_execution(
@@ -95,6 +99,69 @@ def process_due_action(repos, due_action):
         _send_template_action(repos, due_action, action_config)
     else:
         _send_text_action(repos, due_action, action_config)
+
+
+# הוספה לקבוצת הוואטסאפ של הסניף (דרך החשבון המקושר - ה-API הרשמי לא יכול להוסיף לקבוצה שנפתחה
+# באפליקציה). הקבוצה לכל סניף נבחרת בעמוד האינטגרציות (linked_whatsapp_branch_groups); הסניף מגיע
+# מה-webhook של Arbox (context["location"]). רכישת מוצר (membership_type_type="item") מדולגת - רק
+# מנויים/כרטיסיות. הביצוע עצמו בתהליך gateway/ - התוצאה האמיתית נרשמת ביומן כשהוא מדווח
+GROUP_CHANNEL = "whatsapp_linked_group"
+DEFAULT_SKIP_MEMBERSHIP_TYPE_TYPES = ("item",)
+DEFAULT_GROUP_INVITE_TEXT = "היי {first_name} 💖 רצינו לצרף אותך לקבוצת הוואטסאפ של הסטודיו ב{location}. להצטרפות:"
+
+
+def _branch_group_for(branch_groups, location):
+    location = (location or "").strip()
+    if location in branch_groups:
+        return branch_groups[location]
+    # "טירת כרמל" / "טירת הכרמל" / "קריית מוצקין" - מתאימים לפי המילה האחרונה בשם הסניף
+    for key, group in branch_groups.items():
+        last_word = key.split()[-1] if key.split() else key
+        if last_word.startswith("ה") and len(last_word) > 2:
+            last_word = last_word[1:]  # "הכרמל" -> "כרמל"
+        if last_word and last_word in location:
+            return group
+    return None
+
+
+def _add_to_group_action(repos, due_action, action_config):
+    context = due_action["context"] or {}
+    phone = due_action["target_phone"]
+
+    skip_types = action_config.get("skip_membership_type_types") or DEFAULT_SKIP_MEMBERSHIP_TYPE_TYPES
+    if context.get("membership_type_type") in skip_types:
+        repos.automations.mark_sent(due_action["id"])
+        repos.automations.log_execution(
+            due_action["automation_id"], phone, "skipped", GROUP_CHANNEL,
+            f"דילוג - רכישת מוצר ולא מנוי ({context.get('membership_type') or context.get('membership_type_type')})",
+            due_action_id=due_action["id"],
+        )
+        return
+
+    location = context.get("location") or ""
+    group = _branch_group_for(repos.linked_whatsapp.get_branch_groups(), location)
+    account = repos.linked_whatsapp.get(group["account_id"]) if group else None
+    if not group or account is None:
+        repos.automations.mark_failed(due_action["id"])
+        repos.automations.log_execution(
+            due_action["automation_id"], phone, "failed", GROUP_CHANNEL,
+            f"לא הוגדרה קבוצת וואטסאפ לסניף \"{location or 'לא ידוע'}\" (אינטגרציות → קבוצות לסניפים)",
+            due_action_id=due_action["id"],
+        )
+        return
+
+    try:
+        invite_text = (action_config.get("invite_text") or DEFAULT_GROUP_INVITE_TEXT).format(
+            **{"first_name": "", "location": location, **context}
+        )
+    except Exception:
+        invite_text = DEFAULT_GROUP_INVITE_TEXT.format(first_name="", location=location)
+
+    repos.linked_whatsapp.enqueue_group_add(
+        group["account_id"], group["group_jid"], to_whatsapp_format(phone),
+        invite_text=invite_text, due_action_id=due_action["id"], automation_id=due_action["automation_id"],
+    )
+    repos.automations.mark_sent(due_action["id"])
 
 
 # מצב "טקסט חופשי" (ברירת המחדל, ראו _AUDIENCE_RESOLVERS/update_step) - כפוף לחלון 24

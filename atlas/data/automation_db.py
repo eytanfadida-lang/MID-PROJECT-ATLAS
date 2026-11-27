@@ -317,6 +317,7 @@ class AutomationDB:
         self._seed_inactive_gold_motzkin_manual_campaign(conn)
         self._seed_strength_room_master_upgrade_manual_campaign(conn)
         self._seed_attendance_milestone_automation(conn)
+        self._seed_branch_group_automation(conn)
         self._migrate_upgrade360_automations_to_templates(conn)
         return conn
 
@@ -479,6 +480,31 @@ class AutomationDB:
             "INSERT INTO automation_steps (automation_id, step_order, delay_minutes, action_type, "
             "action_config) VALUES (?, 1, 0, 'send_whatsapp_message', ?)",
             (automation_id, json.dumps(_ARBOX_PURCHASE_ACTION_CONFIG, ensure_ascii=False)),
+        )
+        conn.commit()
+
+    # זורעת פעם אחת (כבויה) את אוטומציית "הצטרפות לקבוצת הסניף": על כל רכישה ב-Arbox (webhook purchase),
+    # מנויה/כרטיסייה נוספת לקבוצת הוואטסאפ של הסניף שלה דרך החשבון המקושר (ראו _add_to_group_action
+    # ב-engine.py). הקבוצות עצמן נבחרות בעמוד האינטגרציות
+    @staticmethod
+    def _seed_branch_group_automation(conn):
+        import datetime
+
+        exists = conn.execute(
+            "SELECT 1 FROM automation_steps WHERE action_type = 'add_to_whatsapp_group'"
+        ).fetchone()
+        if exists:
+            return
+        now = datetime.datetime.now().isoformat(timespec="seconds")
+        cursor = conn.execute(
+            "INSERT INTO automations (tenant_id, name, trigger_type, trigger_config, enabled, "
+            "created_at, updated_at) VALUES (1, ?, ?, NULL, 0, ?, ?)",
+            ("הצטרפות לקבוצת הוואטסאפ של הסניף (רכישת מנוי)", "arbox_purchase", now, now),
+        )
+        conn.execute(
+            "INSERT INTO automation_steps (automation_id, step_order, delay_minutes, action_type, "
+            "action_config) VALUES (?, 1, 0, 'add_to_whatsapp_group', ?)",
+            (cursor.lastrowid, json.dumps({"skip_membership_type_types": ["item"]}, ensure_ascii=False)),
         )
         conn.commit()
 

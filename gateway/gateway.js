@@ -7,8 +7,8 @@
 //
 // `createSession(account, report, events)` is injected so the loop can be tested with fake sessions (see test/).
 // A session must implement: start(), stop() (keep login), logout() (unlink + wipe login),
-// isConnected(), send(item) -> { wamid }, and call report({ status, ... }) / events.messages([...]) /
-// events.receipts([...]) whenever something happens.
+// isConnected(), send(item) -> { wamid }, addToGroup(job) -> { result, error? } (optional), and call
+// report({ status, ... }) / events.messages([...]) / events.receipts([...]) / events.groups([...]) whenever something happens.
 
 const SEND_GAP_MS = [800, 1800]; // pause between consecutive sends from one batch: bursts look robotic to WhatsApp
 export const SEND_TIMEOUT_MS = 45000; // a send that takes longer is reported as failed (it may still go out)
@@ -70,13 +70,14 @@ export class Gateway {
     return {
       messages: (items) => this.deliver(`messages #${id}`, () => this.api.reportMessages(id, items)),
       receipts: (updates) => this.deliver(`receipts #${id}`, () => this.api.reportReceipts(id, updates)),
+      groups: (groups) => this.deliver(`groups #${id}`, () => this.api.reportGroups(id, groups)),
     };
   }
 
   // One pass: sync with the app, reconcile sessions, send the outbox. Returns the number of accounts listed.
   async tick() {
     await this.flush();
-    const { accounts, outbox = [], poll_ms: pollMs } = await this.api.sync();
+    const { accounts, outbox = [], group_jobs: groupJobs = [], poll_ms: pollMs } = await this.api.sync();
     if (pollMs) this.nextPollMs = pollMs;
     const listed = new Set(accounts.map((a) => a.id));
 
@@ -122,7 +123,8 @@ export class Gateway {
       }
     }
 
-    const drained = this.sendOutbox(outbox);
+    // "Add to group" jobs share the send queue (same pacing between actions, same background drain)
+    const drained = this.sendOutbox([...outbox, ...groupJobs.map((job) => ({ ...job, kind: 'group_add' }))]);
     if (!this.backgroundSends) await drained;
     return accounts.length;
   }
@@ -148,6 +150,10 @@ export class Gateway {
       }
       first = false;
       const session = this.sessions.get(item.account_id);
+      if (item.kind === 'group_add') {
+        await this.runGroupJob(item, session);
+        continue;
+      }
       let result;
       if (!session || !session.isConnected()) {
         result = { ok: false, error: 'החשבון לא מחובר' };
@@ -162,6 +168,23 @@ export class Gateway {
       }
       await this.deliver(`send result #${item.id}`, () => this.api.reportResult(item.id, result));
     }
+  }
+
+  async runGroupJob(job, session) {
+    let result;
+    if (!session || !session.isConnected()) {
+      result = { result: 'failed', error: 'החשבון המקושר לא מחובר' };
+    } else if (!session.addToGroup) {
+      result = { result: 'failed', error: 'החיבור לא תומך בהוספה לקבוצות' };
+    } else {
+      try {
+        result = await this.withTimeout(session.addToGroup(job), this.sendTimeoutMs);
+      } catch (e) {
+        this.log(`group job #${job.id} failed: ${e.message}`);
+        result = { result: 'failed', error: e.message };
+      }
+    }
+    await this.deliver(`group result #${job.id}`, () => this.api.reportGroupResult(job.id, result));
   }
 
   withTimeout(promise, ms) {
@@ -232,6 +255,12 @@ export function createApi({ baseUrl, getToken, fetchImpl = fetch, timeoutMs = RE
     },
     async reportResult(outboxId, result) {
       return post(`/gateway/outbox/${outboxId}/result`, result);
+    },
+    async reportGroups(id, groups) {
+      return post(`/gateway/accounts/${id}/groups`, { groups });
+    },
+    async reportGroupResult(jobId, result) {
+      return post(`/gateway/group-jobs/${jobId}/result`, result);
     },
     // Fetch an attachment the admin uploaded in the app (public static file) so it can be sent through WhatsApp.
     async downloadAttachment(path) {

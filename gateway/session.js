@@ -12,6 +12,11 @@ const FIRST_QR_TTL_S = 60; // WhatsApp keeps the first QR for 60s, later ones fo
 const NEXT_QR_TTL_S = 20;
 const ERROR_AFTER_FAILURES = 4;
 const TYPING_MS = [500, 1300]; // a short "typing..." before each message, like a person would
+const GROUPS_FIRST_REPORT_MS = 8000; // after connecting, report the account's groups (so the admin can pick one per branch)
+const GROUPS_REPORT_EVERY_MS = 10 * 60 * 1000;
+
+// "972501234567:12@s.whatsapp.net" / "123456789:3@lid" -> "972501234567" / "123456789"
+const idDigits = (id) => String(id || '').split('@')[0].split(':')[0].replace(/\D/g, '');
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -34,6 +39,7 @@ export function createBaileysSessionFactory({ authDir, api, log = console.log })
     let qrCount = 0;
     let failures = 0;
     let timer = null;
+    let groupsTimer = null;
 
     const session = {
       dead: false,
@@ -51,6 +57,7 @@ export function createBaileysSessionFactory({ authDir, api, log = console.log })
       async stop() {
         stopping = true;
         clearTimeout(timer);
+        clearInterval(groupsTimer);
         close();
       },
 
@@ -58,6 +65,7 @@ export function createBaileysSessionFactory({ authDir, api, log = console.log })
       async logout() {
         stopping = true;
         clearTimeout(timer);
+        clearInterval(groupsTimer);
         try {
           await sock?.logout();
         } catch (e) {
@@ -85,10 +93,53 @@ export function createBaileysSessionFactory({ authDir, api, log = console.log })
           throw e;
         }
       },
+
+      // Add one person to a group this account administers. If her privacy settings block being added (403) or she
+      // left the group recently (408), she gets the group's invite link in a private message instead.
+      async addToGroup(job) {
+        if (!session.isConnected()) throw new Error('החשבון לא מחובר');
+        const digits = String(job.to).replace(/\D/g, '');
+        const [found] = (await sock.onWhatsApp(digits)) || [];
+        if (!found?.exists) return { result: 'failed', error: 'המספר לא רשום בוואטסאפ' };
+        const [outcome] = (await sock.groupParticipantsUpdate(job.group_jid, [found.jid || `${digits}@s.whatsapp.net`], 'add')) || [];
+        const status = String(outcome?.status ?? '');
+        log(`#${account.id} group add ${digits} -> ${status || 'no answer'}`);
+        if (status === '200') return { result: 'added' };
+        if (status === '409') return { result: 'already' };
+        if (status === '403' || status === '408') {
+          const code = await sock.groupInviteCode(job.group_jid);
+          if (!code) return { result: 'failed', error: `ההוספה נחסמה (${status}) ולא התקבל קישור הצטרפות` };
+          const body = `${job.invite_text || 'להצטרפות לקבוצת הוואטסאפ של הסטודיו:'}\nhttps://chat.whatsapp.com/${code}`;
+          await session.send({ to: digits, body });
+          return { result: 'invited' };
+        }
+        if (status === '401') return { result: 'failed', error: 'הלקוחה חסמה את המספר המקושר' };
+        if (status === '404') return { result: 'failed', error: 'המספר לא נמצא בוואטסאפ' };
+        if (status === '500') return { result: 'failed', error: 'הקבוצה מלאה' };
+        return { result: 'failed', error: `וואטסאפ החזירה קוד ${status || 'לא ידוע'}` };
+      },
     };
+
+    // Which groups this account is in, and whether it is an admin there (only admins can add people)
+    async function reportGroups(socket) {
+      if (socket !== sock || !connected) return;
+      try {
+        const all = await socket.groupFetchAllParticipating();
+        const mine = new Set([idDigits(socket.user?.id), idDigits(socket.user?.lid)].filter(Boolean));
+        const groups = Object.values(all || {}).map((g) => {
+          const me = (g.participants || []).find((p) => [p.id, p.jid, p.lid, p.phoneNumber].some((x) => mine.has(idDigits(x))));
+          return { jid: g.id, subject: g.subject || '', size: (g.participants || []).length, is_admin: !!me?.admin };
+        });
+        await events.groups(groups);
+        log(`#${account.id} reported ${groups.length} group(s)`);
+      } catch (e) {
+        log(`#${account.id} groups: ${e.message}`);
+      }
+    }
 
     function close() {
       connected = false;
+      clearInterval(groupsTimer);
       try {
         sock?.end(undefined);
       } catch {
@@ -171,6 +222,9 @@ export function createBaileysSessionFactory({ authDir, api, log = console.log })
           log(`#${account.id} connected`);
           const phone = String(socket.user?.id || '').split(':')[0].split('@')[0] || null;
           report({ status: 'connected', phone });
+          clearInterval(groupsTimer);
+          setTimeout(() => reportGroups(socket), GROUPS_FIRST_REPORT_MS);
+          groupsTimer = setInterval(() => reportGroups(socket), GROUPS_REPORT_EVERY_MS);
         }
         if (update.connection === 'close') {
           connected = false;

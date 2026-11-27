@@ -204,3 +204,29 @@ test('a hanging send does not block polling, and is reported as failed after the
   const result = h.results.find(([id]) => id === 30);
   assert.ok(result && result[1].ok === false && /בזמן/.test(result[1].error));
 });
+
+test('group jobs run through the right session and the outcome is reported', async () => {
+  const groupResults = [];
+  const h = makeHarness([{ id: 1 }, { id: 2 }]);
+  const realSync = h.gateway.api.sync;
+  let jobs = [];
+  h.gateway.api.sync = async () => {
+    const res = await realSync();
+    const out = jobs;
+    jobs = [];
+    return { ...res, group_jobs: out };
+  };
+  h.gateway.api.reportGroupResult = async (id, result) => { groupResults.push([id, result]); };
+  await h.gateway.tick(); // starts the sessions
+  h.sessions[0].addToGroup = async (job) => ({ result: job.to === '972501234567' ? 'added' : 'already' });
+  h.sessions[1].connected = false;
+  jobs = [
+    { id: 5, account_id: 1, group_jid: '1203@g.us', to: '972501234567', invite_text: 'hi' },
+    { id: 6, account_id: 2, group_jid: '1204@g.us', to: '972509999999' },
+  ];
+  await h.gateway.tick();
+  assert.deepEqual(groupResults, [
+    [5, { result: 'added' }],
+    [6, { result: 'failed', error: 'החשבון המקושר לא מחובר' }],
+  ]);
+});

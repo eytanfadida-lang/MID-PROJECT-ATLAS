@@ -72,6 +72,40 @@
     {% endif %}
 </div>
 
+<div class="int-head int-head-spaced" id="branch-groups">
+    <div>
+        <h2 class="int-title">קבוצות וואטסאפ לסניפים</h2>
+        <p class="int-sub">לאיזו קבוצה תיכנס מנויה חדשה בכל סניף (אוטומציית "הצטרפות לקבוצת הוואטסאפ של הסניף")</p>
+    </div>
+</div>
+<div class="int-card int-meta-card">
+    <div class="int-main">
+        {% if not groups %}
+        <strong class="int-name">עדיין לא התקבלה רשימת קבוצות</strong>
+        <span class="int-meta">הרשימה מגיעה מהחשבון המקושר כמה דקות אחרי שהוא מתחבר. החשבון צריך להיות חבר ומנהל בשתי הקבוצות.</span>
+        {% else %}
+        <form method="post" action="{{ url_for('integrations.save_branch_groups') }}" class="int-branch-groups">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            {% for loc in locations %}
+            {% set current = branch_groups.get(loc) %}
+            <div class="form-group">
+                <label for="branch-group-{{ loop.index0 }}">{{ loc }}</label>
+                <select name="group_{{ loop.index0 }}" id="branch-group-{{ loop.index0 }}">
+                    <option value="">- בלי קבוצה -</option>
+                    {% for g in groups %}
+                    {% set val = g.account_id ~ '|' ~ g.jid %}
+                    <option value="{{ val }}" {% if current and current.group_jid == g.jid and current.account_id == g.account_id %}selected{% endif %}>{{ g.subject or g.jid }}{% if g.size %} ({{ g.size }}){% endif %}{% if not g.is_admin %} - החשבון לא מנהל בקבוצה{% endif %}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% endfor %}
+            <span class="int-meta">רק מנהל קבוצה יכול להוסיף אליה אנשים. בקבוצה שמסומנת "לא מנהל" צריך קודם להפוך את המספר המקושר למנהל.</span>
+            <button type="submit" class="btn btn-sm">שמירה</button>
+        </form>
+        {% endif %}
+    </div>
+</div>
+
 <div class="int-head int-head-spaced">
     <div>
         <h2 class="int-title">לידים מפייסבוק</h2>

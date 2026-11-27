@@ -36,6 +36,10 @@ export function createFakeSessionFactory({
           clear();
           connected = true;
           report({ status: 'connected', phone: `97250${String(1000000 + account.id).slice(-7)}` });
+          events.groups?.([
+            { jid: '120363000000000001@g.us', subject: 'קבוצה מדומה - קרית מוצקין', size: 40, is_admin: true },
+            { jid: '120363000000000002@g.us', subject: 'קבוצה מדומה - טירת הכרמל', size: 30, is_admin: true },
+          ]);
           if (incomingAfterMs > 0) timers.push(setTimeout(() => session.simulateIncoming('שלום, זו הודעת בדיקה'), incomingAfterMs));
         }, scanAfterMs));
       },
@@ -61,6 +65,11 @@ export function createFakeSessionFactory({
         timers.push(setTimeout(() => events.receipts([{ wamid, status: 'delivered' }]), receiptsAfterMs));
         timers.push(setTimeout(() => events.receipts([{ wamid, status: 'read' }]), receiptsAfterMs * 2));
         return { wamid };
+      },
+      async addToGroup(job) {
+        if (!connected) throw new Error('החשבון לא מחובר');
+        session.groupAdds = [...(session.groupAdds || []), job];
+        return { result: /0000$/.test(job.to) ? 'invited' : 'added' };
       },
       // test helpers
       simulateIncoming(body, phone = incomingPhone, extra = {}) {

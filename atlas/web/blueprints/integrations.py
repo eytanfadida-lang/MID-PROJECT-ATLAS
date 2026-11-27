@@ -7,6 +7,7 @@ from atlas.data.context import get_repos
 from atlas.integrations.meta import lead_ads as meta_leads
 from atlas.integrations.whatsapp import bot as whatsapp_bot
 from atlas.settings import CHANNELS
+from atlas.web.blueprints.automations import LOCATIONS
 
 # עמוד "אינטגרציות" (למנהלת בלבד): חשבונות וואטסאפ רשמיים (Meta Cloud API, להצגה בלבד) וחשבונות "לא רשמיים"
 # שמחוברים כמכשיר מקושר באמצעות QR (כמו WhatsApp Web). החיבור עצמו רץ בתהליך נפרד (gateway/) -
@@ -61,7 +62,34 @@ def index():
         status_labels=STATUS_LABELS,
         gateway_online=repos.linked_whatsapp.is_gateway_online(),
         meta_result=meta_leads.load_last_result(),
+        locations=LOCATIONS,
+        groups=repos.linked_whatsapp.get_groups(),
+        branch_groups=repos.linked_whatsapp.get_branch_groups(),
     )
+
+
+# איזו קבוצת וואטסאפ (של חשבון מקושר) שייכת לכל סניף - בשימוש אוטומציית "הצטרפות לקבוצת הסניף".
+# הערך מכל select הוא "<account_id>|<group jid>" מתוך הקבוצות שהתהליך דיווח, או ריק = בלי קבוצה
+@bp.route("/branch-groups", methods=["POST"])
+@admin_required
+def save_branch_groups():
+    repos = get_repos()
+    known = {(g["account_id"], g["jid"]): g for g in repos.linked_whatsapp.get_groups()}
+    for index, location in enumerate(LOCATIONS):
+        value = request.form.get(f"group_{index}", "")
+        if not value:
+            repos.linked_whatsapp.set_branch_group(location)
+            continue
+        account_part, _, jid = value.partition("|")
+        try:
+            group = known.get((int(account_part), jid))
+        except ValueError:
+            group = None
+        if group is None:
+            continue  # קבוצה שכבר לא ברשימה - משאירים את הבחירה הקודמת
+        repos.linked_whatsapp.set_branch_group(location, group["account_id"], group["jid"], group["subject"])
+    flash("הקבוצות לסניפים נשמרו", "success")
+    return redirect(url_for("integrations.index") + "#branch-groups")
 
 
 # משיכה ידנית של לידים מפייסבוק (N הימים האחרונים): משלימה לידים שהוחמצו, ומראה מיד מה קרה (טוקן, טפסים,

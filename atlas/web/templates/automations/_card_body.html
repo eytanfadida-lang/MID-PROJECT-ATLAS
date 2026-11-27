@@ -11,7 +11,13 @@
                     </div>
 
                     <div class="automations-tab-panel" data-tab="message">
-                    {% if a.steps %}
+                    {% if a.steps and a.steps[0].action_type == 'add_to_whatsapp_group' %}
+                    <div class="form-card">
+                        <p>האוטומציה הזו לא שולחת הודעה. היא מוסיפה כל מנויה חדשה (רכישת מנוי או כרטיסייה ב-Arbox, בלי מוצרים) לקבוצת הוואטסאפ של הסניף שלה, דרך החשבון המקושר.</p>
+                        <p>אם ההגדרות של הלקוחה חוסמות הוספה לקבוצות, נשלח לה מהחשבון המקושר קישור הצטרפות לקבוצה.</p>
+                        <p><a href="{{ url_for('integrations.index') }}#branch-groups">בחירת הקבוצה לכל סניף - בעמוד האינטגרציות</a></p>
+                    </div>
+                    {% elif a.steps %}
                     <form method="post" action="{{ url_for('automations.edit_step', automation_id=a.id, step_id=a.steps[0].id) }}" class="form-card">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                         {% set form = a.steps[0].action_config %}
@@ -102,7 +108,7 @@
                             <tr>
                                 <td class="m-title">{{ e.created_at | format_lead_datetime }}</td>
                                 <td data-label="טלפון">{{ e.target_phone }}</td>
-                                <td data-label="סטטוס"><span class="badge {{ 'badge-green' if e.status == 'success' else 'badge-red' }}">{{ 'הצלחה' if e.status == 'success' else 'כישלון' }}</span></td>
+                                <td data-label="סטטוס">{% if e.status == 'skipped' %}<span class="badge">דילוג</span>{% else %}<span class="badge {{ 'badge-green' if e.status == 'success' else 'badge-red' }}">{{ 'הצלחה' if e.status == 'success' else 'כישלון' }}</span>{% endif %}</td>
                                 <td data-label="פרטים">{{ e.detail }}</td>
                             </tr>
                             {% endfor %}
