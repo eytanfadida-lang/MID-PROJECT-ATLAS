@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>מדיניות פרטיות - תוסף CRM לוואטסאפ</title>
+<style>
+    body { margin: 0; background: #f8fafc; color: #1f2937; font-family: Arial, Helvetica, sans-serif; line-height: 1.7; }
+    main { max-width: 760px; margin: 0 auto; padding: 32px 20px 48px; }
+    h1 { font-size: 26px; margin: 0 0 4px; }
+    h2 { font-size: 18px; margin: 28px 0 6px; }
+    .updated { color: #6b7280; font-size: 14px; }
+    section { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 8px 24px 20px; margin-top: 24px; }
+    section[lang="en"] { direction: ltr; text-align: left; }
+    ul { padding-inline-start: 22px; }
+</style>
+</head>
+<body>
+<main>
+<h1>מדיניות פרטיות - תוסף CRM לוואטסאפ</h1>
+<p class="updated">עודכן לאחרונה: 16/11/2026</p>
+
+<section>
+    <h2>למי מיועד התוסף</h2>
+    <p>התוסף מיועד לשימוש פנימי של עובדות סטודיו "אפרת רוזנברג הרזיה וחיטוב הגוף" בלבד. השימוש בו מחייב שם משתמש וסיסמה במערכת ה-CRM של הסטודיו. מי שאין לה חשבון כזה לא יכולה לראות דרכו שום מידע.</p>
+
+    <h2>איזה מידע התוסף קורא</h2>
+    <ul>
+        <li>מספר הטלפון והשם של איש הקשר בשיחה הפתוחה כרגע ב-WhatsApp Web. המידע משמש רק כדי למצוא את הלקוחה במערכת של הסטודיו.</li>
+        <li>התוסף <strong>לא קורא את תוכן ההודעות</strong> בשיחות.</li>
+    </ul>
+
+    <h2>לאן המידע נשלח</h2>
+    <ul>
+        <li>מספר הטלפון נשלח רק לשרת של הסטודיו עצמו ({{ request.host }}), בחיבור מוצפן (HTTPS).</li>
+        <li>השרת מחזיר את המידע שכבר שמור אצל הסטודיו על הלקוחה: פרטי ליד, מנוי (Arbox), ביקורים, הערות, תגיות ומשימות.</li>
+        <li>פעולות שהעובדת מבצעת בתוסף, כמו הוספת הערה, שינוי סטטוס או משימה, נשמרות באותו שרת.</li>
+        <li>המידע <strong>לא נמכר ולא מועבר</strong> לשום גורם חיצוני, ולא משמש לפרסום.</li>
+    </ul>
+
+    <h2>מה נשמר בדפדפן</h2>
+    <ul>
+        <li>טוקן התחברות אישי של העובדת, כדי שלא תצטרך להתחבר בכל פעם. הוא נמחק בהתנתקות.</li>
+        <li>העדפות תצוגה: רוחב הפאנל, גודל הטקסט ומצב פתוח או סגור.</li>
+    </ul>
+
+    <h2>יצירת קשר</h2>
+    <p>לשאלות על התוסף ועל המידע: <a href="mailto:eytanfadida@gmail.com">eytanfadida@gmail.com</a></p>
+</section>
+
+<section lang="en">
+    <h2>Privacy Policy (English)</h2>
+    <p>This extension is for internal use by the staff of the "Efrat Rosenberg" fitness studio only, and requires an account in the studio's own CRM.</p>
+    <ul>
+        <li><strong>Data read:</strong> the phone number and contact name of the currently open WhatsApp Web chat, used only to look up that customer in the studio's CRM. The extension does <strong>not</strong> read message contents.</li>
+        <li><strong>Where it is sent:</strong> only to the studio's own server ({{ request.host }}) over HTTPS. Actions taken in the panel (notes, status, tags, tasks) are saved on the same server.</li>
+        <li><strong>No sharing:</strong> data is not sold, shared with third parties, or used for advertising.</li>
+        <li><strong>Stored locally:</strong> a personal sign-in token (removed on sign-out) and display preferences.</li>
+        <li><strong>Contact:</strong> <a href="mailto:eytanfadida@gmail.com">eytanfadida@gmail.com</a></li>
+    </ul>
+</section>
+</main>
+</body>
+</html>

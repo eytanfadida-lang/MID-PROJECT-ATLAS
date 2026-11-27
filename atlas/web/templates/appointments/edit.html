@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block page_title %}עריכת תור{% endblock %}
+{% block page_heading %}עריכת תור {{ appointment.id_client }}{% endblock %}
+
+{% block content %}
+<div class="automations-header">
+    <div class="automations-actions">
+        <a href="{{ url_for('appointments.list_appointments') }}" class="btn btn-ghost">חזרה לתורים</a>
+    </div>
+</div>
+
+<form method="post" class="form-card lead-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <div class="form-group">
+        <label>שם</label>
+        <input type="text" name="name_of_client" value="{{ appointment.name_of_client or '' }}" required>
+    </div>
+    <div class="form-group">
+        <label>טלפון</label>
+        <input type="text" name="phone_client" value="{{ appointment.phone_client or '' }}" required dir="ltr" inputmode="tel" style="text-align:right;">
+    </div>
+    <div class="form-group lead-form-wide">
+        <label>סניף</label>
+        <select name="name_of_store" required>
+            {% for branch in branches %}
+            <option value="{{ branch }}" {{ "selected" if branch == appointment.name_of_store else "" }}>{{ branch }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="form-group">
+        <label>תאריך</label>
+        <input type="date" name="appointment_date" value="{{ appointment.appointment_date or '' }}">
+    </div>
+    <div class="form-group">
+        <label>שעה</label>
+        <input type="time" name="appointment_time" value="{{ appointment.appointment_time or '' }}">
+    </div>
+    <button type="submit" class="btn">שמור שינויים</button>
+</form>
+{% endblock %}

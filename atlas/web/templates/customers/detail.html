@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+{% block page_title %}לקוח {{ customer.id }}{% endblock %}
+{% block page_heading %}לקוח #{{ customer.id }} - {{ customer.name }}{% endblock %}
+
+{% block content %}
+<div class="automations-header">
+    <div class="automations-actions">
+        <a href="{{ url_for('customers.list_customers') }}" class="btn btn-ghost">חזרה ללקוחות</a>
+    </div>
+</div>
+
+<div class="cust-profile">
+    <span class="recent-avatar cust-profile-avatar" aria-hidden="true">{{ (customer.name or '?')[:1] }}</span>
+    <div class="cust-profile-info">
+        <h2>{{ customer.name }}</h2>
+        <div class="cust-chips">
+            {% if customer.phone %}
+            <span class="cust-chip"><bdi dir="ltr">{{ customer.phone }}</bdi>
+                <a href="{{ customer.phone | whatsapp_link }}" target="_blank" rel="noopener" class="cust-chip-link">וואטסאפ</a>
+            </span>
+            {% endif %}
+            {% if customer.email %}<span class="cust-chip"><a href="mailto:{{ customer.email }}" class="cust-chip-link"><bdi dir="ltr">{{ customer.email }}</bdi></a></span>{% endif %}
+            {% if customer.address %}<span class="cust-chip">{{ customer.address }}</span>{% endif %}
+        </div>
+    </div>
+    <div class="cust-profile-stats">
+        <div class="auto-stat auto-stat-blue"><span class="auto-stat-label">תורים</span><span class="auto-stat-value">{{ appointments | length }}</span></div>
+        <div class="auto-stat auto-stat-green"><span class="auto-stat-label">חשבוניות</span><span class="auto-stat-value">{{ invoices | length }}</span></div>
+    </div>
+    {% if current_user.role == ROLE_ADMIN %}
+    <form method="post" action="{{ url_for('customers.delete', customer_id=customer.id) }}"
+          onsubmit="return confirm('האם אתה בטוח שברצונך למחוק את הלקוח?');" class="cust-profile-delete">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button type="submit" class="btn btn-ghost btn-sm btn-ghost-danger">מחיקת לקוח</button>
+    </form>
+    {% endif %}
+</div>
+
+<section class="af-section">
+    <h3 class="af-section-title">תורים</h3>
+    {% if appointments %}
+    <div class="automations-table-wrap cust-table-wrap">
+    <table class="cust-table mobile-cards">
+        <thead>
+            <tr><th>מזהה</th><th>סניף</th><th>תאריך</th><th>שעה</th></tr>
+        </thead>
+        <tbody>
+            {% for a in appointments %}
+            <tr>
+                <td class="cust-muted" data-label="מזהה">{{ a.id_client }}</td>
+                <td data-label="סניף">{{ a.name_of_store }}</td>
+                <td data-label="תאריך">{{ a.appointment_date or "-" }}</td>
+                <td data-label="שעה">{{ a.appointment_time or "-" }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    </div>
+    {% else %}
+    <p class="empty-state">אין תורים ללקוח זה.</p>
+    {% endif %}
+</section>
+
+<section class="af-section">
+    <h3 class="af-section-title">חשבוניות</h3>
+    {% if invoices %}
+    <div class="automations-table-wrap cust-table-wrap">
+    <table class="cust-table mobile-cards">
+        <thead>
+            <tr><th>מספר חשבונית</th><th>סכום</th><th>תאריך</th><th>מנוי</th></tr>
+        </thead>
+        <tbody>
+            {% for inv in invoices %}
+            <tr>
+                <td class="cust-muted" data-label="מספר חשבונית">{{ inv.invoice_number }}</td>
+                <td data-label="סכום"><strong>{{ inv.amount }}</strong></td>
+                <td data-label="תאריך">{{ inv.invoice_date }}</td>
+                <td data-label="מנוי">{{ inv.membership_type or "-" }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    </div>
+    {% else %}
+    <p class="empty-state">אין חשבוניות ללקוח זה.</p>
+    {% endif %}
+</section>
+
+<div class="cust-actions-grid">
+    <section class="af-section">
+        <h3 class="af-section-title"><span class="af-step">＋</span> יצירת חשבונית</h3>
+        <form method="post" action="{{ url_for('customers.create_invoice', customer_id=customer.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <div class="form-group">
+                <label>סכום</label>
+                <input type="number" step="0.01" name="amount" required>
+            </div>
+            <button type="submit" class="btn">צור חשבונית</button>
+        </form>
+    </section>
+
+    <section class="af-section">
+        <h3 class="af-section-title">רכישת מנוי</h3>
+        <form method="post" action="{{ url_for('customers.purchase_membership', customer_id=customer.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <div class="form-group">
+                <label>תוכנית</label>
+                <select name="plan_name" required>
+                    {% for name, price in membership_plans %}
+                    <option value="{{ name }}">{{ name }} - {{ price }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <button type="submit" class="btn">רכישה</button>
+        </form>
+    </section>
+
+    <section class="af-section">
+        <h3 class="af-section-title">קישור תור קיים</h3>
+        <form method="post" action="{{ url_for('customers.link_appointment', customer_id=customer.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <div class="form-group">
+                <label>מזהה תור</label>
+                <input type="text" name="id_client" required>
+            </div>
+            <button type="submit" class="btn">קשר תור</button>
+        </form>
+    </section>
+</div>
+{% endblock %}

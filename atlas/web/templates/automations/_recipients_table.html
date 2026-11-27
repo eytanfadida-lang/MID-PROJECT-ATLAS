@@ -1,0 +1,23 @@
+{# טבלת הנמענים של אוטומציה אחת - נטענת רק כשפותחים את לשונית "נמענים" (ראו recipients_panel), כי
+   בקמפיינים עם מאות נמענים היא הייתה מכבידה מאוד על טעינת עמוד האוטומציות #}
+{% if a.recipients %}
+<table class="mobile-cards">
+    <thead><tr><th>טלפון</th><th>שם</th><th></th></tr></thead>
+    <tbody>
+        {% for r in a.recipients %}
+        <tr>
+            <td class="m-title" dir="ltr">{{ r.phone }}</td>
+            <td data-label="שם">{{ r.full_name or '' }}</td>
+            <td>
+                <form method="post" action="{{ url_for('automations.remove_recipient', automation_id=a.id, recipient_id=r.id) }}" style="display:inline;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <button type="submit" class="btn" onclick="return confirm('להסיר נמען זה?');">הסרה</button>
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p class="empty-state">אין עדיין נמענים.</p>
+{% endif %}

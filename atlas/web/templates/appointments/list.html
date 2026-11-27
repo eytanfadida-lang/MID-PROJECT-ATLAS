@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% block page_title %}תורים - מנהל תורים{% endblock %}
+{% block page_heading %}תורים{% endblock %}
+
+{% block content %}
+{# תורים מקובצים לפי יום, עם השעה בגדול (כמו לוח האימונים בלוח הבקרה). טווח ברירת המחדל: 7 הימים הקרובים #}
+<div class="appt-top">
+    <nav class="status-tabs" aria-label="טווח תאריכים">
+        <a href="{{ url_for('appointments.list_appointments', range='today') }}" class="{{ 'on' if view_range == 'today' and not phone else '' }}">היום <small>{{ range_counts.today }}</small></a>
+        <a href="{{ url_for('appointments.list_appointments', range='tomorrow') }}" class="{{ 'on' if view_range == 'tomorrow' and not phone else '' }}">מחר <small>{{ range_counts.tomorrow }}</small></a>
+        <a href="{{ url_for('appointments.list_appointments') }}" class="{{ 'on' if view_range == 'week' and not phone else '' }}">7 ימים קדימה <small>{{ range_counts.week }}</small></a>
+        <a href="{{ url_for('appointments.list_appointments', range='all') }}" class="{{ 'on' if view_range == 'all' and not phone else '' }}">הכל <small>{{ range_counts.all }}</small></a>
+    </nav>
+    <a href="{{ url_for('appointments.new_choose_day') }}" class="btn">תור חדש</a>
+</div>
+
+<form method="get" class="appt-search">
+    <input type="text" name="phone" placeholder="חיפוש לפי טלפון" value="{{ phone }}" dir="auto" aria-label="חיפוש לפי טלפון">
+    <button type="submit" class="btn btn-ghost btn-sm">חיפוש</button>
+    {% if phone %}<a href="{{ url_for('appointments.list_appointments') }}" class="btn btn-ghost btn-sm">ניקוי</a>{% endif %}
+</form>
+{% if phone %}<p class="studio-quiet">מציג את כל התורים של {{ phone }}</p>{% endif %}
+
+{% if groups %}
+{% for g in groups %}
+<section class="appt-day" aria-label="{{ g.date | day_label }}">
+    <div class="appt-day-head">
+        <h2>{{ g.date | day_label }}</h2>
+        <span>{{ g['items'] | length }} תורים</span>
+    </div>
+    <div class="studio-box">
+        {% for a in g['items'] %}
+        <div class="appt-slot" data-time="{{ a.appointment_time or '' }}" {% if g.date == today_iso %}data-today="1"{% endif %}>
+            <time class="studio-time">{{ a.appointment_time or '--:--' }}</time>
+            <div class="appt-main">
+                <span class="studio-who">{{ a.name_of_client }}</span>
+                <span class="studio-meta">{{ a.name_of_store }}</span>
+            </div>
+            <div class="appt-contact">
+                {% if a.phone_client %}
+                <a href="tel:{{ a.phone_client }}" class="tel-link"><bdi dir="ltr">{{ a.phone_client }}</bdi></a>
+                <a href="{{ a.phone_client | whatsapp_link }}" target="_blank" rel="noopener" class="whatsapp-icon" title="פתח בוואטסאפ" aria-label="פתח בוואטסאפ">
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/></svg>
+                </a>
+                {% endif %}
+            </div>
+            <div class="appt-actions">
+                {% if a.customer_id is not none %}
+                <a href="{{ url_for('customers.detail', customer_id=a.customer_id|int) }}" class="btn btn-ghost btn-sm">כרטיס לקוח</a>
+                {% endif %}
+                <a href="{{ url_for('appointments.edit', id_client=a.id_client) }}" class="btn btn-ghost btn-sm">עריכה</a>
+                {% if current_user.role == ROLE_ADMIN %}
+                <form method="post" action="{{ url_for('appointments.delete', id_client=a.id_client) }}"
+                      onsubmit="return confirm('האם אתה בטוח שברצונך למחוק את התור?');">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <button type="submit" class="btn btn-ghost btn-sm btn-ghost-danger">מחיקה</button>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</section>
+{% endfor %}
+{% else %}
+<div class="studio-empty">
+    {% if phone %}
+    <strong>לא נמצאו תורים למספר הזה</strong>
+    {% elif view_range == 'today' %}
+    <strong>אין תורים להיום</strong>
+    {% elif view_range == 'tomorrow' %}
+    <strong>אין תורים למחר</strong>
+    {% elif view_range == 'week' %}
+    <strong>אין תורים ב-7 הימים הקרובים</strong>
+    {% else %}
+    <strong>עדיין אין תורים במערכת</strong>
+    {% endif %}
+    <a href="{{ url_for('appointments.new_choose_day') }}" class="btn btn-sm">קביעת תור</a>
+</div>
+{% endif %}
+
+<script>
+// בתורים של היום: מסמנים את האימון שמתקיים עכשיו (שעה מתחילתו) ומעמעמים את אלה שכבר עברו - לפי שעון המכשיר
+(function () {
+    var slots = document.querySelectorAll('.appt-slot[data-today][data-time]');
+    var now = new Date();
+    var minutesNow = now.getHours() * 60 + now.getMinutes();
+    var current = null;
+    slots.forEach(function (slot) {
+        var m = /^(\d{1,2}):(\d{2})/.exec(slot.dataset.time || '');
+        if (!m) return;
+        var start = parseInt(m[1], 10) * 60 + parseInt(m[2], 10);
+        if (minutesNow >= start + 60) { slot.classList.add('is-past'); }
+        else if (minutesNow >= start) { current = slot; }
+    });
+    if (current) { current.classList.add('is-now'); }
+})();
+</script>
+{% endblock %}

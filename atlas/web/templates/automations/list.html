@@ -1,0 +1,356 @@
+{% extends "base.html" %}
+{% block page_title %}אוטומציות - מנהל תורים{% endblock %}
+{% block page_heading %}אוטומציות{% endblock %}
+
+{% block content %}
+{# סיכום כללי לכל העמוד + ספירת פעילות לכל קטגוריה (חישוב בתבנית בלבד, בלי שינוי בבלופרינט) #}
+{% set ns = namespace(total=0, active=0, ok=0, fail=0) %}
+{% set cat_active = {} %}
+{% for category_key, category in (grouped_automations or {}).items() %}
+    {% set cns = namespace(active=0) %}
+    {% for automation in category.automations %}
+        {% set ns.total = ns.total + 1 %}
+        {% set ns.ok = ns.ok + (automation.success_count or 0) %}
+        {% set ns.fail = ns.fail + (automation.failed_count or 0) %}
+        {% if automation.enabled %}
+            {% set ns.active = ns.active + 1 %}
+            {% set cns.active = cns.active + 1 %}
+        {% endif %}
+    {% endfor %}
+    {% set _ = cat_active.update({category_key: cns.active}) %}
+{% endfor %}
+
+{# לוח אוטומציות: לשוניות קטגוריה, חיפוש וסינון, וכרטיס לכל אוטומציה (ימים, שעה, מתג, ופתיחה לעריכה) #}
+<div class="auto-head">
+    <div>
+        <p class="auto-head-sub">
+            {{ ns.total }} אוטומציות · {{ ns.active }} פעילות · {{ ns.ok }} הודעות נשלחו{% if ns.fail %} · <span class="auto-head-fail">{{ ns.fail }} כשלונות</span>{% endif %}
+        </p>
+    </div>
+    <div class="auto-head-actions">
+        <a href="{{ url_for('automations.new_automation') }}" class="btn">אוטומציה חדשה</a>
+        <a href="{{ url_for('automations.blacklist') }}" class="btn btn-ghost">בלאקליסט גלובלי</a>
+        <a href="{{ url_for('whatsapp_templates.list_templates') }}" class="btn btn-ghost">תבניות וואטסאפ</a>
+    </div>
+</div>
+
+{% if grouped_automations %}
+<div class="auto-cats" role="tablist" aria-label="קטגוריות">
+    <button type="button" class="auto-cat on" role="tab" aria-selected="true" data-cat="">הכל <small>{{ ns.total }}</small></button>
+    {% for category_key, category in grouped_automations.items() %}
+    <button type="button" class="auto-cat" role="tab" aria-selected="false" data-cat="{{ category_key }}">{{ category_labels.get(category_key, category_key) }} <small>{{ category.count }}</small></button>
+    {% endfor %}
+</div>
+
+<div class="auto-tools">
+    <label class="auto-search">
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <input type="text" id="auto-search" placeholder="חיפוש אוטומציה" aria-label="חיפוש אוטומציה" autocomplete="off">
+    </label>
+    <select id="auto-status" aria-label="סינון לפי סטטוס">
+        <option value="">כל הסטטוסים</option>
+        <option value="1">פעילות</option>
+        <option value="0">כבויות</option>
+    </select>
+</div>
+
+<div class="auto-list" id="auto-list">
+{% for category_key, category in grouped_automations.items() %}
+<section class="auto-section" data-cat="{{ category_key }}">
+    <h2 class="auto-section-title">{{ category_labels.get(category_key, category_key) }}
+        <span>{{ cat_active[category_key] }} פעילות מתוך {{ category.count }}</span></h2>
+    {% for a in category.automations %}
+    {% set tc = a.trigger_config %}
+    {% set summary %}
+                {% if a.trigger_type == 'scheduled' %}
+                    {% set tc = a.trigger_config %}
+                    {% if tc.audience_source == 'arbox_birthday' %}
+                        יום הולדת (Arbox) -
+                        {{ {'all': 'הכל', 'active': 'פעילות', 'inactive': 'לא פעילות'}[tc.get('audience_status', 'all')] }},
+                        {{ tc.time_of_day }}
+                    {% elif tc.audience_source == 'arbox_membership_expiring' %}
+                        סיום מנוי בעוד {{ tc.days_before }} ימים (Arbox), {{ tc.time_of_day }}
+                    {% elif tc.audience_source == 'arbox_expiring_sessions' %}
+                        נותרו {{ tc.sessions_left }} ניקובים (Arbox), {{ tc.time_of_day }}
+                    {% elif tc.audience_source == 'arbox_trial_reminder' %}
+                        תזכורת שיעור ניסיון (Arbox) -
+                        {{ 'יום לפני' if tc.reminder_timing != 'same_day' else 'באותו יום' }},
+                        {{ 'עד' if tc.time_filter != 'after' else 'החל מ' }}-{{ tc.before_hour }}:00
+                        {% if tc.locations %}, סניפים: {{ tc.locations|join(', ') }}{% endif %},
+                        {{ tc.time_of_day }}
+                    {% elif tc.audience_source == 'arbox_churned' %}
+                        מנוי פג לפני {{ tc.days_since }} ימים (Arbox), {{ tc.time_of_day }}
+                    {% elif tc.audience_source == 'arbox_lost_leads' %}
+                        ליד אבוד לפני {{ tc.days_since }} ימים (Arbox), {{ tc.time_of_day }}
+                    {% elif tc.audience_source == 'arbox_converted_leads' %}
+                        ליד הומר לפני {{ tc.days_since }} ימים (Arbox), {{ tc.time_of_day }}
+                    {% elif tc.audience_source == 'arbox_trial_no_show' %}
+                        לא הגיעה לניסיון, חלון {{ tc.window_days }} ימים (Arbox), {{ tc.time_of_day }}
+                    {% elif tc.audience_source == 'arbox_attendance_milestone' %}
+                        מילסטון כל {{ tc.milestone_interval }} כניסות (Arbox), {{ tc.time_of_day }}
+                    {% else %}
+                        {% if tc.audience_source == 'arbox_active_members' %}
+                            לקוחות פעילים (Arbox{% if tc.membership_types %}, {{ tc.membership_types|length }} סוגי מנוי נבחרים{% endif %}{% if tc.locations %}, סניפים: {{ tc.locations|join(', ') }}{% endif %}) -
+                        {% endif %}
+                        {% if tc.schedule_type == 'once' %}
+                            חד-פעמי ב-{{ tc.run_at }}
+                        {% elif tc.schedule_type == 'daily' %}
+                            יומי, {{ tc.time_of_day }}
+                        {% elif tc.schedule_type == 'weekly' %}
+                            {% set wdays = tc.weekdays if tc.weekdays is defined and tc.weekdays else [tc.get('weekday', 0)] %}
+                            {% for w in wdays %}{{ weekday_labels[w] }}{% if not loop.last %}, {% endif %}{% endfor %}
+                            , {{ tc.time_of_day }}
+                        {% elif tc.schedule_type == 'monthly' %}
+                            {{ tc.day_of_month }} לחודש, {{ tc.time_of_day }}
+                        {% endif %}
+                    {% endif %}
+                {% else %}
+                    {{ 'הרשמה לשיעור ניסיון' if a.trigger_type == 'trial_booked' else a.trigger_type }}
+                {% endif %}
+    {% endset %}
+    <article id="automation-{{ a.id }}" class="auto-card{{ '' if a.enabled else ' is-off' }}"
+             data-enabled="{{ 1 if a.enabled else 0 }}" data-search="{{ a.name }} {{ summary|striptags|trim }}">
+        <div class="auto-card-head">
+            <div class="auto-card-main">
+                <h3 class="auto-card-title">{{ a.name }}</h3>
+                <p class="auto-card-meta">
+                    <span class="auto-dot {{ 'on' if a.enabled else '' }}"></span>{{ 'פעילה' if a.enabled else 'כבויה' }}
+                    <span class="auto-sep">|</span>{{ summary|trim|replace('\n', ' ') }}
+                </p>
+                <p class="auto-card-stats">
+                    {% if a.expected_recipient_count is not none %}<span>{{ a.expected_recipient_count }} נמענים צפויים</span>{% endif %}
+                    <span class="{{ 'num-ok' if a.success_count else '' }}">{{ a.success_count }} הצלחות</span>
+                    <span class="{{ 'num-fail' if a.failed_count else '' }}">{{ a.failed_count }} כשלונות</span>
+                </p>
+            </div>
+            {% if a.trigger_type == 'scheduled' %}
+            {% set sched = tc.get('schedule_type') %}
+            {% if sched == 'weekly' %}
+                {% set wd = tc.weekdays if tc.weekdays is defined and tc.weekdays else [tc.get('weekday', 0)] %}
+            {% elif sched == 'daily' or not sched %}
+                {% set wd = [0, 1, 2, 3, 4, 5, 6] %}
+            {% else %}
+                {% set wd = [] %}
+            {% endif %}
+            {% if sched in ('weekly', 'daily') or not sched %}
+            <div class="auto-days" aria-label="ימי שליחה">
+                {% for i, letter in [(6, 'א'), (0, 'ב'), (1, 'ג'), (2, 'ד'), (3, 'ה'), (4, 'ו'), (5, 'ש')] %}
+                <button type="button" class="auto-day{{ ' on' if i in wd else '' }}" title="{{ weekday_labels[i] }}"
+                        aria-label="{{ weekday_labels[i] }}" aria-pressed="{{ 'true' if i in wd else 'false' }}"
+                        data-url="{{ url_for('automations.toggle_weekday', automation_id=a.id, day=i) }}" data-day="{{ i }}"
+                        onclick="automationsToggleWeekday(this)">{{ letter }}</button>
+                {% endfor %}
+            </div>
+            {% endif %}
+            {% if tc.time_of_day %}
+            <div class="auto-time"><small>שליחה</small>
+                <input type="time" class="auto-time-input" value="{{ tc.time_of_day }}"
+                       aria-label="שעת שליחה" data-url="{{ url_for('automations.set_time', automation_id=a.id) }}"
+                       onchange="automationsSetTime(this)" onclick="event.stopPropagation()">
+            </div>
+            {% endif %}
+            {% endif %}
+            <form method="post" action="{{ url_for('automations.toggle_automation', automation_id=a.id) }}" class="automations-toggle-form auto-toggle">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <button type="submit" class="switch {{ 'on' if a.enabled else '' }}" role="switch"
+                        aria-checked="{{ 'true' if a.enabled else 'false' }}" aria-label="{{ a.name }}"
+                        title="{{ 'לחיצה לכיבוי האוטומציה' if a.enabled else 'לחיצה להפעלת האוטומציה' }}">
+                    <span class="switch-knob"></span>
+                </button>
+            </form>
+            <button type="button" class="auto-chevron" aria-expanded="false" aria-label="עריכה ופרטים: {{ a.name }}"
+                    onclick="automationsToggleDetails({{ a.id }}, this)"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
+        </div>
+        <div id="details-{{ a.id }}" class="auto-card-body" hidden data-url="{{ url_for('automations.card_body', automation_id=a.id) }}">
+                <div class="skel" role="status" aria-label="טוען">
+                    <div class="skel-tabs"><span></span><span></span><span></span><span></span></div>
+                    <span class="skel-label"></span><span class="skel-field"></span>
+                    <span class="skel-label"></span><span class="skel-field skel-tall"></span>
+                    <span class="skel-btn"></span>
+                </div>
+        </div>
+    </article>
+    {% endfor %}
+</section>
+{% endfor %}
+<p class="auto-none" id="auto-none" hidden>לא נמצאו אוטומציות שמתאימות לסינון.</p>
+</div>
+{% else %}
+<div class="empty-state automations-empty">
+    <strong>אין עדיין אוטומציות</strong>
+    <p class="hint">צרו אוטומציה מתוזמנת ראשונה כדי להתחיל לשלוח הודעות אוטומטית.</p>
+</div>
+{% endif %}
+
+<script>
+// פותחת/סוגרת את אזור העריכה של אוטומציה ומסנכרנת את מצב הכפתור (aria-expanded + חץ מסובב)
+function automationsToggleDetails(id, btn) {
+    var body = document.getElementById('details-' + id);
+    body.hidden = !body.hidden;
+    btn.setAttribute('aria-expanded', body.hidden ? 'false' : 'true');
+    btn.closest('.auto-card').classList.toggle('is-open', !body.hidden);
+    if (!body.hidden) automationsLoadBody(body);
+}
+
+// טוענת את גוף הכרטיס (טפסי העריכה) בפתיחה הראשונה בלבד. סקריפטים שמגיעים ב-innerHTML לא רצים
+// מעצמם, לכן מחליפים כל אחד בעותק חדש (שרץ במקומו, עם document.currentScript שמצביע עליו)
+function automationsLoadBody(body) {
+    var url = body.dataset.url;
+    if (!url) return;
+    body.removeAttribute('data-url');
+    fetch(url, { credentials: 'same-origin' }).then(function (r) {
+        if (!r.ok) throw new Error('bad status');
+        return r.text();
+    }).then(function (html) {
+        body.innerHTML = html;
+        body.querySelectorAll('script').forEach(function (old) {
+            var s = document.createElement('script');
+            s.textContent = old.textContent;
+            old.replaceWith(s);
+        });
+    }).catch(function () {
+        body.dataset.url = url;
+        body.innerHTML = '<p class="hint">הטעינה נכשלה - סגרי ופתחי שוב את הכרטיס.</p>';
+    });
+}
+
+// מפעילה/מכבה יום בודד ישירות מהעיגולים בתצוגת-הסיכום (בלי לפתוח את כרטיס העריכה המלא) -
+// fetch לראוט toggle_weekday, ומעדכנת רק את העיגולים האלה לפי הרשימה המעודכנת שחוזרת
+// (לא מניחה מה קרה - השרת הוא מקור האמת, כולל המקרה שהשרת דחה כי זה היה היום האחרון)
+function automationsToggleWeekday(btn) {
+    var container = btn.closest('.auto-days');
+    var csrfInput = document.querySelector('input[name="csrf_token"]');
+    var csrf = csrfInput ? csrfInput.value : '';
+    btn.disabled = true;
+    fetch(btn.dataset.url, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'X-Requested-With': 'fetch', 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'csrf_token=' + encodeURIComponent(csrf),
+    }).then(function (r) { return r.json(); }).then(function (res) {
+        btn.disabled = false;
+        if (!res.ok) {
+            alert(res.error || 'שגיאה בעדכון היום.');
+            return;
+        }
+        container.querySelectorAll('.auto-day').forEach(function (dayBtn) {
+            var isOn = res.weekdays.indexOf(parseInt(dayBtn.dataset.day, 10)) !== -1;
+            dayBtn.classList.toggle('on', isOn);
+            dayBtn.setAttribute('aria-pressed', isOn ? 'true' : 'false');
+        });
+    }).catch(function () {
+        btn.disabled = false;
+        alert('שגיאת תקשורת - נסי שוב.');
+    });
+}
+
+// עדכון שעת השליחה ישירות מתיבת "שליחה HH:MM" בתצוגת-הסיכום - fetch ל-set_time, בלי לפתוח
+// את כרטיס העריכה המלא. input type="time" כבר אוכף פורמט חוקי בצד הדפדפן, אבל השרת הוא
+// מקור האמת (כולל בדיקת stage_time) - אם נדחה, מחזירים את הערך הקודם לתיבה
+function automationsSetTime(input) {
+    var previous = input.defaultValue;
+    var csrfInput = document.querySelector('input[name="csrf_token"]');
+    var csrf = csrfInput ? csrfInput.value : '';
+    input.disabled = true;
+    fetch(input.dataset.url, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'X-Requested-With': 'fetch', 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'csrf_token=' + encodeURIComponent(csrf) + '&time_of_day=' + encodeURIComponent(input.value),
+    }).then(function (r) { return r.json(); }).then(function (res) {
+        input.disabled = false;
+        if (!res.ok) {
+            alert(res.error || 'שגיאה בעדכון השעה.');
+            input.value = previous;
+            return;
+        }
+        input.defaultValue = res.time_of_day;
+    }).catch(function () {
+        input.disabled = false;
+        input.value = previous;
+        alert('שגיאת תקשורת - נסי שוב.');
+    });
+}
+
+// עובר בין לשוניות (הודעה/תזמון/נמענים/הרצות אחרונות) בתוך אזור העריכה של אוטומציה אחת -
+// מוגבל ל-.automations-tabs הקרוב (closest), כי יש מופע נפרד של הפאנל לכל אוטומציה בעמוד
+function automationsSwitchTab(btn) {
+    var container = btn.closest('.automations-tabs');
+    var tab = btn.dataset.tab;
+    container.querySelectorAll('.automations-tab-btn').forEach(function (b) {
+        b.classList.toggle('active', b === btn);
+    });
+    container.querySelectorAll('.automations-tab-panel').forEach(function (p) {
+        p.hidden = p.dataset.tab !== tab;
+    });
+    // רשימת הנמענים נטענת רק בפתיחה הראשונה של הלשונית (בקמפיינים גדולים היא מאות שורות)
+    var lazy = tab === 'recipients' && container.querySelector('.auto-recipients-lazy[data-url]');
+    if (lazy) {
+        var url = lazy.dataset.url;
+        lazy.removeAttribute('data-url');
+        fetch(url, { credentials: 'same-origin' }).then(function (r) {
+            if (!r.ok) throw new Error('bad status');
+            return r.text();
+        }).then(function (html) { lazy.innerHTML = html; })
+          .catch(function () { lazy.innerHTML = '<p class="hint">טעינת הנמענים נכשלה - רענני את העמוד.</p>'; });
+    }
+}
+
+// סינון בצד הלקוח: לשונית קטגוריה + חיפוש בשם/בתזמון + סטטוס
+(function () {
+    var list = document.getElementById('auto-list');
+    if (!list) return;
+    var cat = '';
+    var search = document.getElementById('auto-search');
+    var status = document.getElementById('auto-status');
+    var none = document.getElementById('auto-none');
+
+    function apply() {
+        var q = (search.value || '').trim().toLowerCase();
+        var st = status.value;
+        var anyVisible = false;
+        list.querySelectorAll('.auto-section').forEach(function (section) {
+            var sectionVisible = false;
+            section.querySelectorAll('.auto-card').forEach(function (card) {
+                var ok = (!cat || section.dataset.cat === cat)
+                    && (!st || card.dataset.enabled === st)
+                    && (!q || (card.dataset.search || '').toLowerCase().indexOf(q) !== -1);
+                card.classList.toggle('is-filtered', !ok);
+                if (ok) sectionVisible = true;
+            });
+            section.classList.toggle('is-filtered', !sectionVisible);
+            if (sectionVisible) anyVisible = true;
+        });
+        none.hidden = anyVisible;
+    }
+
+    document.querySelectorAll('.auto-cat').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            cat = btn.dataset.cat;
+            document.querySelectorAll('.auto-cat').forEach(function (b) {
+                var on = b === btn;
+                b.classList.toggle('on', on);
+                b.setAttribute('aria-selected', on ? 'true' : 'false');
+            });
+            apply();
+        });
+    });
+    search.addEventListener('input', apply);
+    status.addEventListener('change', apply);
+})();
+
+// פותחת אוטומטית את האוטומציה שחזרנו אליה אחרי שמירה (ראו _back_to_list בבלופרינט)
+if (window.location.hash && window.location.hash.startsWith('#automation-')) {
+    var automationId = window.location.hash.replace('#automation-', '');
+    var card = document.getElementById('automation-' + automationId);
+    var body = document.getElementById('details-' + automationId);
+    if (card && body) {
+        body.hidden = false;
+        automationsLoadBody(body);
+        card.classList.add('is-open');
+        var chev = card.querySelector('.auto-chevron');
+        if (chev) chev.setAttribute('aria-expanded', 'true');
+    }
+}
+</script>
+{% endblock %}
